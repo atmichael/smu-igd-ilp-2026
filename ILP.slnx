@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/client/">
+    <Project Path="src/client/windows-console/ILP.Console/ILP.Console.csproj" />
+  </Folder>
+  <Folder Name="/server/">
+    <Project Path="src/server/ILP.Server/ILP.Server.csproj" />
+  </Folder>
+  <Folder Name="/shared/">
+    <Project Path="src/shared/ILP.Shared/ILP.Shared.csproj" />
+  </Folder>
+</Solution>
