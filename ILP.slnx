@@ -3,6 +3,7 @@
     <Project Path="src/client/windows-console/ILP.Console/ILP.Console.csproj" />
   </Folder>
   <Folder Name="/server/">
+    <Project Path="src/server/ILP.Collector/ILP.Collector.csproj" Id="08d170c0-f57a-4bf3-9c9b-887b0bb33e27" />
     <Project Path="src/server/ILP.Server/ILP.Server.csproj" />
   </Folder>
   <Folder Name="/shared/">
