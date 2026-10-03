@@ -278,6 +278,10 @@ ServiceFabricBackup/
 # Microsoft Fakes
 FakesAssemblies/
 
+# Local development secrets
+/deploy/secrets/*
+!/deploy/secrets/.gitkeep
+
 # GhostDoc plugin setting file
 *.GhostDoc.xml
 

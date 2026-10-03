@@ -1,0 +1,111 @@
+.camera-capture {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.camera-capture__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.camera-capture__header h2 {
+  color: #0f172a;
+}
+
+.camera-capture__stage {
+  background: #0f172a;
+  border-radius: 14px;
+  min-height: 240px;
+  overflow: hidden;
+}
+
+.camera-capture__video {
+  width: 100%;
+  display: block;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  background: #020817;
+}
+
+.camera-capture__stage--review {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.camera-capture__preview {
+  display: block;
+  max-width: 100%;
+  max-height: min(70vh, 760px);
+  object-fit: contain;
+}
+
+.camera-capture__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.camera-capture__actions .MuiTypography-root,
+.camera-capture__pages,
+.camera-capture__pages li,
+.camera-capture__success,
+.camera-capture__success .MuiTypography-root {
+  color: #0f172a;
+}
+
+.camera-capture__error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.camera-capture__prompt {
+  margin: 0;
+  font-weight: 600;
+  color: #334155;
+}
+
+.camera-capture__pages ul {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.camera-capture__pages li {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+}
+
+.camera-capture__thumbnail {
+  width: 3rem;
+  height: 4rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+}
+
+.camera-capture__success {
+  background: #eff6ff;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  padding: 1rem;
+}
