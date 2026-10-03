@@ -46,6 +46,34 @@ describe('CameraCapture', () => {
     await waitFor(() => expect(startCapture).toHaveBeenCalledTimes(1))
   })
 
+  it('starts the live preview immediately when autoStart is enabled', async () => {
+    const startCapture = vi.fn(async () => ({
+      getTracks: () => [{ readyState: 'live', stop: vi.fn() }],
+      active: true,
+    } as unknown as MediaStream))
+
+    render(
+      <CameraCapture
+        autoStart
+        onExit={() => undefined}
+        onSubmit={() =>
+          Promise.resolve({
+            sourceDocumentId: 'doc-1',
+            source: 'camera-capture',
+            pageCount: 1,
+            status: 'received',
+          })
+        }
+        startCamera={startCapture}
+      />,
+    )
+
+    await waitFor(() => expect(startCapture).toHaveBeenCalledTimes(1))
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /capture page/i })).toBeInTheDocument()
+    })
+  })
+
   it('captures, reviews, and accepts up to three pages', async () => {
     const mockBlob = new Blob(['fake-image'], { type: 'image/jpeg' })
     const previewUrl = 'blob:uploaded-preview'

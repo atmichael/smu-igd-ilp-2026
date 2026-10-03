@@ -19,6 +19,7 @@ import { submitSourceDocument, type SourceDocumentResponse } from './source-docu
 import './CameraCapture.css'
 
 interface CameraCaptureProps {
+  autoStart?: boolean
   startCamera?: () => Promise<MediaStream>
   onExit: () => void
   onSubmit?: (
@@ -27,6 +28,7 @@ interface CameraCaptureProps {
 }
 
 export function CameraCapture({
+  autoStart = false,
   startCamera,
   onExit,
   onSubmit = async (request) => submitSourceDocument(request),
@@ -54,6 +56,12 @@ export function CameraCapture({
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (autoStart && session.state === 'idle') {
+      void startCapture()
+    }
+  }, [autoStart, session.state])
 
   useEffect(() => {
     if (session.state === 'liveCapture' && videoRef.current && streamRef.current) {
