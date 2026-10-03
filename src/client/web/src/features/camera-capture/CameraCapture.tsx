@@ -271,12 +271,12 @@ export function CameraCapture({
           )}
 
           {session.state === 'pageReview' && session.pendingPage && (
-            <Stack direction="row" spacing={1}>
-              <Button variant="contained" onClick={acceptPage}>
-                Accept page
-              </Button>
-              <Button variant="outlined" onClick={retakePage}>
+            <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+              <Button variant="outlined" onClick={retakePage} sx={{ flex: 1 }}>
                 Retake page
+              </Button>
+              <Button variant="contained" onClick={acceptPage} sx={{ flex: 1 }}>
+                Accept page
               </Button>
             </Stack>
           )}
