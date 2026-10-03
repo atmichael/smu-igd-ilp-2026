@@ -367,3 +367,4 @@ FodyWeavers.xsd
 
 # Ignore .gguf file since the size is huge 
 *.gguf
+*.dtmp
