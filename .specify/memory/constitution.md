@@ -1,50 +1,44 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version: uninitialized -> 1.0.0 (initial constitution)
+Principles added: I-VI (initial set)
+Added sections: Architecture and Security Constraints; Development Workflow and Quality Gates
+Removed sections: template examples and placeholders
+Follow-up TODO: Set the ratification date when the team formally adopts this constitution.
+-->
+
+# Invoice Processing Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Data Integrity and Human Review
+OCR and LLM outputs are untrusted candidate data. Validate them against a versioned invoice contract and retain traceability to the source document. Uncertain, invalid, or mismatched results MUST be presented for human review before downstream use.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Clear System Boundaries
+The React and TypeScript dashboard MUST use the ASP.NET Core API for application operations. Provider credentials and OCR/LLM requests MUST remain on the backend. Production components use .NET by default; Python experiments require a clear benefit and a documented production boundary.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Provider Independence
+Provider-specific request and response formats MUST remain behind adapters. Ollama, OpenRouter, and other providers MUST NOT define or change the application invoice contract.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Deterministic Financial Decisions
+Invoice arithmetic, tolerances, and three-way matching MUST be implemented as deterministic, testable business rules. An LLM MUST NOT approve an invoice or decide whether a financial discrepancy is acceptable.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Privacy and Credential Security
+Credentials MUST NOT be committed. Gmail access MUST be limited to the permissions needed for the feature. Logs MUST avoid invoice contents and other sensitive data unless explicitly required and protected.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### VI. Practical Verification
+Every feature MUST define how it will be validated. Automated tests MUST cover invoice contracts and deterministic business rules. Unit tests MUST NOT call live Gmail or model services; external-service checks MUST be explicit integration tests.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+## Architecture and Security Constraints
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+The target architecture is a React and TypeScript dashboard, an ASP.NET Core API, and shared C# contracts. The API coordinates Gmail or image inputs, OCR, LLM providers, validation, and review workflows. Feature specifications and documentation MUST distinguish implemented behavior from planned components. Python may be used for bounded experiments, but production interfaces and ownership MUST be documented.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+## Development Workflow and Quality Gates
+
+Feature specifications MUST define inputs, outputs, failure cases, validation expectations, and review behavior. Plans MUST preserve the system boundaries and provider-independent invoice contract. Each implementation MUST include a validation plan and appropriate automated tests; strict test-driven development is not required. Tests that require Gmail, Ollama, or cloud providers MUST be opt-in and clearly identified. Uncertain or mismatched extraction and matching results MUST remain reviewable rather than silently accepted.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution governs feature specifications, plans, implementation, and reviews. Pull requests MUST identify and justify deviations from its principles. Amendments require team review and approval, a rationale, and a semantic version update: MAJOR for incompatible changes to principles, MINOR for new or materially expanded requirements, and PATCH for clarifications that do not change obligations.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: TODO(RATIFICATION_DATE): Set when the team formally adopts this constitution. | **Last Amended**: 2026-10-03
