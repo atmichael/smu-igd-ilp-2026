@@ -1,12 +1,14 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Apis.Util.Store;
 using ILP.Server.Config;
+using ILP.Shared.InfoExtraction.Provider;
 using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
 using MailKit.Security;
 using Microsoft.Extensions.Hosting;
 using MimeKit;
+using System.Diagnostics.Eventing.Reader;
 
 var builder = Host.CreateApplicationBuilder();
 
@@ -77,6 +79,34 @@ try
             Console.WriteLine($"Body Excerpt: {body}");
 
             Console.WriteLine($"Email has {message.Attachments.Count()} attachment(s)");
+            var attachmentPathsList = new List<string>();
+
+            foreach (var attachment in message.Attachments)
+            {
+                // Generate a temporary file path with the original extension if available
+                string extension = Path.GetExtension(attachment.ContentDisposition?.FileName ?? "");
+                string tempFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
+
+                if (attachment is MimePart mimePart)
+                {
+                    using var stream = File.Create(tempFilePath);
+                    await mimePart.Content.DecodeToAsync(stream);
+                    attachmentPathsList.Add(tempFilePath);
+                }
+                else if (attachment is MessagePart messagePart)
+                {
+                    using var stream = File.Create(tempFilePath);
+                    await messagePart.Message.WriteToAsync(stream);
+                    attachmentPathsList.Add(tempFilePath);
+                }
+            }
+
+            var attachmentPaths = attachmentPathsList;
+
+            string extractedText = await EmailInfoExtractionProvider.GetDocumentHeader(body, attachmentPaths);
+
+            Console.WriteLine("\n--- Extracted Text from PDF Natively ---");
+            Console.WriteLine(extractedText);
 
             // Optional: Mark the message as read (Seen)
             //await inbox.AddFlagsAsync(uid, MessageFlags.Seen, silent: true);

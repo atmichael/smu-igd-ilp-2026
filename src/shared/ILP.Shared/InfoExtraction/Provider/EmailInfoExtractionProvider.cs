@@ -1,10 +1,11 @@
 ﻿using ILP.Server.Config;
 using ILP.Shared.InfoExtraction.Model.Dto;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
+using System.Linq;
 
 namespace ILP.Shared.InfoExtraction.Provider
 {
@@ -20,11 +21,11 @@ namespace ILP.Shared.InfoExtraction.Provider
             var payload = new ChatRequestDto()
             {
                 Model = OpenRouterConfig.ModelName,
-                Messages = new List<ChatMessageDto>()
+                Messages = new List<ChatRequestMessageDto>()
 
             };
 
-            var prompt = new ChatMessageDto()
+            var prompt = new ChatRequestMessageDto()
             {
                 Role = "user",
                 Content = new List<ChatMessageContentDto>()
@@ -47,7 +48,7 @@ namespace ILP.Shared.InfoExtraction.Provider
 
             payload.Messages.Add(prompt);
 
-            string jsonPayload = JsonSerializer.Serialize(payload);
+            string jsonPayload = JsonConvert.SerializeObject(payload);
 
             Console.WriteLine($"Json payload: {jsonPayload}");
 
@@ -72,14 +73,8 @@ namespace ILP.Shared.InfoExtraction.Provider
                 Console.WriteLine($"==========================================");
 
                 // 4. Extract and return content response
-                using (JsonDocument doc = JsonDocument.Parse(jsonResponse))
-                {
-                    return doc.RootElement
-                              .GetProperty("choices")
-                              .GetProperty("message")
-                              .GetProperty("content")
-                              .GetString();
-                }
+                var doc = JsonConvert.DeserializeObject<ChatCompletionResponseDto>(jsonResponse);
+                return string.Join(",", doc.Choices.Select(s => s.Message.Content).ToArray());
             }
         }
     }
