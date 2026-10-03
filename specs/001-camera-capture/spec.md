@@ -1,12 +1,22 @@
 # Feature Specification: Camera Document Capture
 
-**Feature Branch**: `feat/invoice-ocr-processing`
+**Feature Branch**: `001-camera-capture`
 
 **Created**: 2026-10-03
 
 **Status**: Draft
 
 **Input**: User description: "As an accounts-payable user, I want to capture a document with my device camera so that a paper invoice can enter the document-processing workflow without first being scanned separately. The user can start a capture, preview the image, retake it, or accept it for processing. If camera access is unavailable or denied, the user receives a clear explanation and can leave the workflow without losing existing work. An accepted image remains associated with its source. Keep this feature to capturing one document at a time. Do not include mailbox collection, OCR behavior, classification, AP matching, or payment approval."
+
+## Clarifications
+
+### Session 2026-10-03
+
+- Q: Which device types must the first release support for camera capture? → A: Mobile phones and tablets.
+- Q: What should the next document-processing step receive after the user submits a multi-page capture? → A: Original captured images grouped as one source document.
+- Q: If the user cancels or leaves before submission, what should happen to the captured pages? → A: Keep pages only during the active session and discard them on cancel or exit.
+- Q: Which browser support commitment should the first release make for camera capture? → A: Current stable Safari on iOS/iPadOS and Chrome on Android.
+- Q: What maximum number of pages should one capture session accept? → A: 3 pages.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -61,12 +71,31 @@ As an accounts-payable user, I want a clear recovery path when camera capture is
 - **FR-006**: The system MUST associate an accepted capture with its camera-capture source and retain the original captured pages for downstream processing.
 - **FR-007**: When permission is denied, a camera is unavailable, or capture fails, the system MUST explain the problem and offer retry or a safe exit where possible.
 - **FR-008**: The system MUST keep camera capture limited to one document per capture session; mailbox collection, OCR, classification, matching, and payment approval are outside this feature.
+- **FR-009**: The first release MUST support camera capture on mobile phones and tablets.
+- **FR-010**: On submission, the system MUST hand off the original captured page images grouped as one source document.
+- **FR-011**: The system MUST keep unsubmitted captured pages only during the active capture session and discard them on cancellation or exit without discarding work that existed before capture began.
+- **FR-012**: The first release MUST support camera capture in current stable Safari on iOS/iPadOS and current stable Chrome on Android.
+- **FR-013**: A capture session MUST accept no more than three pages for one source document.
+- **FR-014**: The system MUST require the application authorization policy before accepting a source-document intake request and MUST reject unauthorized requests without persisting any document content.
+- **FR-015**: The system MUST support idempotent submission retries for the same payload using the same Idempotency-Key and MUST return the same result without creating a duplicate source document.
+- **FR-016**: The system MUST validate the multipart source-document request before persisting any page data and MUST reject invalid source values, non-JPEG content, malformed images, page counts outside 1-3, or requests exceeding the configured size limit without leaving partial storage.
 
 ### Key Entities
 
 - **Capture Session**: One user-initiated attempt to capture a single invoice document; includes its current state and accepted pages.
 - **Captured Page**: An image captured during a session, with its position in the document and whether the user accepted, retook, or removed it.
 - **Source Document**: The complete set of pages the user confirmed for downstream processing, with camera capture recorded as its source.
+
+### Intake Contract
+
+The camera capture flow submits one source document through the shared source-document intake endpoint. The request uses `multipart/form-data` and includes:
+
+- one required `source` field with value `camera-capture`
+- one to three ordered page parts named `pages`
+- each page part must be `image/jpeg` and must validate as a valid JPEG image before acceptance
+- one `Idempotency-Key` header for retry-safe submission
+
+The response is a `201 Created` with the server-assigned `sourceDocumentId` for the accepted document. Repeated requests with the same payload and the same `Idempotency-Key` must not produce duplicate source documents.
 
 ## Success Criteria *(mandatory)*
 
