@@ -10,6 +10,38 @@ C:\code\smu-igd-ilp-2026\
 
 Clone the repository there until that configuration is removed.
 
+## React frontend
+
+Install Node.js LTS, then from the repository root install the frontend dependencies:
+
+```powershell
+Set-Location .\src\client\web
+npm.cmd ci
+```
+
+Start the Vite development server for use on this computer:
+
+```powershell
+npm.cmd run dev
+```
+
+Open the local URL printed by Vite, usually `http://localhost:5173`. To test from another device on the same network, start Vite with a network host instead:
+
+```powershell
+npm.cmd run dev -- --host 0.0.0.0
+```
+
+Use the network URL printed by Vite on the other device. Allow the development server through the firewall if prompted; do not use this option on an untrusted network.
+
+Run the configured ESLint checks and create a production build with:
+
+```powershell
+npm.cmd run lint
+npm.cmd run build
+```
+
+In PowerShell, use `npm.cmd` instead of `npm` if the execution policy blocks the `npm.ps1` script.
+
 ## API key
 
 For OpenRouter testing, put your API key on the first line of `deploy/secrets/openrouter-api.key`. `ILP.Console` reads this location from `App.config`. Keep the key local; files under `deploy/secrets/` are ignored by Git except `.gitkeep`.
