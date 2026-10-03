@@ -6,4 +6,37 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Remove="InfoExtraction\Prompts\ExtractDocumentHeaderInfo.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="InfoExtraction\Prompts\ExtractDocumentHeaderInfo.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Model\Enum\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="InfoExtraction\InfoExtractionPrompts.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>InfoExtractionPrompts.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="InfoExtraction\InfoExtractionPrompts.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>InfoExtractionPrompts.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

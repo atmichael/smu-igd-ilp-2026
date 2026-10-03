@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using ILP.Server.Config;
 using ILP.Server.Endpoints.SourceDocuments;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -22,7 +23,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddCors(options =>
 {
     var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ??
-        ["https://localhost:5173"]; 
+        ["https://localhost:5173"];
 
     options.AddPolicy("ClientApp", policy =>
     {
@@ -31,6 +32,8 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
+
+OpenRouterConfig.Initialize(builder.Configuration);
 
 var app = builder.Build();
 
