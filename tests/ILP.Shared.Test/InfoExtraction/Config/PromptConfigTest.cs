@@ -1,10 +1,8 @@
 using ILP.Server.Config;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Primitives;
 
 namespace ILP.Shared.Test.InfoExtraction.Config;
 
-public class PromptConfigTest
+public partial class PromptConfigTest
 {
     [Fact]
     public void PromptProperties_ReadUpdatedFileContentWithoutReinitializing()
@@ -32,20 +30,5 @@ public class PromptConfigTest
         {
             Directory.Delete(directory, recursive: true);
         }
-    }
-
-    private sealed class TestConfiguration(Dictionary<string, string?> values) : IConfiguration
-    {
-        public string? this[string key]
-        {
-            get => values.GetValueOrDefault(key);
-            set => values[key] = value;
-        }
-
-        public IEnumerable<IConfigurationSection> GetChildren() => [];
-
-        public IChangeToken GetReloadToken() => throw new NotSupportedException();
-
-        public IConfigurationSection GetSection(string key) => throw new NotSupportedException();
     }
 }

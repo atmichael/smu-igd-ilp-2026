@@ -11,5 +11,8 @@
     "OpenRouter": {
       "KeyPath": "C:\\code\\smu-igd-ilp-2026\\deploy\\secrets\\openrouter-api.key"
     }
+  },
+  "Prompts": {
+    "ExtractDocumentContent": "InfoExtraction/Prompts/ExtractDocumentContent.md"
   }
 }
