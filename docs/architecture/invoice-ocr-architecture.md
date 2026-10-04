@@ -42,7 +42,7 @@ Provider choice is configuration on the server, not a browser credential or prov
 
 ## Current prototype and validation path
 
-The web client currently captures one to three JPEG pages and submits them to `POST /api/source-documents` with `channel` = `camera-capture`. The API validates the intake payload and returns a source-document ID, but it does not yet persist the images durably or invoke OCR/LLM extraction. OpenRouter configuration is loaded by the API at startup, but camera intake does not call the extraction provider. The mailbox collector prototype (`src/server/ILP.Collector`) still sends attachments straight to extraction instead of through intake; Feature 03 moves it onto the shared intake path.
+The web client currently captures one to three JPEG pages and submits them to `POST /api/source-documents` with `channel` = `camera-capture`. The API validates the intake payload, stores the original pages in the protected document content store, and returns a source-document ID and `storageLocation`; it does not yet invoke OCR/LLM extraction. OpenRouter configuration is loaded by the API at startup, but camera intake does not call the extraction provider. The mailbox collector prototype (`src/server/ILP.Collector`) still sends attachments straight to extraction instead of through intake; Feature 03 moves it onto the shared intake path.
 
 A separate evidence-storage layer retains confirmed invoice, purchase-order, and receipt artifacts with source references, review status, provenance, and audit events. This persistence layer is additive to intake and references the original source-document IDs instead of redefining the intake contracts.
 

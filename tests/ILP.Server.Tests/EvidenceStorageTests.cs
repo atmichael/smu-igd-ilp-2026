@@ -638,6 +638,29 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
         }
     }
 
+    [Fact]
+    public void FileContentStore_SavesAllParts_IgnoresClientPathsAndRejectsNonGuidIds()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"ilp-content-{Guid.NewGuid():N}");
+        try
+        {
+            var store = new FileDocumentContentStore(root);
+            var id = Guid.NewGuid().ToString();
+
+            var location = store.Save(id, [new DocumentContentPart(@"..\..\page-1.jpg", [1, 2, 3])]);
+
+            Assert.Equal($"protected://source-documents/{id}", location);
+            Assert.True(store.Exists(id));
+            Assert.Equal([1, 2, 3], File.ReadAllBytes(Path.Combine(root, id, "page-1.jpg")));
+            Assert.Throws<ArgumentException>(() => store.Save(@"..\..\secrets", []));
+            Assert.False(store.Exists(@"..\..\secrets"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     // ---- helpers ----
 
     private static string NewCase() => $"AP-CASE-{Guid.NewGuid():N}";

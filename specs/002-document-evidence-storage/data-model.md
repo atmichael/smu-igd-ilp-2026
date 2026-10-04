@@ -143,7 +143,7 @@ The original invoice, purchase order, receipt, or associated source artifact ret
 | `sourceDocumentId` | string? | Optional reference to the intake source document (`/api/source-documents`) this document came from. |
 | `documentType` | enum | `invoice`, `purchase-order`, `receipt`, `other-evidence`. |
 | `sourceReference` | string | Business reference printed on the document (invoice, purchase-order, or receipt number); with `caseId` it drives duplicate detection. Channel identifiers such as an email message ID stay in the intake source document's `origin`. |
-| `storageLocation` | string | Protected storage path or object identifier for the original file. Required on create; withheld (`null`) when archived. |
+| `storageLocation` | string | Where the original file is kept. `protected://source-documents/{sourceDocumentId}` for files received through intake (filled in by the server when omitted and `sourceDocumentId` refers to stored intake content); other protected references are accepted as given. Required on create; withheld (`null`) when archived. |
 | `checksum` | string | Integrity hash supplied by the caller. |
 | `reviewStatus` | enum | `draft`, `pending-review`, `reviewed`, `confirmed`, `rejected`, `superseded`, `archived`. |
 | `createdAt` | timestamp | Time the original file was retained. |

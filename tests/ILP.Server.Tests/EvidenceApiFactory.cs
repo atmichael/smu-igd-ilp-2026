@@ -12,6 +12,8 @@ public sealed class EvidenceApiFactory : WebApplicationFactory<Program>
 
     public FlakyEvidenceRepository Repository { get; } = new();
 
+    public InMemoryDocumentContentStore Content { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("EvidenceStorage:Provider", "InMemory");
@@ -21,6 +23,8 @@ public sealed class EvidenceApiFactory : WebApplicationFactory<Program>
             services.AddSingleton<TimeProvider>(Clock);
             services.RemoveAll<IEvidenceRepository>();
             services.AddSingleton<IEvidenceRepository>(Repository);
+            services.RemoveAll<IDocumentContentStore>();
+            services.AddSingleton<IDocumentContentStore>(Content);
         });
     }
 }

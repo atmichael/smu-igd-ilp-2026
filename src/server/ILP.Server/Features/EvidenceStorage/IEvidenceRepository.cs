@@ -21,5 +21,8 @@ public sealed class EvidenceStorageOptions
 
     public string RootPath { get; set; } = "App_Data/evidence-store";
 
+    /// <summary>Where original document files are kept; one folder per source document.</summary>
+    public string ContentRootPath { get; set; } = "App_Data/source-documents";
+
     public int RetentionYears { get; set; } = 3;
 }

@@ -102,7 +102,7 @@ Creates a new package or a new version when the replacement workflow explicitly 
 }
 ```
 
-To replace confirmed evidence, include `replacesEvidencePackageId` and `replacementReason`; the new package gets `version + 1` and the prior package becomes `superseded` when the replacement is finalized. Evidence documents may include `sourceDocumentId` to reference the intake source document.
+To replace confirmed evidence, include `replacesEvidencePackageId` and `replacementReason`; the new package gets `version + 1` and the prior package becomes `superseded` when the replacement is finalized. Evidence documents may include `sourceDocumentId` to reference the intake source document; when they do and omit `storageLocation`, the server fills in the intake's stored location (`protected://source-documents/{sourceDocumentId}`).
 
 ## Operation: Retrieve evidence package
 

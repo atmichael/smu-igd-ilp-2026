@@ -232,3 +232,12 @@ With multiple developers:
 - [X] T056 Add a test that client-supplied audit text and metadata have record values and credentials redacted, and document unfiltered query behavior in `specs/002-document-evidence-storage/contracts/document-evidence-storage.md` (FR-007, FR-013)
 - [X] T057 Register the development test sign-in only in the Development environment, refuse to start elsewhere until Feature 17, and accept only the `Test` authorization scheme, in `src/server/ILP.Server/Program.cs` with tests in `tests/ILP.Server.Tests/DevelopmentAuthenticationTests.cs` (Constitution V, spec assumption: access control)
 - [X] T058 Build on the shared extraction contract (Constitution I and IX): add the `document-header` record category, `DocumentHeaderFields`/`DocumentHeaderParser` in `src/shared/ILP.Shared/InfoExtraction/DocumentHeaderParser.cs`, and `ExtractedDocumentMapper` in `src/shared/ILP.Shared/Evidence/ExtractedDocumentMapper.cs`; fix the `DocumentItemDto` constructor and add `DocumentDto`/`CompanyDto` constructors; tests in `tests/ILP.Shared.Test/InfoExtraction/DocumentHeaderParserTest.cs` and `tests/ILP.Server.Tests/EvidenceStorageTests.cs`
+
+---
+
+## Phase 9: Original Document Retention (FR-001, FR-002)
+
+- [X] T059 Add a protected document content store (`IDocumentContentStore` with file-backed and in-memory implementations, GUID-only folders, all-or-nothing writes, `EvidenceStorage:ContentRootPath`) in `src/server/ILP.Server/Features/EvidenceStorage/DocumentContentStore.cs` and register it in `EvidenceStorageServiceCollectionExtensions.cs`
+- [X] T060 Store accepted intake pages in the content store before reporting success, return `storageLocation`, and return `500` without creating a source document when storage fails, in `src/server/ILP.Server/Endpoints/SourceDocuments/SourceDocumentsEndpoints.cs`
+- [X] T061 Fill a missing evidence `storageLocation` from the intake content referenced by `sourceDocumentId` in `src/server/ILP.Server/Features/EvidenceStorage/EvidencePackageService.cs`
+- [X] T062 Add tests for stored pages, storage failure and retry, evidence location resolution, and the file content store in `tests/ILP.Server.Tests/SourceDocumentIntakeTests.cs` and `tests/ILP.Server.Tests/EvidenceStorageTests.cs`

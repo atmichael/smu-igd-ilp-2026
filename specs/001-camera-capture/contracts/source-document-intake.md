@@ -51,7 +51,8 @@ The server validates the number and order of pages, declared media type, actual 
   "submittedBy": "camera-capture-test-user",
   "mediaType": "image/jpeg",
   "pageCount": 2,
-  "contentHash": "sha256:..."
+  "contentHash": "sha256:...",
+  "storageLocation": "protected://source-documents/5a14d651-c487-4e8b-babc-a81051053d7b"
 }
 ```
 
@@ -65,9 +66,10 @@ The server validates the number and order of pages, declared media type, actual 
 | `mediaType` | Media type of the stored content. |
 | `pageCount` | Pages accepted (camera) or detected (file). |
 | `contentHash` | SHA-256 over the received content; used with channel identifiers for duplicate detection. |
+| `storageLocation` | Where the original file is kept in the protected document content store (Feature 08). Pages are stored with server-generated names; client filenames are never used. Evidence documents that reference this `sourceDocumentId` inherit it. |
 | `origin` | Planned; present only for `file-upload` and `mailbox` (see Channels). |
 
-The response must not claim success if only some pages were stored. Storage rollback/cleanup is required if persistence fails during the request.
+The response must not claim success if only some pages were stored. The content store writes all pages or none; if storage fails the API returns `500`, creates no source document, and a retry with the same `Idempotency-Key` is processed as a new attempt.
 
 ## Errors
 

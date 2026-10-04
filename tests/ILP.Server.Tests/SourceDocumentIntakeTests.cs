@@ -1,17 +1,21 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
-using Microsoft.AspNetCore.Mvc.Testing;
+using System.Text.Json;
+using ILP.Server.Features.EvidenceStorage;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 
 namespace ILP.Server.Tests;
 
-public class SourceDocumentIntakeTests : IClassFixture<WebApplicationFactory<Program>>
+public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private static readonly byte[] JpegBytes = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00];
+    private readonly EvidenceApiFactory _factory;
 
-    public SourceDocumentIntakeTests(WebApplicationFactory<Program> factory)
+    public SourceDocumentIntakeTests(EvidenceApiFactory factory)
     {
         _factory = factory;
     }
@@ -42,6 +46,54 @@ public class SourceDocumentIntakeTests : IClassFixture<WebApplicationFactory<Pro
         Assert.Equal("image/jpeg", payload.MediaType);
         Assert.Equal("camera-capture-test-user", payload.SubmittedBy);
         Assert.StartsWith("sha256:", payload.ContentHash);
+        Assert.Equal($"protected://source-documents/{payload.SourceDocumentId}", payload.StorageLocation);
+        var stored = Assert.Single(_factory.Content.Get(payload.SourceDocumentId)!);
+        Assert.Equal("page-1.jpg", stored.FileName);
+        Assert.Equal(jpegBytes, stored.Content);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_WhenContentCannotBeStored_ReturnsFailureAndRetrySucceeds()
+    {
+        var failingStore = new FailOnceContentStore();
+        var client = _factory
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IDocumentContentStore>();
+                services.AddSingleton<IDocumentContentStore>(failingStore);
+            }))
+            .CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "camera-capture");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+
+        var failed = await client.PostAsync("/api/source-documents", CameraCapture());
+        var retried = await client.PostAsync("/api/source-documents", CameraCapture());
+
+        Assert.Equal(HttpStatusCode.InternalServerError, failed.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, retried.StatusCode);
+    }
+
+    [Fact]
+    public async Task EvidenceDocument_ReferencingStoredIntake_GetsItsStorageLocation()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "camera-capture");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var intake = await (await client.PostAsync("/api/source-documents", CameraCapture()))
+            .Content.ReadFromJsonAsync<SourceDocumentResponse>();
+
+        var response = await client.PostAsJsonAsync("/api/evidence-packages", new
+        {
+            caseId = $"AP-CASE-{Guid.NewGuid():N}",
+            documents = new[]
+            {
+                new { documentType = "invoice", sourceReference = "INV-INTAKE-1", sourceDocumentId = intake!.SourceDocumentId }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var package = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(intake.StorageLocation, package.GetProperty("documents")[0].GetProperty("storageLocation").GetString());
     }
 
     [Fact]
@@ -62,6 +114,26 @@ public class SourceDocumentIntakeTests : IClassFixture<WebApplicationFactory<Pro
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    private static MultipartFormDataContent CameraCapture()
+    {
+        var content = new MultipartFormDataContent();
+        content.Add(new StringContent("camera-capture"), "channel");
+        var page = new ByteArrayContent(JpegBytes);
+        page.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+        content.Add(page, "pages", "page-1.jpg");
+        return content;
+    }
+
+    private sealed class FailOnceContentStore : InMemoryDocumentContentStore
+    {
+        private int _calls;
+
+        public override string Save(string sourceDocumentId, IReadOnlyList<DocumentContentPart> parts) =>
+            Interlocked.Increment(ref _calls) == 1
+                ? throw new IOException("Simulated storage failure.")
+                : base.Save(sourceDocumentId, parts);
+    }
+
     private sealed class SourceDocumentResponse
     {
         public string SourceDocumentId { get; set; } = string.Empty;
@@ -71,5 +143,6 @@ public class SourceDocumentIntakeTests : IClassFixture<WebApplicationFactory<Pro
         public string MediaType { get; set; } = string.Empty;
         public string? SubmittedBy { get; set; }
         public string ContentHash { get; set; } = string.Empty;
+        public string StorageLocation { get; set; } = string.Empty;
     }
 }

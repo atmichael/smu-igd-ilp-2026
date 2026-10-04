@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using ILP.Server.Features.EvidenceStorage;
 using ILP.Shared.SourceDocuments;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -17,7 +18,7 @@ public static class SourceDocumentsEndpoints
 
     public static void MapEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/source-documents", async (HttpRequest request, ILoggerFactory loggerFactory) =>
+        app.MapPost("/api/source-documents", async (HttpRequest request, IDocumentContentStore contentStore, ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("SourceDocumentIntake");
             if (!request.HasFormContentType)
@@ -92,7 +93,15 @@ public static class SourceDocumentsEndpoints
                 }
             }
 
-            var pageHashes = ComputePageHashes(files);
+            var pages = new List<byte[]>(files.Count);
+            foreach (var file in files)
+            {
+                using var buffer = new MemoryStream();
+                await file.CopyToAsync(buffer);
+                pages.Add(buffer.ToArray());
+            }
+
+            var pageHashes = ComputePageHashes(pages);
             var payloadHash = channel + pageHashes;
             if (IdempotencyCache.TryGetValue(idempotencyKey, out var existing))
             {
@@ -120,6 +129,21 @@ public static class SourceDocumentsEndpoints
                 ContentHash = $"sha256:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(pageHashes))).ToLowerInvariant()}",
             };
 
+            try
+            {
+                metadata.StorageLocation = contentStore.Save(
+                    metadata.SourceDocumentId,
+                    pages.Select((bytes, index) => new DocumentContentPart($"page-{index + 1}.jpg", bytes)).ToList());
+            }
+            catch (Exception ex)
+            {
+                logger.LogError("Source document {SourceDocumentId} could not be stored ({ExceptionType}).", metadata.SourceDocumentId, ex.GetType().Name);
+                return Results.Problem(
+                    title: "Source document could not be stored.",
+                    detail: "No source document was created. Retry the submission with the same Idempotency-Key.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
+
             var entry = new SourceDocumentEntry(metadata, payloadHash);
             IdempotencyCache[idempotencyKey] = entry;
 
@@ -129,28 +153,12 @@ public static class SourceDocumentsEndpoints
         }).RequireAuthorization("SourceDocumentIntakePolicy");
     }
 
-    private static string ComputePageHashes(IReadOnlyList<IFormFile> files)
+    private static string ComputePageHashes(IReadOnlyList<byte[]> pages)
     {
-        using var sha = SHA256.Create();
         var builder = new StringBuilder();
-
-        foreach (var file in files)
+        foreach (var page in pages)
         {
-            using var stream = file.OpenReadStream();
-            var bytes = new byte[file.Length];
-            var read = 0;
-
-            while (read < bytes.Length)
-            {
-                var count = stream.Read(bytes, read, bytes.Length - read);
-                if (count == 0)
-                {
-                    break;
-                }
-                read += count;
-            }
-
-            builder.Append(Convert.ToHexString(sha.ComputeHash(bytes)));
+            builder.Append(Convert.ToHexString(SHA256.HashData(page)));
         }
 
         return builder.ToString();

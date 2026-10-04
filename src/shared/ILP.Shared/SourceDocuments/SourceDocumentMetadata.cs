@@ -10,6 +10,7 @@ public sealed class SourceDocumentMetadata
     public string MediaType { get; set; } = string.Empty;
     public int PageCount { get; set; }
     public string ContentHash { get; set; } = string.Empty;
+    public string StorageLocation { get; set; } = string.Empty;
 }
 
 public static class SourceDocumentChannels

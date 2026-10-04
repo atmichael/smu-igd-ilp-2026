@@ -11,6 +11,7 @@ public sealed class EvidencePackageService
     private static readonly ReviewStatus[] FinalizableStatuses = [ReviewStatus.Draft, ReviewStatus.PendingReview, ReviewStatus.Reviewed];
 
     private readonly IEvidenceRepository _repository;
+    private readonly IDocumentContentStore _contentStore;
     private readonly AuditTrailService _audit;
     private readonly RecordChangeService _recordChanges;
     private readonly MatchOutcomeLinkService _matchLinks;
@@ -21,6 +22,7 @@ public sealed class EvidencePackageService
 
     public EvidencePackageService(
         IEvidenceRepository repository,
+        IDocumentContentStore contentStore,
         AuditTrailService audit,
         RecordChangeService recordChanges,
         MatchOutcomeLinkService matchLinks,
@@ -29,6 +31,7 @@ public sealed class EvidencePackageService
         ILogger<EvidencePackageService> logger)
     {
         _repository = repository;
+        _contentStore = contentStore;
         _audit = audit;
         _recordChanges = recordChanges;
         _matchLinks = matchLinks;
@@ -39,6 +42,16 @@ public sealed class EvidencePackageService
 
     public EvidencePackage Create(CreateEvidencePackageRequest request, string? actorId)
     {
+        foreach (var document in request.Documents ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(document.StorageLocation)
+                && DocumentContentLocations.ParseId(document.SourceDocumentId ?? string.Empty) is { } intakeId
+                && _contentStore.Exists(intakeId.ToString("D")))
+            {
+                document.StorageLocation = DocumentContentLocations.For(intakeId.ToString("D"));
+            }
+        }
+
         var validated = EvidencePackageValidator.ValidateCreate(request, _timeProvider.GetUtcNow());
         var package = validated.Package;
         _audit.AppendCreationEvents(package, ActorType.User, actorId);
