@@ -145,8 +145,6 @@ try
                 LogHelper.Info(traceId, "--- Extracted Text from PDF Natively ---");
                 LogHelper.Info(traceId, $"Response: {extractedText}");
 
-                // Optional: Mark the message as read (Seen)
-                //await inbox.AddFlagsAsync(uid, MessageFlags.Seen, silent: true);
             }
 
             if (attachmentPaths.Count == 0)
@@ -155,6 +153,9 @@ try
                 LogHelper.Info(traceId, "--- Extracted Text from Email Body ---");
                 LogHelper.Info(traceId, $"Response: {extractedText}");
             }
+
+            // Optional: Mark the message as read (Seen)
+            //await inbox.AddFlagsAsync(uid, MessageFlags.Seen, silent: true);
         }
 
         // 6. Gracefully disconnect
