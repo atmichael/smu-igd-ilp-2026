@@ -19,10 +19,4 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
         [JsonProperty("image_url")]
         public ChatMessageImageUrlDto? ImageUrl { get; set; } = null;
     }
-
-    public class ChatMessageImageUrlDto
-    {
-        [JsonProperty("url")]
-        public string Url { get; set; } = "";
-    }
 }
