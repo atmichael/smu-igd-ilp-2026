@@ -9,6 +9,9 @@
         public decimal UnitPrice { get; private set; }
         public string TaxName { get; private set; } = "GST";
         public decimal TaxRate { get; private set; } = 0.0m;
+        public int? SerialNumber { get; private set; }
+        public decimal? Amount { get; private set; }
+        public decimal? TaxAmount { get; private set; }
 
         public DocumentItemDto()
         {
@@ -22,7 +25,10 @@
             string description = "",
             string currencyCode = "SGD",
             string taxName = "GST",
-            decimal taxRate = 0.0m)
+            decimal taxRate = 0.0m,
+            int? serialNumber = null,
+            decimal? amount = null,
+            decimal? taxAmount = null)
         {
             Id = id;
             Quantity = quantity;
@@ -31,18 +37,21 @@
             TaxName = taxName;
             TaxRate = taxRate;
             Description = description;
+            SerialNumber = serialNumber;
+            Amount = amount;
+            TaxAmount = taxAmount;
         }
 
         public decimal GetBasePrice()
         {
-            var basePrice = Quantity * UnitPrice;
+            var basePrice = Amount ?? Quantity * UnitPrice;
             return Math.Round(basePrice, 2, MidpointRounding.ToEven);
         }
 
         public decimal GetTaxAmount()
         {
             var basePrice = GetBasePrice();
-            return Math.Round(basePrice * TaxRate, 2, MidpointRounding.ToEven);
+            return TaxAmount ?? Math.Round(basePrice * TaxRate, 2, MidpointRounding.ToEven);
         }
 
         public decimal GetTotalAmount()

@@ -7,8 +7,8 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
 {
     public class ExtractedDocumentParserTest
     {
-        // Same shape as the "Output Format" example in Prompts/ExtractDocumentHeaderInfo.md.
         private const string SampleOutput = """
+            [HEADER]
             company-name| ACME LOGISTICS PTE LTD
             company-uen| 201509876K
             company-tax-registration-number| null
@@ -20,6 +20,12 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             subtotal-tax-rate| 0.09
             subtotal-tax-amount| 108.00
             total-amount| 1308.00
+
+            [LINE_ITEMS]
+            1|Pallet|2.00|10.00|20.00|0.09|1.80
+
+            [CONFIDENCE]
+            confidence|0.95
             """;
 
         [Fact]
@@ -31,14 +37,32 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             Assert.Equal("PO-88192, DO-1002", fields[ExtractedDocumentDto.RelatedDocumentNumbers]);
             Assert.Null(fields[ExtractedDocumentDto.CompanyTaxRegistrationNumber]);
             Assert.Equal(ExtractedDocumentDto.All.Count, fields.Count);
+            Assert.Equal(0.95m, fields.Confidence);
+            Assert.Equal("ACME LOGISTICS PTE LTD", fields.GetCompany().Name);
+            Assert.Equal("201509876K", fields.GetCompany().UEN);
+            Assert.Equal("INV-2026-00422", fields.GetDocumentInfo().RefNumber);
+            Assert.Equal(1200.00m, fields.GetDocumentInfo().Subtotal);
+            var item = Assert.Single(fields.GetLineItems());
+            Assert.Equal(1, item.SerialNumber);
+            Assert.Equal("Pallet", item.Description);
+            Assert.Equal(20.00m, item.Amount);
+            Assert.Equal(1.80m, item.TaxAmount);
         }
 
         [Fact]
         public void Parse_IgnoresUnknownKeysAndCommentary()
         {
-            var fields = ExtractedDocumentParser.Parse("Here is the result:\nfavourite-colour| blue\ntotal-amount| 10.00");
+            var fields = ExtractedDocumentParser.Parse("[HEADER]\nHere is the result:\nfavourite-colour| blue\ntotal-amount| 10.00");
 
             Assert.Equal("10.00", Assert.Single(fields).Value);
+        }
+
+        [Fact]
+        public void GetLineItems_ReturnsEmptyListWhenOutputHasNoLineItems()
+        {
+            var fields = ExtractedDocumentParser.Parse("[HEADER]\ndocument-number| INV-1\n[LINE_ITEMS]\n[CONFIDENCE]\nconfidence|0.8");
+
+            Assert.Empty(fields.GetLineItems());
         }
 
         [Theory]
