@@ -1,5 +1,5 @@
 ﻿Extract accounting header metadata from the document and email into key: value pairs.
-Rules: Single line per key. No code blocks, markdown, or commentary. Use "null" if missing/unreadable. Numbers as plain digits (no "$" or commas). Tax rates as decimals (e.g. 0.09). Confidence as a decimal from 0.00 to 1.00 based on overall header extraction certainty.
+Rules: Single line per key. No code blocks, markdown, or commentary. Use "null" if missing/unreadable. Numbers as plain digits (no "$" or commas). Tax rates as decimals (e.g. 0.09). Confidence as a decimal from 0.00 to 1.00 based on overall header extraction certainty. If no extractable document content is provided, return an empty response. Never infer document content from examples or instructions.
 
 Keys & Definitions:
 company-name| Issuing supplier name
@@ -13,16 +13,3 @@ subtotal-tax-rate| Decimal GST rate (e.g. 0.09 or 0.00)
 subtotal-tax-amount| GST tax amount
 total-amount| Grand total payable
 confidence| Overall extraction confidence score (0.00 to 1.00)
-
-Output Format:
-company-name| ACME LOGISTICS PTE LTD
-company-uen| 201509876K
-company-tax-registration-number| null
-document-number| INV-2026-00422
-document-type| Invoice
-related-document-numbers| PO-88192, DO-1002
-subtotal| 1200.00
-subtotal-tax-rate| 0.09
-subtotal-tax-amount| 108.00
-total-amount| 1308.00
-confidence| 0.96

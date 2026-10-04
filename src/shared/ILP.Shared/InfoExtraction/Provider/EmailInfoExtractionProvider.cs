@@ -14,26 +14,31 @@ namespace ILP.Shared.InfoExtraction.Provider
 {
     public class EmailInfoExtractionProvider
     {
-        public static async Task<string> GetDocumentHeader(string emailBody, string attachmentPath = "", string parentTraceId = "")
+        public static async Task<string> GetDocumentHeader(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
-            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentHeaderInfo);
+            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentHeaderInfo, parentTraceId, inlineImages);
         }
 
-        public static async Task<string> GetDocumentLineItem(string emailBody, string attachmentPath = "", string parentTraceId = "")
+        public static async Task<string> GetDocumentLineItem(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
-            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentLineItemInfo);
+            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentLineItemInfo, parentTraceId, inlineImages);
         }
 
-        public static async Task<string> GetDocumentContent(string emailBody, string attachmentPath = "", string parentTraceId = "")
+        public static async Task<string> GetDocumentContent(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
-            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentContent);
+            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentContent, parentTraceId, inlineImages);
         }
 
-        private static async Task<string> GetOpenRouterChatResponse(string emailBody, string attachmentPath, string systemPrompt, string parentTraceId = "")
+        private static async Task<string> GetOpenRouterChatResponse(string emailBody, string attachmentPath, string systemPrompt, string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
+            if (!HasExtractableInput(emailBody, attachmentPath, inlineImages))
+            {
+                return "";
+            }
+
             string traceId = string.IsNullOrEmpty(parentTraceId) ? Guid.NewGuid().ToString() : parentTraceId;
 
-            var request = await GetChatRequest(emailBody, attachmentPath, systemPrompt);
+            var request = await GetChatRequest(emailBody, attachmentPath, systemPrompt, inlineImages);
             string requestJson = JsonConvert.SerializeObject(request);
 
             LogHelper.Trace(traceId, $"OpenRouterRequest: {requestJson}");
@@ -64,7 +69,7 @@ namespace ILP.Shared.InfoExtraction.Provider
             return doc == null ? "" : string.Join(",", doc.Choices.Select(s => s.Message.Content).ToArray());
         }
 
-        internal static async Task<ChatRequestDto> GetChatRequest(string emailBody, string attachmentPath, string systemPrompt)
+        internal static async Task<ChatRequestDto> GetChatRequest(string emailBody, string attachmentPath, string systemPrompt, IReadOnlyDictionary<string, string>? inlineImages = null)
         {
 
             // 1. Build email content placeholder 
@@ -115,7 +120,7 @@ namespace ILP.Shared.InfoExtraction.Provider
                 }
             }
 
-            foreach (var imageSource in GetInlineImageSources(emailBody))
+            foreach (var imageSource in GetInlineImageSources(emailBody, inlineImages))
             {
                 prompt.Content.Add(new ChatMessageContentDto()
                 {
@@ -128,7 +133,30 @@ namespace ILP.Shared.InfoExtraction.Provider
             return request;
         }
 
-        private static IEnumerable<string> GetInlineImageSources(string emailBody)
+        internal static bool HasExtractableInput(string emailBody, string attachmentPath, IReadOnlyDictionary<string, string>? inlineImages = null)
+        {
+            if (!string.IsNullOrWhiteSpace(attachmentPath)
+                && File.Exists(attachmentPath)
+                && GetAttachmentMimeType(attachmentPath) != null)
+            {
+                return true;
+            }
+
+            return GetInlineImageSources(emailBody, inlineImages).Any()
+                || IsExtractableDocumentText(ConvertHtmlToText(emailBody ?? ""));
+        }
+
+        private static bool IsExtractableDocumentText(string bodyText)
+        {
+            if (!Regex.IsMatch(bodyText, @"\b(?:invoice|receipt|bill|purchase\s+order|delivery\s+order|service\s+order|sales\s+order|statement\s+of\s+account|subtotal|total|amount\s+due|tax|gst|unit\s+price|quantity)\b", RegexOptions.IgnoreCase))
+            {
+                return false;
+            }
+
+            return Regex.IsMatch(bodyText, @"\d");
+        }
+
+        private static IEnumerable<string> GetInlineImageSources(string emailBody, IReadOnlyDictionary<string, string>? inlineImages)
         {
             var sources = new HashSet<string>(StringComparer.Ordinal);
             var imageTags = Regex.Matches(emailBody ?? "", @"<img\b[^>]*>", RegexOptions.IgnoreCase);
@@ -146,6 +174,12 @@ namespace ILP.Shared.InfoExtraction.Provider
                 }
 
                 var source = WebUtility.HtmlDecode(sourceMatch.Groups["source"].Value).Trim();
+                if (source.StartsWith("cid:", StringComparison.OrdinalIgnoreCase)
+                    && TryGetInlineImage(source[4..], inlineImages, out var inlineImage))
+                {
+                    source = inlineImage;
+                }
+
                 if (IsSupportedImageSource(source))
                 {
                     sources.Add(source);
@@ -153,6 +187,27 @@ namespace ILP.Shared.InfoExtraction.Provider
             }
 
             return sources;
+        }
+
+        private static bool TryGetInlineImage(string contentId, IReadOnlyDictionary<string, string>? inlineImages, out string imageSource)
+        {
+            imageSource = "";
+            if (inlineImages == null)
+            {
+                return false;
+            }
+
+            contentId = contentId.Trim().Trim('<', '>');
+            foreach (var inlineImage in inlineImages)
+            {
+                if (string.Equals(inlineImage.Key.Trim().Trim('<', '>'), contentId, StringComparison.OrdinalIgnoreCase))
+                {
+                    imageSource = inlineImage.Value;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool IsSupportedImageSource(string source)
