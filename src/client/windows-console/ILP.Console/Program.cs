@@ -1,10 +1,23 @@
 ﻿using ILP.Server.Config;
+using ILP.Shared.Helper;
 using ILP.Shared.InfoExtraction.Provider;
 using Microsoft.Extensions.Hosting;
+using Serilog;
 
+// Create App builder
 var builder = Host.CreateApplicationBuilder();
 
+// Initialize OpenRouterConfig config class
 OpenRouterConfig.Initialize(builder.Configuration);
+
+// Initialize Logger
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.Console()
+    .CreateLogger();
+
+
+// Logic starts 
 
 var pdfPath = @"C:\code\smu-igd-ilp-2026\docs\sample\invoices\APSIM-001.pdf";
 
@@ -13,22 +26,25 @@ if (args.Length > 0)
     pdfPath = args.First();
 }
 
+string traceId = Guid.NewGuid().ToString();
+
 try
 {
-    Console.WriteLine("Step 1: Reading and encoding the local PDF file directly...");
+    LogHelper.Info(traceId, "Step 1: Reading and encoding the local PDF file directly...");
     if (!File.Exists(pdfPath))
     {
-        Console.WriteLine($"Error: File not found at {pdfPath}");
+        LogHelper.Info(traceId, $"File not found at {pdfPath}");
         return;
     }
 
-    Console.WriteLine("Step 2: Sending PDF directly to OpenRouter via Gemini 2.5 Flash...");
-    string extractedText = await EmailInfoExtractionProvider.GetDocumentHeader("", new List<string>() { pdfPath });
+    LogHelper.Info(traceId, "Step 2: Sending PDF directly to OpenRouter via Gemini 2.5 Flash...");
+    string docContent = await EmailInfoExtractionProvider.GetDocumentContent("", pdfPath);
 
-    Console.WriteLine("\n--- Extracted Text from PDF Natively ---");
-    Console.WriteLine(extractedText);
+    LogHelper.Info(traceId, "--- Extracted Text from PDF Natively ---");
+    LogHelper.Info(traceId, $"Content: {docContent}");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Error occurred: {ex.Message}");
+
+    LogHelper.Error(traceId, ex, "Error occurred: {ex.Message}");
 }

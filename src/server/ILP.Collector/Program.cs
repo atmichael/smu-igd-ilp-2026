@@ -1,6 +1,7 @@
 ﻿using Google.Apis.Auth.OAuth2;
 using Google.Apis.Util.Store;
 using ILP.Server.Config;
+using ILP.Shared.Helper;
 using ILP.Shared.InfoExtraction.Provider;
 using MailKit;
 using MailKit.Net.Imap;
@@ -8,13 +9,22 @@ using MailKit.Search;
 using MailKit.Security;
 using Microsoft.Extensions.Hosting;
 using MimeKit;
-using System.Diagnostics.Eventing.Reader;
+using Serilog;
 
+// Create app builder 
 var builder = Host.CreateApplicationBuilder();
 
-
+// Initialize OpenRouterConfig Class
 OpenRouterConfig.Initialize(builder.Configuration);
 
+// Initialize logger
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Debug()
+    .WriteTo.Console()
+    .CreateLogger();
+
+
+// Application program started
 
 string emailAddress = "smu.ilp.team5@gmail.com";
 
@@ -46,6 +56,7 @@ if (credential.Token.IsStale)
 
 try
 {
+    string traceId = Guid.NewGuid().ToString();
     // 3. Connect to Gmail using MailKit and XOAUTH2
     using (var client = new ImapClient())
     {
@@ -59,8 +70,8 @@ try
         var inbox = client.Inbox;
         await inbox.OpenAsync(FolderAccess.ReadWrite);
 
-        Console.WriteLine($"Total messages: {inbox.Count}");
-        Console.WriteLine($"Recent messages: {inbox.Recent}");
+        LogHelper.Info(traceId, $"Total messages: {inbox.Count}");
+        LogHelper.Info(traceId, $"Recent messages: {inbox.Recent}");
 
         // 5. Search for unread messages
         var query = SearchQuery.NotSeen;
@@ -71,14 +82,15 @@ try
             // Fetch the full message content by its Unique ID (UID)
             MimeMessage message = await inbox.GetMessageAsync(uid);
 
-            Console.WriteLine($"Subject: {message.Subject}");
-            Console.WriteLine($"From: {message.From}");
+            LogHelper.Info(traceId, $"Subject: {message.Subject}");
+            LogHelper.Info(traceId, $"From: {message.From}");
 
             // Read the body text (handles HTML or plain text)
             string body = message.TextBody ?? message.HtmlBody;
-            Console.WriteLine($"Body Excerpt: {body}");
+            LogHelper.Trace(traceId, $"Body Excerpt: {body}");
 
-            Console.WriteLine($"Email has {message.Attachments.Count()} attachment(s)");
+            LogHelper.Info(traceId, $"Email has {message.Attachments.Count()} attachment(s)");
+
             var attachmentPathsList = new List<string>();
 
             foreach (var attachment in message.Attachments)
@@ -102,15 +114,16 @@ try
             }
 
             var attachmentPaths = attachmentPathsList;
+            foreach (var file in attachmentPaths)
+            {
+                string extractedText = await EmailInfoExtractionProvider.GetDocumentContent(body, file, traceId);
 
-            string extractedText = await EmailInfoExtractionProvider.GetDocumentHeader(body, attachmentPaths);
+                LogHelper.Info(traceId, "--- Extracted Text from PDF Natively ---");
+                LogHelper.Info(traceId, $"Response: {extractedText}");
 
-            Console.WriteLine("\n--- Extracted Text from PDF Natively ---");
-            Console.WriteLine(extractedText);
-
-            // Optional: Mark the message as read (Seen)
-            //await inbox.AddFlagsAsync(uid, MessageFlags.Seen, silent: true);
-            Console.WriteLine("---------------------------------------------");
+                // Optional: Mark the message as read (Seen)
+                //await inbox.AddFlagsAsync(uid, MessageFlags.Seen, silent: true);
+            }
         }
 
         // 6. Gracefully disconnect

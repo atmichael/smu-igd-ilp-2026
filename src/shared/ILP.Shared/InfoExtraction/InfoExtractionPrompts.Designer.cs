@@ -61,18 +61,52 @@ namespace ILP.Shared.InfoExtraction {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to ** SYSTEM INSTRUCTION
-        ///You are a specialized, deterministic OCR and entity-extraction engine for Singapore accounting documents.
-        ///Your sole task is to extract supplier and document header metadata from the provided invoice image/PDF.
+        ///   Looks up a localized string similar to Extract accounting header metadata and itemized line items from the document and email.
+        ///Rules:
+        ///- Output ONLY the two sections demarcated by `[HEADER]` and `[LINE_ITEMS]`.
+        ///- No markdown code blocks, backticks, or conversational commentary.
+        ///- Use &quot;null&quot; for missing or unreadable values.
+        ///- Numbers as plain digits (no &quot;$&quot; or commas). GST rates as decimals (e.g. 0.09, 0.00). Quantities default to 1.00 if unstated.
+        ///- Exactly one line per entry (clean line breaks and tabs in text).
         ///
-        ///** RULES
-        ///- Output MUST strictly follow the key-value format defined below.
-        ///- Do NOT include markdown code blocks (e.g., no ``` or ```text), preambles, introductory sentences, or footnotes.
-        ///- Use the literal word &quot;null&quot; (without quotes) if a field is not present or unreada [rest of string was truncated]&quot;;.
+        ///[HEADER]
+        ///company-name| Issuing  [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ExtractDocumentContent {
+            get {
+                return ResourceManager.GetString("ExtractDocumentContent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Extract accounting header metadata from the document and email into key: value pairs.
+        ///Rules: Single line per key. No code blocks, markdown, or commentary. Use &quot;null&quot; if missing/unreadable. Numbers as plain digits (no &quot;$&quot; or commas). Tax rates as decimals (e.g. 0.09).
+        ///
+        ///Keys &amp; Definitions:
+        ///company-name| Issuing supplier name
+        ///company-uen| Singapore UEN (e.g. 201234567M)
+        ///company-tax-registration-number| GST Reg No (e.g. M90000000X)
+        ///document-number| Invoice or reference number
+        ///document-type| Exactly one of| Invo [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExtractDocumentHeaderInfo {
             get {
                 return ResourceManager.GetString("ExtractDocumentHeaderInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Extract all line items from the document table into a pipe-delimited CSV.
+        ///Rules: Output header row then data rows only. Exactly one line per item (strip internal newlines/tabs). No markdown blocks or commentary. Use &quot;null&quot; if missing. Numbers as plain digits (no &quot;$&quot; or commas). Quantities default to 1.00 if unstated. Tax rates as decimals (e.g. 0.09, 0.00).
+        ///
+        ///Columns &amp; Definitions:
+        ///sn| Sequential item index (1, 2, ...)
+        ///description| Product or service description
+        ///quantity| Billed quantity (default 1.00) [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string ExtractDocumentLineItemInfo {
+            get {
+                return ResourceManager.GetString("ExtractDocumentLineItemInfo", resourceCulture);
             }
         }
     }
