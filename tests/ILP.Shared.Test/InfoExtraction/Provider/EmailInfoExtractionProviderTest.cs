@@ -22,7 +22,7 @@ namespace ILP.Shared.Test.InfoExtraction.Provider
             {
                 var attachmentPath = Path.Combine(directory, $"attachment{extension}");
                 var attachmentBytes = new byte[] { 1, 2, 3 };
-                await File.WriteAllBytesAsync(attachmentPath, attachmentBytes);
+                await File.WriteAllBytesAsync(attachmentPath, attachmentBytes, TestContext.Current.CancellationToken);
 
                 var request = await EmailInfoExtractionProvider.GetChatRequest("", attachmentPath, "");
                 var attachment = request.Messages[0].Content[2].File!;
@@ -47,7 +47,7 @@ namespace ILP.Shared.Test.InfoExtraction.Provider
             try
             {
                 var attachmentPath = Path.Combine(directory, "attachment.txt");
-                await File.WriteAllTextAsync(attachmentPath, "unsupported");
+                await File.WriteAllTextAsync(attachmentPath, "unsupported", TestContext.Current.CancellationToken);
 
                 var request = await EmailInfoExtractionProvider.GetChatRequest("", attachmentPath, "");
 
