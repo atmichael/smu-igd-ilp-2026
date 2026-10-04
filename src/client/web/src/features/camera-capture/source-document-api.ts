@@ -1,12 +1,12 @@
 export interface SourceDocumentResponse {
   sourceDocumentId: string
-  source: 'camera-capture'
+  channel: 'camera-capture'
   pageCount: number
   status: 'received'
 }
 
 export interface SubmitSourceDocumentRequest {
-  source: 'camera-capture'
+  channel: 'camera-capture'
   pages: Blob[]
   idempotencyKey?: string
 }
@@ -14,8 +14,8 @@ export interface SubmitSourceDocumentRequest {
 export async function submitSourceDocument(
   request: SubmitSourceDocumentRequest,
 ): Promise<SourceDocumentResponse> {
-  if (!request.source || request.source !== 'camera-capture') {
-    throw new Error('Camera capture source is required.')
+  if (!request.channel || request.channel !== 'camera-capture') {
+    throw new Error('Camera capture channel is required.')
   }
 
   if (request.pages.length === 0 || request.pages.length > 3) {
@@ -23,7 +23,7 @@ export async function submitSourceDocument(
   }
 
   const formData = new FormData()
-  formData.append('source', request.source)
+  formData.append('channel', request.channel)
 
   request.pages.forEach((page, index) => {
     formData.append('pages', page, `page-${index + 1}.jpg`)

@@ -84,13 +84,13 @@ As an accounts-payable user, I want a clear recovery path when camera capture is
 
 - **Capture Session**: One user-initiated attempt to capture a single invoice document; includes its current state and accepted pages.
 - **Captured Page**: An image captured during a session, with its position in the document and whether the user accepted, retook, or removed it.
-- **Source Document**: The complete set of pages the user confirmed for downstream processing, with camera capture recorded as its source.
+- **Source Document**: The complete set of pages the user confirmed for downstream processing, with camera capture recorded as its channel.
 
 ### Intake Contract
 
 The camera capture flow submits one source document through the shared source-document intake endpoint. The request uses `multipart/form-data` and includes:
 
-- one required `source` field with value `camera-capture`
+- one required `channel` field with value `camera-capture`
 - one to three ordered page parts named `pages`
 - each page part must be `image/jpeg` and must validate as a valid JPEG image before acceptance
 - one `Idempotency-Key` header for retry-safe submission

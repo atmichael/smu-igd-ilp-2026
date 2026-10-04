@@ -11,5 +11,19 @@ namespace ILP.Shared.Model.Dto
         public string Name { get; private set; }
         public string Address { get; private set; }
         public string TaxRegistrationNumber { get; set; }
+
+        public CompanyDto()
+        {
+
+        }
+
+        public CompanyDto(string name, string uen, string address = "", string taxRegistrationNumber = "", long id = 0)
+        {
+            Id = id;
+            Name = name;
+            UEN = uen;
+            Address = address;
+            TaxRegistrationNumber = taxRegistrationNumber;
+        }
     }
 }
