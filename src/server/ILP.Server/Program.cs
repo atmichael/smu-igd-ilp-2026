@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using ILP.Server.Config;
+using ILP.Server.Endpoints.EvidencePackages;
 using ILP.Server.Endpoints.SourceDocuments;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -49,6 +50,7 @@ app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapEndpoints();
+app.MapEvidencePackagesEndpoints();
 
 app.Run();
 

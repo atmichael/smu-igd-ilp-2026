@@ -37,14 +37,35 @@ Run the configured ESLint checks and create a production build with:
 
 ```powershell
 npm.cmd run lint
+npm.cmd run test
 npm.cmd run build
 ```
 
 In PowerShell, use `npm.cmd` instead of `npm` if the execution policy blocks the `npm.ps1` script.
 
+## Run the camera-capture app locally
+
+Install the .NET 10 SDK. Start the API from the repository root in one PowerShell terminal:
+
+Before starting it, create the OpenRouter key file as described in the API key section below. The API loads this configuration at startup and will not start if the key file is missing.
+
+```powershell
+dotnet run --project .\src\server\ILP.Server\ILP.Server.csproj --launch-profile http
+```
+
+The API listens on `http://localhost:5035`. In a second terminal, start the React client using the frontend steps above and open the URL printed by Vite, usually `http://localhost:5173`. Select **Start camera capture**, grant camera permission, then capture and review pages before submitting. Browsers allow camera access on localhost. For physical-device testing, use a trusted HTTPS origin; `--host 0.0.0.0` alone does not provide HTTPS or enable camera access.
+
+Run the API tests from the repository root:
+
+```powershell
+dotnet test .\tests\ILP.Server.Tests\ILP.Server.Tests.csproj
+```
+
+The client tests mock camera APIs and do not require a physical camera. API intake currently uses in-memory storage and test authentication; it is a development prototype, not production persistence or authentication. MySQL in `setup/docker-compose.yml` is not currently used by this intake path.
+
 ## API key
 
-For OpenRouter testing, put your API key on the first line of `deploy/secrets/openrouter-api.key`. `ILP.Console` reads this location from `App.config`. Keep the key local; files under `deploy/secrets/` are ignored by Git except `.gitkeep`.
+For OpenRouter testing, put your API key on the first line of `deploy/secrets/openrouter-api.key`. The API and collector read this location from their `appsettings.json`; `ILP.Console` reads it from `App.config`. If you move the repository, update the configured key path. Keep the key local; files under `deploy/secrets/` are ignored by Git except `.gitkeep`.
 
 ## Test locally with Ollama
 

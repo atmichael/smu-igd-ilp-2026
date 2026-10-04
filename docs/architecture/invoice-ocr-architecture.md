@@ -2,39 +2,50 @@
 
 ## Purpose and status
 
-Describe the proposed flow for turning invoice images or PDFs into validated data. The current repository has a .NET console prototype, ASP.NET Core server scaffolding, and shared-project scaffolding. The React client and end-to-end API flow are future work.
+Describe the target flow for turning invoice images or PDFs into reviewed, validated data. The repository has a React camera-capture client and an ASP.NET Core source-document intake endpoint, as well as a .NET console prototype. Camera intake is not yet connected to OCR, LLM extraction, durable evidence storage, or a review workflow. The current API intake uses in-memory idempotency state and test authentication; it is a prototype, not production processing.
 
 ## Components
 
 ```mermaid
 flowchart LR
-    U[React upload and review] --> A[ASP.NET Core API]
-    A --> O[OCR or vision provider]
-    O --> L[Structured extraction]
-    L --> V[Invoice validation]
-    V --> A
-    A --> U
-    S[Shared C# contracts] --- A
+  U[React upload and camera capture] --> A[ASP.NET Core API]
+  A --> I[Validate and retain source evidence]
+  I --> N[Normalize pages and extract text when needed]
+  N --> C[Classify document]
+  C --> X[Invoice extraction contract]
+  X --> P{Configured provider}
+  P --> O[Local Ollama vision or language model]
+  P --> R[Hosted OpenRouter model]
+  O --> V[Validate structured output]
+  R --> V
+  V --> D[Deterministic verification]
+  D --> H[Human review]
+  H --> A
+  A --> U
+  S[Shared C# contracts] --- A
 ```
 
-The API owns file validation, orchestration, provider credentials, and response validation. Keep OCR and LLM access behind provider-independent interfaces so local tools (such as Tesseract and Ollama) and cloud services (such as Gemini or OpenRouter) can be compared or changed without changing the client contract. Never expose provider keys to the browser.
+The API owns file validation, orchestration, provider configuration, and response validation. Keep OCR and LLM access behind provider-independent interfaces so local inference (Ollama) and hosted inference (OpenRouter) can be compared or changed without changing the client contract. When local inference is selected, invoice content must not be sent to a hosted provider. Never expose provider credentials to the browser.
 
 ## Processing flow
 
-1. Client uploads an invoice to the API.
-2. API validates file type and size and optionally preprocesses the document.
-3. OCR or a vision model extracts text and candidate fields.
-4. Extraction output is validated against the shared invoice contract.
-5. API returns the result, including warnings for uncertain or missing values.
-6. Client presents the result for user review and correction.
+1. The client uploads a PDF or image, or submits camera-captured pages.
+2. The API validates the request and retains the original document and page order.
+3. The processing flow checks page quality and normalizes pages; it uses embedded PDF text or OCR where appropriate.
+4. The system classifies the document and routes supplier invoices to structured invoice extraction. Extraction may use text, source-page images, or both.
+5. A configured provider adapter calls local Ollama or hosted OpenRouter and maps its response to the same invoice contract. Invalid or incomplete output is treated as untrusted and reported, not silently accepted.
+6. Deterministic rules verify fields and amounts where applicable. The result and its provenance are retained for review.
+7. The client presents candidate values, warnings, and source references for human correction. Corrections and processing events are auditable.
 
-Start with local validation where practical, then compare cloud providers. Prefer a vision-first pipeline for a simple prototype; use OCR followed by text extraction when cost control, traceability, or OCR tuning matters.
+Provider choice is configuration on the server, not a browser credential or provider-specific client contract. Compare providers using the same evaluation documents, input path, extraction contract, and relevant prompt/schema versions. Start evaluation-data preparation alongside provider implementation; complete comparative evaluation before enabling automated routing.
 
 ## Current prototype and validation path
 
-The console prototype currently sends a PDF directly to OpenRouter using `google/gemini-2.5-flash` and returns transcribed text. Its API key is read from the path in `ILP.Console`'s `App.config`. The local GGUF method is not called by the current entry point, and Ollama is not integrated with the console.
+The web client currently captures one to three JPEG pages and submits them to `POST /api/source-documents`. The API validates the intake payload and returns a source-document ID, but it does not yet persist the images durably or invoke OCR/LLM extraction. OpenRouter configuration is loaded by the API at startup, but camera intake does not call the extraction provider.
 
-For now, test Ollama separately with invoice text, then run the sample PDF through the console and OpenRouter. These are manual experiments, not a provider switch or automated, like-for-like comparison. A fair comparison requires both providers to receive equivalent input and use the same prompt and output contract. Provider abstraction and structured invoice extraction remain future work.
+A separate evidence-storage layer retains confirmed invoice, purchase-order, and receipt artifacts with source references, review status, provenance, and audit events. This persistence layer is additive to intake and references the original source-document IDs instead of redefining the intake contracts.
+
+The console prototype sends a PDF directly to OpenRouter using `google/gemini-2.5-flash` and returns transcribed text. Ollama is not integrated into the console or camera workflow; current Ollama instructions describe a separate manual experiment. There is no provider switch or automated, like-for-like evaluation yet. See the [feature brief index](../planning/feature-briefs/feature-brief-index.md) for the implementation sequence and [Feature 06](../planning/feature-briefs/feature-06-ap-line-item-conversion.md) and [Feature 20](../planning/feature-briefs/feature-20-model-quality-evaluation.md) for extraction and evaluation requirements.
 
 ## Example response
 
@@ -48,6 +59,8 @@ For now, test Ollama separately with invoice text, then run the sample PDF throu
   "tax": 125.00,
   "total": 1375.00,
   "currency": "SGD",
+  "extractionProvider": "ollama",
+  "extractionModel": "configured-vision-model",
   "lineItems": [
     {
       "description": "Office chairs",
@@ -57,16 +70,19 @@ For now, test Ollama separately with invoice text, then run the sample PDF throu
     }
   ],
   "rawText": "OCR extracted text",
-  "confidence": 0.94,
   "warnings": []
 }
 ```
 
-## Implementation order
+The example is illustrative; model-reported confidence is not ground truth. Candidate values should retain page or text provenance, and missing or uncertain values should be surfaced for review.
 
-1. Agree on the invoice contract and API behavior.
-2. Validate extraction locally with sample invoices.
-3. Add the API processing endpoint and provider abstraction.
-4. Build the upload and review client.
-5. Improve validation, error handling, and export.
+## Implementation sequence
+
+1. Complete the shared intake and durable source-evidence path.
+2. Add page-quality checks, normalization, and raw-text extraction.
+3. Classify documents and agree on the invoice output contract.
+4. Add provider-independent structured extraction, with local Ollama and hosted OpenRouter options.
+5. Prepare an evaluation set alongside extraction work; compare providers using equivalent inputs and record quality, latency, and hosted usage cost where available.
+6. Add deterministic verification and human review with provenance and audit history.
+7. Complete access control and processing reliability before shared or production use; add matching and automation only after their evidence, reference-data, and evaluation dependencies are met.
 

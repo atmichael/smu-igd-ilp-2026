@@ -26,6 +26,10 @@ The project favors local testing first, with cloud providers used for comparison
 - `docs` - architecture, setup, and sample invoices
 - `deploy` - deployment configuration and secrets location
 
+## Evidence storage boundary
+
+The durable evidence-storage feature is intentionally scoped to persistence, provenance, retrieval, and auditability. It stores original documents, related structured records, and review history without performing ingestion, extraction, classification, matching rules, or payment approval.
+
 ## Next steps
 
 - Define the invoice contract and API behavior

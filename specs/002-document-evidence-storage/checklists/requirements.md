@@ -1,9 +1,9 @@
-# Specification Quality Checklist: Camera Document Capture
+# Specification Quality Checklist: Document Evidence Storage
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
-**Created**: 2026-10-03
+**Created**: 2026-10-04
 **Feature**: [spec.md](../spec.md)
-**Related Feature Brief**: Feature 02 — Camera capture
+**Related Feature Brief**: Feature 08 — Evidence storage
 
 ## Content Quality
 
@@ -32,4 +32,5 @@
 
 ## Notes
 
-- The initial usability target is recorded as an assumption for stakeholder review.
+- The feature intentionally focuses on persistence, provenance, retrieval, and auditability; matching rules and payment approval are explicitly outside its scope.
+- Finalized evidence uses a 3-year pilot retention default, with a production policy review required before go-live to confirm any longer retention schedule.
