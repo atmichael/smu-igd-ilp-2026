@@ -24,8 +24,11 @@
             string taxName = "GST",
             decimal taxRate = 0.0m)
         {
+            Id = id;
             Quantity = quantity;
             UnitPrice = unitPrice;
+            CurrencyCode = currencyCode;
+            TaxName = taxName;
             TaxRate = taxRate;
             Description = description;
         }

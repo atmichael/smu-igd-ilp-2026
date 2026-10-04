@@ -1,6 +1,44 @@
 @ILP.Server_HostAddress = http://localhost:5035
+@auth = Test local-dev
 
-GET {{ILP.Server_HostAddress}}/weatherforecast/
-Accept: application/json
+GET {{ILP.Server_HostAddress}}/health
+
+###
+
+# @name createPackage
+POST {{ILP.Server_HostAddress}}/api/evidence-packages
+Authorization: {{auth}}
+Content-Type: application/json
+
+{
+  "caseId": "AP-CASE-DEMO-1",
+  "documents": [
+    {
+      "documentType": "invoice",
+      "sourceReference": "INV-DEMO-1",
+      "storageLocation": "protected://evidence/invoices/INV-DEMO-1.pdf",
+      "checksum": "sha256:demo",
+      "records": [
+        {
+          "recordCategory": "invoice-line",
+          "recordType": "amount",
+          "rawValue": "1450.00",
+          "currentValue": "1450.00",
+          "provenance": [ { "eventType": "extracted", "actorType": "model", "newValue": "1450.00" } ]
+        }
+      ]
+    }
+  ]
+}
+
+###
+
+POST {{ILP.Server_HostAddress}}/api/evidence-packages/{{createPackage.response.body.evidencePackageId}}/finalize
+Authorization: {{auth}}
+
+###
+
+GET {{ILP.Server_HostAddress}}/api/evidence-packages?caseId=AP-CASE-DEMO-1
+Authorization: {{auth}}
 
 ###

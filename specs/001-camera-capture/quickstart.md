@@ -5,7 +5,7 @@ This guide validates the camera flow after its client, API intake contract, appl
 ## Prerequisites
 
 - .NET 10 SDK and Node.js LTS installed.
-- API configuration and the Feature 08 evidence-storage provider available.
+- API configuration and the Feature 08 evidence-storage provider available: start the database first (`setup/Start-LocalDatabase.ps1` without Docker, or `setup/Start-DevDependencies.ps1`); see [local setup](../../docs/setup/setup-instruction.md#1-start-the-database).
 - A camera-enabled iPhone/iPad running current stable Safari or Android device running current stable Chrome.
 - A trusted HTTPS origin reachable by the mobile device. Camera access does not work from an ordinary HTTP Vite network URL; `--host` alone is not sufficient.
 
@@ -55,7 +55,7 @@ dotnet test .\tests\ILP.Server.Tests\ILP.Server.Tests.csproj
 3. Capture a page. Verify preview appears and the camera indicator stops while reviewing the still image.
 4. Retake a page and verify the rejected image is absent from the final submission.
 5. Capture and accept three pages; verify order. Confirm a fourth page cannot be added until a page is removed.
-6. Submit the capture. Verify one request contains all accepted pages in order, with `source=camera-capture`, and success returns one source-document ID.
+6. Submit the capture. Verify one request contains all accepted pages in order, with `channel=camera-capture`, and success returns one source-document ID.
 7. Cancel before submission. Verify no intake request is sent, local previews are released, camera tracks are stopped, and prior application work remains intact.
 8. Deny camera permission, test without an available camera, interrupt camera access, and simulate upload/network/storage failures. Verify clear recovery actions and no partial source document.
 9. Attempt a malformed, unsupported, or over-limit request at the API boundary. Verify server-side rejection and no partial persistence.

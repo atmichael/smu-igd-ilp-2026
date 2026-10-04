@@ -3,6 +3,7 @@
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-03
 **Feature**: [spec.md](../spec.md)
+**Related Feature Brief**: Feature 02 — Camera capture
 
 ## Content Quality
 

@@ -6,7 +6,7 @@ import './App.css'
 
 function App() {
   const [submittedSourceDocument, setSubmittedSourceDocument] = useState<
-    { sourceDocumentId: string; source: string; pageCount: number; status: string } | null
+    { sourceDocumentId: string; channel: string; pageCount: number; status: string } | null
   >()
   const [showCameraCapture, setShowCameraCapture] = useState(false)
 

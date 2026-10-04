@@ -23,7 +23,7 @@ interface CameraCaptureProps {
   startCamera?: () => Promise<MediaStream>
   onExit: () => void
   onSubmit?: (
-    request: { source: 'camera-capture'; pages: Blob[]; idempotencyKey: string },
+    request: { channel: 'camera-capture'; pages: Blob[]; idempotencyKey: string },
   ) => Promise<SourceDocumentResponse>
 }
 
