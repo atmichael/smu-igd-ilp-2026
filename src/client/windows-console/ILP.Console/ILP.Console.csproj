@@ -8,6 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="appsettings.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\shared\ILP.Shared\ILP.Shared.csproj" />
   </ItemGroup>
 
@@ -18,6 +28,7 @@
   <ItemGroup>
     <PackageReference Include="LLamaSharp" Version="0.27.0" />
     <PackageReference Include="LM-Kit.NET" Version="2026.9.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
     <PackageReference Include="PdfPig" Version="0.1.16" />
     <PackageReference Include="PdfPig.Rendering.Skia" Version="0.1.16.4" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.12" />
