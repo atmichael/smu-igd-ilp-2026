@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Shared.Evidence;
 using ILP.Shared.InfoExtraction.Parser;
+using ILP.Shared.TransactionDocument.Model.Constant;
 using ILP.Shared.TransactionDocument.Model.Dto;
 using Xunit;
 
@@ -112,7 +113,7 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
         var document = package.GetProperty("documents")[0];
         Assert.Equal("INV-77", document.GetProperty("sourceReference").GetString());
         Assert.Contains(document.GetProperty("records").EnumerateArray(), record =>
-            record.GetProperty("recordType").GetString() == ExtractedDocumentDto.FieldNames.TotalAmount
+            record.GetProperty("recordType").GetString() == ExtractedDocFieldNames.TotalAmount
             && record.GetProperty("recordCategory").GetString() == "document-header");
     }
 

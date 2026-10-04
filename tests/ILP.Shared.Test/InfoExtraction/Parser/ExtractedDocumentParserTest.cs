@@ -1,5 +1,6 @@
 using ILP.Shared.Evidence;
 using ILP.Shared.InfoExtraction.Parser;
+using ILP.Shared.TransactionDocument.Model.Constant;
 using ILP.Shared.TransactionDocument.Model.Dto;
 using Xunit;
 
@@ -34,9 +35,9 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
         {
             var fields = ExtractedDocumentParser.Parse(SampleOutput);
 
-            Assert.Equal("INV-2026-00422", fields[ExtractedDocumentDto.FieldNames.DocumentNumber]);
-            Assert.Equal("PO-88192, DO-1002", fields[ExtractedDocumentDto.FieldNames.RelatedDocumentNumbers]);
-            Assert.Null(fields[ExtractedDocumentDto.FieldNames.CompanyTaxRegistrationNumber]);
+            Assert.Equal("INV-2026-00422", fields[ExtractedDocFieldNames.DocumentNumber]);
+            Assert.Equal("PO-88192, DO-1002", fields[ExtractedDocFieldNames.RelatedDocumentNumbers]);
+            Assert.Null(fields[ExtractedDocFieldNames.CompanyTaxRegistrationNumber]);
             Assert.Equal(ExtractedDocumentDto.All.Count, fields.Count);
             Assert.Equal(0.95m, fields.Confidence);
             var company = fields.GetCompany();
@@ -106,7 +107,7 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             Assert.Equal("invoice", document.DocumentType);
             Assert.Equal("INV-2026-00422", document.SourceReference);
             Assert.Equal(ExtractedDocumentDto.All.Count - 1, document.Records!.Count);
-            var total = Assert.Single(document.Records, record => record.RecordType == ExtractedDocumentDto.FieldNames.TotalAmount);
+            var total = Assert.Single(document.Records, record => record.RecordType == ExtractedDocFieldNames.TotalAmount);
             Assert.Equal("document-header", total.RecordCategory);
             Assert.Equal("1308.00", total.RawValue);
             Assert.Equal("extracted", Assert.Single(total.Provenance!).EventType);
