@@ -89,12 +89,10 @@ public static class SourceDocumentsEndpoints
             {
                 if (!string.Equals(file.ContentType, "image/jpeg", StringComparison.OrdinalIgnoreCase))
                 {
-                    return Results.UnprocessableEntity(new ProblemDetails
-                    {
-                        Title = "Unsupported media type.",
-                        Detail = "Each page must be a JPEG image.",
-                        Status = StatusCodes.Status415UnsupportedMediaType,
-                    });
+                    return Results.Problem(
+                        title: "Unsupported media type.",
+                        detail: "Each page must be a JPEG image.",
+                        statusCode: StatusCodes.Status415UnsupportedMediaType);
                 }
 
                 await using var stream = file.OpenReadStream();
@@ -102,12 +100,10 @@ public static class SourceDocumentsEndpoints
                 var read = await stream.ReadAsync(headerBytes.AsMemory(0, headerBytes.Length));
                 if (read < 3 || headerBytes[0] != 0xFF || headerBytes[1] != 0xD8 || headerBytes[2] != 0xFF)
                 {
-                    return Results.UnprocessableEntity(new ProblemDetails
-                    {
-                        Title = "Invalid image format.",
-                        Detail = "Each page must contain a valid JPEG signature.",
-                        Status = StatusCodes.Status415UnsupportedMediaType,
-                    });
+                    return Results.Problem(
+                        title: "Invalid image format.",
+                        detail: "Each page must contain a valid JPEG signature.",
+                        statusCode: StatusCodes.Status415UnsupportedMediaType);
                 }
             }
 

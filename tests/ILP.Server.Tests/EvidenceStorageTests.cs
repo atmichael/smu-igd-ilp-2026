@@ -245,6 +245,101 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
     }
 
     [Fact]
+    public async Task Replacement_OfDraftPackage_IsRejected()
+    {
+        var caseId = NewCase();
+        var draftId = await CreateIdAsync(PackageJson(caseId));
+        var request = PackageJson(caseId);
+        request["replacesEvidencePackageId"] = draftId;
+        request["replacementReason"] = "Supplier reissued the invoice";
+
+        var response = await _client.PostAsJsonAsync(BasePath, request);
+
+        Assert.Equal(HttpStatusCode.PreconditionFailed, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Replacement_ForDifferentCase_IsRejected()
+    {
+        var confirmedId = (await FinalizeAsync(await CreateIdAsync(PackageJson(NewCase())))).GetProperty("evidencePackageId").GetString();
+        var request = PackageJson(NewCase());
+        request["replacesEvidencePackageId"] = confirmedId;
+        request["replacementReason"] = "Wrong case";
+
+        var response = await _client.PostAsJsonAsync(BasePath, request);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.True((await ReadJson(response)).GetProperty("errors").TryGetProperty("replacesEvidencePackageId", out _));
+    }
+
+    [Fact]
+    public async Task Replacement_OfUnknownPackage_ReturnsNotFound()
+    {
+        var request = PackageJson(NewCase());
+        request["replacesEvidencePackageId"] = Guid.NewGuid().ToString();
+        request["replacementReason"] = "Unknown prior version";
+
+        var response = await _client.PostAsJsonAsync(BasePath, request);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Verification_OnSupersededPackage_IsRejected()
+    {
+        var caseId = NewCase();
+        var original = await FinalizeAsync(await CreateIdAsync(PackageJson(caseId)));
+        var originalId = original.GetProperty("evidencePackageId").GetString()!;
+        var replacement = PackageJson(caseId);
+        replacement["replacesEvidencePackageId"] = originalId;
+        replacement["replacementReason"] = "Supplier reissued the invoice";
+        await FinalizeAsync(await CreateIdAsync(replacement));
+
+        var response = await _client.PostAsJsonAsync($"{BasePath}/{originalId}/records/{FirstRecordId(original)}/verifications",
+            new { verificationStatus = "passed" });
+
+        Assert.Equal(HttpStatusCode.PreconditionFailed, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Correction_OfUnknownRecord_ReturnsNotFound()
+    {
+        var packageId = await CreateIdAsync(PackageJson(NewCase()));
+
+        var response = await _client.PostAsJsonAsync($"{BasePath}/{packageId}/records/{Guid.NewGuid()}/corrections",
+            new { newValue = "1.00", reason = "No such record" });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task FullLifecycle_AuditTrailCoversEveryActionWithTheAuthenticatedActor()
+    {
+        var created = await CreateAsync(PackageJson(NewCase()));
+        var packageId = created.GetProperty("evidencePackageId").GetString()!;
+        var recordId = FirstRecordId(created);
+
+        await _client.PostAsJsonAsync($"{BasePath}/{packageId}/records/{recordId}/corrections", new { newValue = "1500.00", reason = "Supplier credit note" });
+        await _client.PostAsJsonAsync($"{BasePath}/{packageId}/status", new { reviewStatus = "pending-review" });
+        await _client.PostAsJsonAsync($"{BasePath}/{packageId}/records/{recordId}/verifications", new { verificationStatus = "passed" });
+        await _client.PostAsJsonAsync($"{BasePath}/{packageId}/match-outcomes", new { matchReviewId = "MR-1", outcome = "matched", supportingRecordIds = new[] { recordId } });
+        var finalized = await FinalizeAsync(packageId);
+
+        var events = finalized.GetProperty("auditEvents").EnumerateArray().ToList();
+        Assert.Superset(
+            new HashSet<string?> { "source-attached", "user-correction", "status-changed", "verification-result", "match-outcome", "finalized" },
+            events.Select(audit => audit.GetProperty("eventType").GetString()).ToHashSet());
+        Assert.All(events, audit => Assert.Equal(TestActor, audit.GetProperty("actorId").GetString()));
+
+        var record = finalized.GetProperty("documents")[0].GetProperty("records")[0];
+        Assert.Equal("1450.00", record.GetProperty("rawValue").GetString());
+        Assert.Equal("1500.00", record.GetProperty("currentValue").GetString());
+        Assert.Equal(
+            new[] { "extracted", "corrected", "corrected", "verified", "finalized" },
+            record.GetProperty("provenance").EnumerateArray().Select(entry => entry.GetProperty("eventType").GetString()!).ToArray());
+    }
+
+    [Fact]
     public async Task Create_ForSourceAndCaseWithConfirmedEvidence_ReturnsConflict()
     {
         var caseId = NewCase();

@@ -167,6 +167,106 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PostSourceDocuments_RetryWithSameKeyAndPayload_ReturnsOriginalDocument()
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var first = await (await client.PostAsync("/api/source-documents", CameraCapture())).Content.ReadFromJsonAsync<SourceDocumentResponse>();
+        var retry = await client.PostAsync("/api/source-documents", CameraCapture());
+
+        Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
+        Assert.Equal(first!.SourceDocumentId, (await retry.Content.ReadFromJsonAsync<SourceDocumentResponse>())!.SourceDocumentId);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_SameKeyWithDifferentPayload_ReturnsConflict()
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+        await client.PostAsync("/api/source-documents", CameraCapture());
+
+        var response = await client.PostAsync("/api/source-documents", CameraCapture(JpegBytes, JpegBytes));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_WithMultiplePages_StoresThemInOrder()
+    {
+        byte[] second = [0xFF, 0xD8, 0xFF, 0xE1, 0x02];
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var intake = await (await client.PostAsync("/api/source-documents", CameraCapture(JpegBytes, second)))
+            .Content.ReadFromJsonAsync<SourceDocumentResponse>();
+
+        Assert.Equal(2, intake!.PageCount);
+        Assert.Equal(second, await client.GetByteArrayAsync($"/api/source-documents/{intake.SourceDocumentId}/pages/2"));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(4)]
+    public async Task PostSourceDocuments_WithPageCountOutsideOneToThree_ReturnsBadRequest(int pageCount)
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var response = await client.PostAsync("/api/source-documents", CameraCapture(Enumerable.Repeat(JpegBytes, pageCount).ToArray()));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_WithoutIdempotencyKey_ReturnsBadRequest()
+    {
+        var client = AuthorizedClient(idempotencyKey: null);
+
+        var response = await client.PostAsync("/api/source-documents", CameraCapture());
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("image/png", new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 })]
+    [InlineData("image/jpeg", new byte[] { 0x89, 0x50, 0x4E, 0x47 })]
+    public async Task PostSourceDocuments_WithNonJpegPage_ReturnsUnsupportedMediaTypeAndStoresNothing(string contentType, byte[] bytes)
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+        var content = new MultipartFormDataContent { { new StringContent("camera-capture"), "channel" } };
+        var page = new ByteArrayContent(bytes);
+        page.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(page, "pages", "page-1.jpg");
+
+        var response = await client.PostAsync("/api/source-documents", content);
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    private HttpClient AuthorizedClient(string? idempotencyKey)
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "camera-capture");
+        if (idempotencyKey is not null)
+        {
+            client.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
+        }
+
+        return client;
+    }
+
+    private static MultipartFormDataContent CameraCapture(params byte[][] pages)
+    {
+        var content = new MultipartFormDataContent();
+        content.Add(new StringContent("camera-capture"), "channel");
+        foreach (var bytes in pages)
+        {
+            var page = new ByteArrayContent(bytes);
+            page.Headers.ContentType = new MediaTypeHeaderValue("image/jpeg");
+            content.Add(page, "pages", "page.jpg");
+        }
+
+        return content;
+    }
+
     private static MultipartFormDataContent CameraCapture()
     {
         var content = new MultipartFormDataContent();
