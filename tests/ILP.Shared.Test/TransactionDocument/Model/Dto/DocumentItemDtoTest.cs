@@ -1,10 +1,10 @@
-﻿using ILP.Shared.Model.Dto;
+﻿using ILP.Shared.TransactionDocument.Model.Dto;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using Xunit;
 
-namespace ILP.Shared.Test.Model.Dto
+namespace ILP.Shared.Test.TransactionDocument.Model.Dto
 {
     public class DocumentItemDtoTest
     {

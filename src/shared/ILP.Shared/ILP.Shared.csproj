@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Model\Enum\" />
+    <Folder Include="TransactionDocument\Model\Enum\" />
   </ItemGroup>
 
   <ItemGroup>

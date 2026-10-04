@@ -6,7 +6,8 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Shared.Evidence;
-using ILP.Shared.InfoExtraction;
+using ILP.Shared.InfoExtraction.Parser;
+using ILP.Shared.TransactionDocument.Model.Dto;
 using Xunit;
 
 namespace ILP.Server.Tests;
@@ -99,7 +100,7 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
     [Fact]
     public async Task Create_FromExtractedDocumentHeader_StoresHeaderRecordsKeyedByExtractionKeys()
     {
-        var fields = DocumentHeaderParser.Parse("document-number| INV-77\ndocument-type| Invoice\ntotal-amount| 1308.00");
+        var fields = ExtractedDocumentHeaderParser.Parse("document-number| INV-77\ndocument-type| Invoice\ntotal-amount| 1308.00");
         var request = new CreateEvidencePackageRequest
         {
             CaseId = NewCase(),
@@ -111,7 +112,7 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
         var document = package.GetProperty("documents")[0];
         Assert.Equal("INV-77", document.GetProperty("sourceReference").GetString());
         Assert.Contains(document.GetProperty("records").EnumerateArray(), record =>
-            record.GetProperty("recordType").GetString() == DocumentHeaderFields.TotalAmount
+            record.GetProperty("recordType").GetString() == ExtractedDocumentHeaderDto.TotalAmount
             && record.GetProperty("recordCategory").GetString() == "document-header");
     }
 

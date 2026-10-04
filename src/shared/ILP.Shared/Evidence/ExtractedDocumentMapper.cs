@@ -1,4 +1,4 @@
-using ILP.Shared.InfoExtraction;
+using ILP.Shared.TransactionDocument.Model.Dto;
 
 namespace ILP.Shared.Evidence;
 
@@ -23,8 +23,8 @@ public static class ExtractedDocumentMapper
         string? modelVersion = null,
         string? schemaVersion = null)
     {
-        headerFields.TryGetValue(DocumentHeaderFields.DocumentNumber, out var documentNumber);
-        headerFields.TryGetValue(DocumentHeaderFields.DocumentType, out var documentType);
+        headerFields.TryGetValue(ExtractedDocumentHeaderDto.DocumentNumber, out var documentNumber);
+        headerFields.TryGetValue(ExtractedDocumentHeaderDto.DocumentType, out var documentType);
 
         return new EvidenceDocumentRequest
         {
