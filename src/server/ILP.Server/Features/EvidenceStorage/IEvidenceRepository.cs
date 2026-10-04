@@ -16,12 +16,15 @@ public sealed class EvidenceStorageOptions
 {
     public const string SectionName = "EvidenceStorage";
 
-    /// <summary><c>File</c> (durable, default) or <c>InMemory</c> (tests only).</summary>
+    /// <summary><c>File</c> (durable, default) or <c>InMemory</c> (tests only, also keeps document files in memory).</summary>
     public string Provider { get; set; } = "File";
+
+    /// <summary>Where original document files go: <c>MySql</c> (target, connection string <c>IlpDatabase</c>) or <c>File</c> (local folder fallback).</summary>
+    public string ContentProvider { get; set; } = "File";
 
     public string RootPath { get; set; } = "App_Data/evidence-store";
 
-    /// <summary>Where original document files are kept; one folder per source document.</summary>
+    /// <summary>Local folder for document files when <see cref="ContentProvider"/> is <c>File</c>; one folder per source document.</summary>
     public string ContentRootPath { get; set; } = "App_Data/source-documents";
 
     /// <summary>Where intake source-document records are kept until they move to the database.</summary>

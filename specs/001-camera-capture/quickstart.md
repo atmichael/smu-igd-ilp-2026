@@ -5,7 +5,7 @@ This guide validates the camera flow after its client, API intake contract, appl
 ## Prerequisites
 
 - .NET 10 SDK and Node.js LTS installed.
-- API configuration and the Feature 08 evidence-storage provider available.
+- API configuration and the Feature 08 evidence-storage provider available: start the database first (`setup/Start-LocalDatabase.ps1` without Docker, or `setup/Start-DevDependencies.ps1`); see [local setup](../../docs/setup/setup-instruction.md#1-start-the-database).
 - A camera-enabled iPhone/iPad running current stable Safari or Android device running current stable Chrome.
 - A trusted HTTPS origin reachable by the mobile device. Camera access does not work from an ordinary HTTP Vite network URL; `--host` alone is not sufficient.
 

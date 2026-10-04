@@ -68,15 +68,15 @@ The evidence package API (`/api/evidence-packages`, see [the contract](../../spe
 
 ## Storage decision
 
-Original files and metadata are stored separately, and files are never stored as database blobs.
+Original files (images and PDFs) are stored in MySQL, in the same database that will hold the metadata, so the file and its record live in one backed-up system. Each stored part is one `LONGBLOB` row in `source_document_content` (`source_document_id`, server-generated `file_name`, `content_type`, `size_bytes`, `content`), written in one transaction so a source document is stored completely or not at all. The table is created on first use.
 
 | Data | Pilot (now) | Target |
 |---|---|---|
-| Original files and derived page images (all channels) | Local folder behind `IDocumentContentStore` (`EvidenceStorage:ContentRootPath`) | Object storage (MinIO locally; S3 or Azure Blob when deployed), behind the same interface |
+| Original files and derived page images (all channels) | MySQL `source_document_content` behind `IDocumentContentStore` (`EvidenceStorage:ContentProvider` = `MySql`, connection string `IlpDatabase`); a local folder (`File`, `EvidenceStorage:ContentRootPath`) remains as a fallback when MySQL is unavailable | Same; move to object storage behind the same interface only if volume makes the database too large to back up or restore comfortably |
 | Intake source-document records and idempotency keys | JSON files (`EvidenceStorage:SourceDocumentRecordsPath`) | MySQL |
 | Evidence packages, records, provenance, audit | JSON files (`EvidenceStorage:RootPath`) | MySQL, with the schema agreed with Feature 06 (`DocumentDto`) |
 
-Metadata moves to MySQL when the review queue and multiple reviewers arrive (Feature 07). Files are served only through authorized API endpoints (`GET /api/source-documents/{id}` and `/pages/{n}`), never through public links. Encryption at rest, deletion after retention, and multi-instance storage are required before production.
+Uploads are limited by the API request-size limit (about 30 MB), below MySQL 8's default 64 MB `max_allowed_packet`. Files are read whole into memory when served, which is acceptable for invoice-sized documents. Metadata moves to MySQL when the review queue and multiple reviewers arrive (Feature 07). Files are served only through authorized API endpoints (`GET /api/source-documents/{id}/pages/{n}` for image pages and `/file` for an uploaded original), never through public links. Encryption at rest, deletion after retention, and database credentials from a secret store are required before production.
 
 ## Example response
 

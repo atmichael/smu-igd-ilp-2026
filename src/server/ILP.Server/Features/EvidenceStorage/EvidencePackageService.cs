@@ -40,13 +40,13 @@ public sealed class EvidencePackageService
         _logger = logger;
     }
 
-    public EvidencePackage Create(CreateEvidencePackageRequest request, string? actorId)
+    public async Task<EvidencePackage> CreateAsync(CreateEvidencePackageRequest request, string? actorId, CancellationToken cancellationToken = default)
     {
         foreach (var document in request.Documents ?? [])
         {
             if (string.IsNullOrWhiteSpace(document.StorageLocation)
                 && DocumentContentLocations.ParseId(document.SourceDocumentId ?? string.Empty) is { } intakeId
-                && _contentStore.Exists(intakeId.ToString("D")))
+                && await _contentStore.ExistsAsync(intakeId.ToString("D"), cancellationToken))
             {
                 document.StorageLocation = DocumentContentLocations.For(intakeId.ToString("D"));
             }

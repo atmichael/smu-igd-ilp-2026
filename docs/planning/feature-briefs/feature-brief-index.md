@@ -62,7 +62,7 @@ flowchart TB
 
 ## Feature Status
 
-**MVP, in order:** [01 Scanned upload](feature-01-scanned-document-upload.md) - Not started; [02 Camera capture](feature-02-camera-capture.md) - Partially covered; [08 Evidence storage](feature-08-document-evidence-storage.md) - Partially covered; [04 Raw text](feature-04-raw-text-extraction.md) - Partially covered; [05 Classification](feature-05-document-classification.md) - Not started; [06 Invoice extraction](feature-06-ap-line-item-conversion.md) - Partially covered; [12 Verification](feature-12-deterministic-verification.md) - Not started; [07 Human review](feature-07-extraction-review-dashboard.md) - Not started.
+**MVP, in order:** [01 Scanned upload](feature-01-scanned-document-upload.md) - Partially covered (server intake only); [02 Camera capture](feature-02-camera-capture.md) - Partially covered; [08 Evidence storage](feature-08-document-evidence-storage.md) - Partially covered; [04 Raw text](feature-04-raw-text-extraction.md) - Partially covered; [05 Classification](feature-05-document-classification.md) - Not started; [06 Invoice extraction](feature-06-ap-line-item-conversion.md) - Partially covered; [12 Verification](feature-12-deterministic-verification.md) - Not started; [07 Human review](feature-07-extraction-review-dashboard.md) - Not started.
 
 **Cross-cutting:** [17 Access control](feature-17-access-control-and-review-authorization.md) - Partially covered; [18 Reliability](feature-18-processing-reliability-and-deduplication.md) - Partially covered; [19 Image quality](feature-19-document-quality-feedback.md) - Not started; [16 Reference data](feature-16-reference-data-and-rules.md) - Not started; [20 Model evaluation](feature-20-model-quality-evaluation.md) - Not started.
 

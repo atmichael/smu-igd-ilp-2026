@@ -251,3 +251,12 @@ With multiple developers:
 - [X] T065 Add tests for reading records and pages, `404` for unknown or non-GUID IDs, `401` without sign-in, and the file repository across instances in `tests/ILP.Server.Tests/SourceDocumentIntakeTests.cs`
 - [X] T066 Record the storage decision (files in a folder now and object storage later, never database blobs; metadata in JSON now and MySQL with the review queue) in `plan.md` and `docs/architecture/invoice-ocr-architecture.md`
 - [X] T067 Extend coverage: replacement edge cases (draft, other case, unknown), verification on superseded evidence, unknown record, full-lifecycle audit trail and provenance (SC-002), intake idempotent retry and conflict, page order, page-count and missing-key validation, `415` for non-JPEG pages (fixing intake to return `415` as the contract states), and a restart test on the real file stores in `tests/ILP.Server.Tests/FileStorageRestartTests.cs`
+
+---
+
+## Phase 11: Original Files in MySQL (FR-001, FR-002)
+
+- [X] T068 Make `IDocumentContentStore` asynchronous and record each part's content type; add `MySqlDocumentContentStore` (`source_document_content` `LONGBLOB` rows, one transaction per document, table created on first use) selected by `EvidenceStorage:ContentProvider` = `MySql` with connection string `IlpDatabase`, keeping `File` as a fallback, in `src/server/ILP.Server/Features/EvidenceStorage/`
+- [X] T069 Accept `file-upload` intake with one PDF, JPEG, or PNG (declared type must match the signature; PDFs opened with PdfPig to count pages and reject unreadable or password-protected files) and add `GET /api/source-documents/{id}/file` for the original upload, in `src/server/ILP.Server/Endpoints/SourceDocuments/SourceDocumentsEndpoints.cs`
+- [X] T070 Add tests for PDF and PNG upload, mismatched or unreadable files, file count, the rejected `mailbox` channel, and MySQL round-trip and all-or-nothing saves (run when `ILP_TEST_MYSQL` is set) in `tests/ILP.Server.Tests/SourceDocumentIntakeTests.cs` and `tests/ILP.Server.Tests/MySqlContentStoreTests.cs`
+- [X] T071 Record the revised storage decision (files in MySQL, folder fallback) in `plan.md`, `quickstart.md`, `docs/architecture/invoice-ocr-architecture.md`, the intake contract, and `docs/setup/setup-instruction.md`

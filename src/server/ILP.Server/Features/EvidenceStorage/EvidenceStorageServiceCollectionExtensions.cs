@@ -3,6 +3,7 @@ namespace ILP.Server.Features.EvidenceStorage;
 public static class EvidenceStorageServiceCollectionExtensions
 {
     public const string AuthorizationPolicy = "EvidenceStoragePolicy";
+    public const string ConnectionStringName = "IlpDatabase";
 
     public static IServiceCollection AddEvidenceStorage(this IServiceCollection services, IConfiguration configuration)
     {
@@ -27,6 +28,18 @@ public static class EvidenceStorageServiceCollectionExtensions
             if (string.Equals(options.Provider, "InMemory", StringComparison.OrdinalIgnoreCase))
             {
                 return new InMemoryDocumentContentStore();
+            }
+
+            if (string.Equals(options.ContentProvider, "MySql", StringComparison.OrdinalIgnoreCase))
+            {
+                var connectionString = configuration.GetConnectionString(ConnectionStringName);
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    throw new InvalidOperationException(
+                        $"ConnectionStrings:{ConnectionStringName} is required when EvidenceStorage:ContentProvider is MySql.");
+                }
+
+                return new MySqlDocumentContentStore(connectionString);
             }
 
             var environment = provider.GetRequiredService<IWebHostEnvironment>();

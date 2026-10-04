@@ -63,6 +63,7 @@ public sealed class FileStorageRestartTests : IDisposable
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
             builder.UseSetting("EvidenceStorage:Provider", "File");
+            builder.UseSetting("EvidenceStorage:ContentProvider", "File");
             builder.UseSetting("EvidenceStorage:RootPath", Path.Combine(_root, "evidence-store"));
             builder.UseSetting("EvidenceStorage:ContentRootPath", Path.Combine(_root, "source-documents"));
             builder.UseSetting("EvidenceStorage:SourceDocumentRecordsPath", Path.Combine(_root, "source-document-records"));

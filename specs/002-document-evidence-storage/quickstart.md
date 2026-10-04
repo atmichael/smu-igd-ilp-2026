@@ -5,7 +5,8 @@ This guide validates the persistence, retrieval, provenance, audit, and status-h
 ## Prerequisites
 
 - .NET 10 SDK installed.
-- Evidence store configured under `EvidenceStorage` in `src/server/ILP.Server/appsettings.json`: `Provider` (`File` by default, `InMemory` for tests), `RootPath` for evidence packages (default `App_Data/evidence-store`), `ContentRootPath` for original files received through intake (default `App_Data/source-documents`), both git-ignored, and `RetentionYears` (default `3`).
+- Evidence store configured under `EvidenceStorage` in `src/server/ILP.Server/appsettings.json`: `Provider` (`File` by default, `InMemory` for tests), `RootPath` for evidence packages (default `App_Data/evidence-store`), `ContentProvider` for original files received through intake (`MySql` in Development, using connection string `IlpDatabase`; `File` stores them under `ContentRootPath`, default `App_Data/source-documents`), and `RetentionYears` (default `3`). Folders under `App_Data` are git-ignored.
+- For `MySql`, a running database: `setup/Start-DevDependencies.ps1` (Docker) or `setup/Start-LocalDatabase.ps1` (MariaDB, no Docker or admin rights); see [local setup](../../docs/setup/setup-instruction.md#1-start-the-database).
 - Access to the existing .NET test project at `tests/ILP.Server.Tests`.
 - Optional: a test environment that can exercise a real invoice, purchase order, and receipt evidence set without exposing credentials or raw invoice contents in logs.
 

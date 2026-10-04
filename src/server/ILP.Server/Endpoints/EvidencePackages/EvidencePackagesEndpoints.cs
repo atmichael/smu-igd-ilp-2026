@@ -12,10 +12,10 @@ public static class EvidencePackagesEndpoints
         var group = app.MapGroup("/api/evidence-packages")
             .RequireAuthorization(EvidenceStorageServiceCollectionExtensions.AuthorizationPolicy);
 
-        group.MapPost("", (CreateEvidencePackageRequest request, EvidencePackageService service, ClaimsPrincipal user) =>
-            Execute(() =>
+        group.MapPost("", (CreateEvidencePackageRequest request, EvidencePackageService service, ClaimsPrincipal user, CancellationToken cancellationToken) =>
+            ExecuteAsync(async () =>
             {
-                var package = service.Create(request, ActorId(user));
+                var package = await service.CreateAsync(request, ActorId(user), cancellationToken);
                 return Results.Created($"/api/evidence-packages/{package.EvidencePackageId}", package);
             }));
 
@@ -54,35 +54,43 @@ public static class EvidencePackagesEndpoints
         {
             return action();
         }
-        catch (EvidenceValidationException ex)
+        catch (Exception ex) when (ToProblem(ex) is { } problem)
         {
-            return Results.ValidationProblem(ex.Errors, title: "Invalid evidence package.", statusCode: ex.StatusCode);
-        }
-        catch (EvidenceNotFoundException ex)
-        {
-            return Problem(StatusCodes.Status404NotFound, "Evidence not found.", ex.Message);
-        }
-        catch (EvidenceDuplicateException ex)
-        {
-            return Problem(StatusCodes.Status409Conflict, "Duplicate final evidence.", ex.Message);
-        }
-        catch (EvidencePreconditionException ex)
-        {
-            return Problem(StatusCodes.Status412PreconditionFailed, "Evidence state does not allow this operation.", ex.Message);
-        }
-        catch (EvidencePersistenceException ex)
-        {
-            return Results.Problem(
-                title: "Evidence package save failed.",
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError,
-                extensions: new Dictionary<string, object?>
-                {
-                    ["evidencePackageId"] = ex.EvidencePackageId,
-                    ["reviewStatus"] = ex.VisibleStatus
-                });
+            return problem;
         }
     }
+
+    private static async Task<IResult> ExecuteAsync(Func<Task<IResult>> action)
+    {
+        try
+        {
+            return await action();
+        }
+        catch (Exception ex) when (ToProblem(ex) is { } problem)
+        {
+            return problem;
+        }
+    }
+
+    private static IResult? ToProblem(Exception exception) => exception switch
+    {
+        EvidenceValidationException ex =>
+            Results.ValidationProblem(ex.Errors, title: "Invalid evidence package.", statusCode: ex.StatusCode),
+        EvidenceNotFoundException ex => Problem(StatusCodes.Status404NotFound, "Evidence not found.", ex.Message),
+        EvidenceDuplicateException ex => Problem(StatusCodes.Status409Conflict, "Duplicate final evidence.", ex.Message),
+        EvidencePreconditionException ex =>
+            Problem(StatusCodes.Status412PreconditionFailed, "Evidence state does not allow this operation.", ex.Message),
+        EvidencePersistenceException ex => Results.Problem(
+            title: "Evidence package save failed.",
+            detail: ex.Message,
+            statusCode: StatusCodes.Status500InternalServerError,
+            extensions: new Dictionary<string, object?>
+            {
+                ["evidencePackageId"] = ex.EvidencePackageId,
+                ["reviewStatus"] = ex.VisibleStatus
+            }),
+        _ => null,
+    };
 
     private static IResult Problem(int statusCode, string title, string detail) =>
         Results.Problem(new ProblemDetails { Status = statusCode, Title = title, Detail = detail });

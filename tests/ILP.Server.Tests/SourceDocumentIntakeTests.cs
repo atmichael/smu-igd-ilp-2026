@@ -6,6 +6,8 @@ using ILP.Server.Features.EvidenceStorage;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using UglyToad.PdfPig.Content;
+using UglyToad.PdfPig.Writer;
 using Xunit;
 
 namespace ILP.Server.Tests;
@@ -241,6 +243,109 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadPdf_StoresOriginalAndCountsPages()
+    {
+        var pdf = TwoPagePdf();
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var response = await client.PostAsync("/api/source-documents", FileUpload(pdf, "application/pdf"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var intake = (await response.Content.ReadFromJsonAsync<SourceDocumentResponse>())!;
+        Assert.Equal("file-upload", intake.Channel);
+        Assert.Equal("application/pdf", intake.MediaType);
+        Assert.Equal(2, intake.PageCount);
+        var stored = Assert.Single(_factory.Content.Get(intake.SourceDocumentId)!);
+        Assert.Equal(("original.pdf", "application/pdf"), (stored.FileName, stored.ContentType));
+
+        var file = await client.GetAsync($"/api/source-documents/{intake.SourceDocumentId}/file");
+        Assert.Equal("application/pdf", file.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(pdf, await file.Content.ReadAsByteArrayAsync());
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/source-documents/{intake.SourceDocumentId}/pages/1")).StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadPng_IsReadableAsPageAndFile()
+    {
+        byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00];
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var intake = (await (await client.PostAsync("/api/source-documents", FileUpload(png, "image/png")))
+            .Content.ReadFromJsonAsync<SourceDocumentResponse>())!;
+
+        Assert.Equal(("image/png", 1), (intake.MediaType, intake.PageCount));
+        Assert.Equal("page-1.png", Assert.Single(_factory.Content.Get(intake.SourceDocumentId)!).FileName);
+        Assert.Equal(png, await client.GetByteArrayAsync($"/api/source-documents/{intake.SourceDocumentId}/pages/1"));
+        Assert.Equal(png, await client.GetByteArrayAsync($"/api/source-documents/{intake.SourceDocumentId}/file"));
+    }
+
+    [Theory]
+    [InlineData("application/pdf", new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x37, 0x0A, 0x00 })]
+    [InlineData("application/pdf", new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 })]
+    [InlineData("image/jpeg", new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D })]
+    [InlineData("text/plain", new byte[] { 0x41 })]
+    public async Task PostSourceDocuments_FileUploadWithUnreadableOrMismatchedContent_ReturnsUnsupportedMediaType(string contentType, byte[] bytes)
+    {
+        var response = await AuthorizedClient(Guid.NewGuid().ToString()).PostAsync("/api/source-documents", FileUpload(bytes, contentType));
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadWithTwoFiles_ReturnsBadRequest()
+    {
+        var content = FileUpload(TwoPagePdf(), "application/pdf");
+        var second = new ByteArrayContent(TwoPagePdf());
+        second.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        content.Add(second, "file", "second.pdf");
+
+        var response = await AuthorizedClient(Guid.NewGuid().ToString()).PostAsync("/api/source-documents", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_MailboxChannel_IsRejectedUntilImplemented()
+    {
+        var content = new MultipartFormDataContent { { new StringContent("mailbox"), "channel" } };
+        var file = new ByteArrayContent(TwoPagePdf());
+        file.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+        content.Add(file, "file", "attachment.pdf");
+
+        var response = await AuthorizedClient(Guid.NewGuid().ToString()).PostAsync("/api/source-documents", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetSourceDocumentFile_ForCameraCapture_IsNotFound()
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+        var intake = (await (await client.PostAsync("/api/source-documents", CameraCapture())).Content.ReadFromJsonAsync<SourceDocumentResponse>())!;
+
+        var response = await client.GetAsync($"/api/source-documents/{intake.SourceDocumentId}/file");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private static byte[] TwoPagePdf()
+    {
+        var builder = new PdfDocumentBuilder();
+        builder.AddPage(PageSize.A4);
+        builder.AddPage(PageSize.A4);
+        return builder.Build();
+    }
+
+    private static MultipartFormDataContent FileUpload(byte[] bytes, string contentType)
+    {
+        var content = new MultipartFormDataContent { { new StringContent("file-upload"), "channel" } };
+        var file = new ByteArrayContent(bytes);
+        file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(file, "file", "invoice.pdf");
+        return content;
+    }
+
     private HttpClient AuthorizedClient(string? idempotencyKey)
     {
         var client = _factory.CreateClient();
@@ -281,10 +386,10 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
     {
         private int _calls;
 
-        public override string Save(string sourceDocumentId, IReadOnlyList<DocumentContentPart> parts) =>
+        public override Task<string> SaveAsync(string sourceDocumentId, IReadOnlyList<DocumentContentPart> parts, CancellationToken cancellationToken = default) =>
             Interlocked.Increment(ref _calls) == 1
                 ? throw new IOException("Simulated storage failure.")
-                : base.Save(sourceDocumentId, parts);
+                : base.SaveAsync(sourceDocumentId, parts, cancellationToken);
     }
 
     private sealed class SourceDocumentResponse

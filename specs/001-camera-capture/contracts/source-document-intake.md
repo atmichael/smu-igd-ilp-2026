@@ -1,6 +1,6 @@
 # Source Document Intake Contract
 
-**Status**: Shared intake contract for every document channel. `camera-capture` is implemented (Feature 02); `file-upload` (Feature 01) and `mailbox` (Feature 03) are planned and currently rejected with `400`.
+**Status**: Shared intake contract for every document channel. `camera-capture` (Feature 02) and the server side of `file-upload` (Feature 01; the upload screen is not built yet) are implemented; `mailbox` (Feature 03) is planned and currently rejected with `400`.
 
 ## Operation
 
@@ -15,7 +15,8 @@ Each submission has an `Idempotency-Key` UUID. The client reuses that key only w
 Both require the same authorization as intake and return `404` for unknown or non-GUID IDs.
 
 - `GET /api/source-documents/{sourceDocumentId}` returns the source-document record (same shape as the success response).
-- `GET /api/source-documents/{sourceDocumentId}/pages/{pageNumber}` returns the original page (`1` to `pageCount`) with its `mediaType`, for human review.
+- `GET /api/source-documents/{sourceDocumentId}/pages/{pageNumber}` returns an original image page (`1` to `pageCount`) with its `mediaType`, for human review. PDFs return `404` here until page images are derived (Feature 04).
+- `GET /api/source-documents/{sourceDocumentId}/file` returns the original uploaded file (PDF or image) of a `file-upload` document; camera captures return `404` and are read page by page.
 
 ## Channels
 
@@ -37,6 +38,15 @@ An email with several attachments produces one source document per attachment. M
 | `pages` | 1-3 | Repeated `image/jpeg` binary parts, serialized in the accepted page order. |
 
 The server validates the number and order of pages, declared media type, actual image signature, and configured request-size limit. It must not trust a client filename or infer the channel from the filename. The client must not send individual pages before the user confirms the complete document.
+
+## Request (file-upload)
+
+| Part | Cardinality | Value |
+|---|---:|---|
+| `channel` | exactly one | `file-upload` |
+| `file` | exactly one | `application/pdf`, `image/jpeg`, or `image/png`. The declared type must match the file signature; a PDF must open without a password, and its pages are counted for `pageCount`. |
+
+A PDF is stored as `original.pdf`; an image is stored as page 1. `origin.upload.originalFileName` is not recorded yet.
 
 ### Shared intake requirements
 
@@ -84,11 +94,11 @@ Use `application/problem+json` with a stable, non-sensitive error code and a use
 
 | Status | Meaning | Client behavior |
 |---|---|---|
-| `400` | Missing `Idempotency-Key`, missing/invalid channel, empty pages, or page count outside 1-3 | Keep session pages for correction/review; do not mark submitted. |
+| `400` | Missing `Idempotency-Key`, missing/invalid channel, empty pages, page count outside 1-3, or not exactly one `file` for `file-upload` | Keep session pages for correction/review; do not mark submitted. |
 | `401` / `403` | Application authentication or authorization failure (`403` arrives with Feature 17 roles; today only `401` is returned) | Explain that submission is unavailable; retain pages until user retries or exits. |
 | `409` | Idempotency key was reused with different content | Do not retry automatically; explain that the submission could not be reconciled. |
 | `413` | Request exceeds the server request-size limit (the ASP.NET Core default, about 30 MB; no smaller limit is configured yet) | Explain that the capture is too large; retain pages for a safe retry path. |
-| `415` | Unsupported media type or invalid image content | Explain the capture could not be accepted; do not create a document. |
+| `415` | Unsupported media type, content that does not match its declared type, or an unreadable or password-protected PDF | Explain the capture could not be accepted; do not create a document. |
 | `5xx` | Intake or evidence-storage failure | Report a recoverable submission failure; do not report success or a partial document. |
 
 Do not log image bytes, captured page content, or untrusted filenames. Do not expose storage paths or internal exception details in error responses. Camera/API credentials are not added by this feature.
