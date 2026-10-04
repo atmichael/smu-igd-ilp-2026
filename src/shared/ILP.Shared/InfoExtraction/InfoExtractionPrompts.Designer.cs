@@ -68,7 +68,7 @@ namespace ILP.Shared.InfoExtraction {
         ///- Use &quot;null&quot; for missing or unreadable values.
         ///- Numbers as plain digits (no &quot;$&quot; or commas). GST rates as decimals (e.g. 0.09, 0.00). Quantities default to 1.00 if unstated.
         ///- Exactly one line per entry (clean line breaks and tabs in text).
-        ///- [CONFIDENCE] must [rest of string was truncated]&quot;;.
+        ///- [CONFIDENC [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExtractDocumentContent {
             get {
@@ -78,12 +78,9 @@ namespace ILP.Shared.InfoExtraction {
         
         /// <summary>
         ///   Looks up a localized string similar to Extract accounting header metadata from the document and email into key: value pairs.
-        ///Rules: Single line per key. No code blocks, markdown, or commentary. Use &quot;null&quot; if missing/unreadable. Numbers as plain digits (no &quot;$&quot; or commas). Tax rates as decimals (e.g. 0.09). Confidence as a decimal from 0.00 to 1.00 based on overall header extraction certainty.
+        ///Rules: Single line per key. No code blocks, markdown, or commentary. Use &quot;null&quot; if missing/unreadable. Numbers as plain digits (no &quot;$&quot; or commas). Tax rates as decimals (e.g. 0.09). Confidence as a decimal from 0.00 to 1.00 based on overall header extraction certainty. If no extractable document content is provided, return an empty response. Never infer document content from examples or instructions.
         ///
-        ///Keys &amp; Definitions:
-        ///company-name| Issuing supplier name
-        ///company-uen| Singapore UEN (e.g. 201234567M)
-        ///company-tax-registration-number| GST Reg No (e.g. M900 [rest of string was truncated]&quot;;.
+        ///Keys &amp; Definitions [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExtractDocumentHeaderInfo {
             get {
@@ -93,9 +90,7 @@ namespace ILP.Shared.InfoExtraction {
         
         /// <summary>
         ///   Looks up a localized string similar to Extract all line items from the document table into a pipe-delimited CSV followed by overall confidence.
-        ///Rules: Output CSV header row and data rows, then `[CONFIDENCE]`. Exactly one line per item (strip internal newlines/tabs). No markdown blocks or commentary. Use &quot;null&quot; if missing. Numbers as plain digits (no &quot;$&quot; or commas). Quantities default to 1.00 if unstated. Tax rates as decimals (e.g. 0.09, 0.00). Confidence as decimal from 0.00 to 1.00 based on overall table extraction certainty.
-        ///
-        ///Columns &amp; Def [rest of string was truncated]&quot;;.
+        ///Rules: Output CSV header row and data rows, then `[CONFIDENCE]`. Exactly one line per item (strip internal newlines/tabs). No markdown blocks or commentary. Use &quot;null&quot; if missing. Numbers as plain digits (no &quot;$&quot; or commas). Quantities default to 1.00 if unstated. Tax rates as decimals (e.g. 0.09, 0.00). Confidence as decimal from 0.00 to 1.00 based on overall table extraction certainty. If no extractabl [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExtractDocumentLineItemInfo {
             get {

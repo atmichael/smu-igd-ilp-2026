@@ -85,16 +85,40 @@ try
             LogHelper.Info(traceId, $"Subject: {message.Subject}");
             LogHelper.Info(traceId, $"From: {message.From}");
 
-            // Read the body text (handles HTML or plain text)
-            string body = message.TextBody ?? message.HtmlBody;
+            string body = !string.IsNullOrWhiteSpace(message.HtmlBody) ? message.HtmlBody : message.TextBody ?? "";
             LogHelper.Trace(traceId, $"Body Excerpt: {body}");
 
             LogHelper.Info(traceId, $"Email has {message.Attachments.Count()} attachment(s)");
+
+            var inlineImages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var imagePart in message.BodyParts.OfType<MimePart>()
+                .Where(part => part.ContentType.MimeType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(part.ContentId)))
+            {
+                var imageContent = imagePart.Content;
+                if (imageContent == null)
+                {
+                    continue;
+                }
+
+                using var stream = new MemoryStream();
+                await imageContent.DecodeToAsync(stream);
+                string contentId = imagePart.ContentId!.Trim().Trim('<', '>');
+                inlineImages[contentId] = $"data:{imagePart.ContentType.MimeType};base64,{Convert.ToBase64String(stream.ToArray())}";
+            }
 
             var attachmentPathsList = new List<string>();
 
             foreach (var attachment in message.Attachments)
             {
+                if (attachment is MimePart inlinePart
+                    && !string.IsNullOrWhiteSpace(inlinePart.ContentId)
+                    && body.Contains($"cid:{inlinePart.ContentId.Trim().Trim('<', '>')}", StringComparison.OrdinalIgnoreCase)
+                    && inlineImages.ContainsKey(inlinePart.ContentId.Trim().Trim('<', '>')))
+                {
+                    continue;
+                }
+
                 // Generate a temporary file path with the original extension if available
                 string extension = Path.GetExtension(attachment.ContentDisposition?.FileName ?? "");
                 string tempFilePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{extension}");
@@ -116,14 +140,22 @@ try
             var attachmentPaths = attachmentPathsList;
             foreach (var file in attachmentPaths)
             {
-                string extractedText = await EmailInfoExtractionProvider.GetDocumentContent(body, file, traceId);
+                string extractedText = await EmailInfoExtractionProvider.GetDocumentContent(body, file, traceId, inlineImages);
 
                 LogHelper.Info(traceId, "--- Extracted Text from PDF Natively ---");
                 LogHelper.Info(traceId, $"Response: {extractedText}");
 
-                // Optional: Mark the message as read (Seen)
-                //await inbox.AddFlagsAsync(uid, MessageFlags.Seen, silent: true);
             }
+
+            if (attachmentPaths.Count == 0)
+            {
+                string extractedText = await EmailInfoExtractionProvider.GetDocumentContent(body, "", traceId, inlineImages);
+                LogHelper.Info(traceId, "--- Extracted Text from Email Body ---");
+                LogHelper.Info(traceId, $"Response: {extractedText}");
+            }
+
+            // Optional: Mark the message as read (Seen)
+            //await inbox.AddFlagsAsync(uid, MessageFlags.Seen, silent: true);
         }
 
         // 6. Gracefully disconnect

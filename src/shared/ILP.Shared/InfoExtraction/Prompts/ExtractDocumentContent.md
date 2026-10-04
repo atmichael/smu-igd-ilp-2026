@@ -6,6 +6,7 @@ Rules:
 - Numbers as plain digits (no "$" or commas). GST rates as decimals (e.g. 0.09, 0.00). Quantities default to 1.00 if unstated.
 - Exactly one line per entry (clean line breaks and tabs in text).
 - [CONFIDENCE] must be a single decimal score from 0.00 to 1.00 representing overall extraction certainty and document legibility.
+- If no extractable document content is provided, return an empty response. Never infer document content from examples or instructions.
 
 [HEADER]
 company-name| Issuing supplier name
@@ -24,22 +25,3 @@ sn|description|quantity|unit_price|amount|tax_rate|tax_amount
 
 [CONFIDENCE]
 confidence| Overall extraction confidence score (0.00 to 1.00)
-
-Output Format:
-[HEADER]
-company-name| ACME LOGISTICS PTE LTD
-company-uen| 201509876K
-company-tax-registration-number| null
-document-number| INV-2026-00422
-document-type| Invoice
-related-document-numbers| PO-88192, DO-1002
-subtotal| 1200.00
-subtotal-tax-rate| 0.09
-subtotal-tax-amount| 108.00
-total-amount| 1308.00
-[LINE_ITEMS]
-sn|description|quantity|unit_price|amount|tax_rate|tax_amount
-1|Server Rack Installation & Setup Includes cable management|1.00|1000.00|1000.00|0.09|90.00
-2|Overseas Cloud Hosting (US)|1.00|200.00|200.00|0.00|0.00
-[CONFIDENCE]
-confidence| 0.96
