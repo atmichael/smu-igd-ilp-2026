@@ -1,10 +1,11 @@
 ﻿Extract accounting header metadata and itemized line items from the document and email.
 Rules:
-- Output ONLY the two sections demarcated by `[HEADER]` and `[LINE_ITEMS]`.
+- Output ONLY the sections demarcated by `[HEADER]`, `[LINE_ITEMS]`, and `[CONFIDENCE]`.
 - No markdown code blocks, backticks, or conversational commentary.
 - Use "null" for missing or unreadable values.
 - Numbers as plain digits (no "$" or commas). GST rates as decimals (e.g. 0.09, 0.00). Quantities default to 1.00 if unstated.
 - Exactly one line per entry (clean line breaks and tabs in text).
+- [CONFIDENCE] must be a single decimal score from 0.00 to 1.00 representing overall extraction certainty and document legibility.
 
 [HEADER]
 company-name| Issuing supplier name
@@ -20,6 +21,9 @@ total-amount| Grand total payable
 
 [LINE_ITEMS]
 sn|description|quantity|unit_price|amount|tax_rate|tax_amount
+
+[CONFIDENCE]
+confidence| Overall extraction confidence score (0.00 to 1.00)
 
 Output Format:
 [HEADER]
@@ -37,3 +41,5 @@ total-amount| 1308.00
 sn|description|quantity|unit_price|amount|tax_rate|tax_amount
 1|Server Rack Installation & Setup Includes cable management|1.00|1000.00|1000.00|0.09|90.00
 2|Overseas Cloud Hosting (US)|1.00|200.00|200.00|0.00|0.00
+[CONFIDENCE]
+confidence| 0.96

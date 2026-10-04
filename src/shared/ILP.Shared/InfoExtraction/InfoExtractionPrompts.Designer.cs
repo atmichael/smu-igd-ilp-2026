@@ -63,14 +63,12 @@ namespace ILP.Shared.InfoExtraction {
         /// <summary>
         ///   Looks up a localized string similar to Extract accounting header metadata and itemized line items from the document and email.
         ///Rules:
-        ///- Output ONLY the two sections demarcated by `[HEADER]` and `[LINE_ITEMS]`.
+        ///- Output ONLY the sections demarcated by `[HEADER]`, `[LINE_ITEMS]`, and `[CONFIDENCE]`.
         ///- No markdown code blocks, backticks, or conversational commentary.
         ///- Use &quot;null&quot; for missing or unreadable values.
         ///- Numbers as plain digits (no &quot;$&quot; or commas). GST rates as decimals (e.g. 0.09, 0.00). Quantities default to 1.00 if unstated.
         ///- Exactly one line per entry (clean line breaks and tabs in text).
-        ///
-        ///[HEADER]
-        ///company-name| Issuing  [rest of string was truncated]&quot;;.
+        ///- [CONFIDENCE] must [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExtractDocumentContent {
             get {
@@ -80,14 +78,12 @@ namespace ILP.Shared.InfoExtraction {
         
         /// <summary>
         ///   Looks up a localized string similar to Extract accounting header metadata from the document and email into key: value pairs.
-        ///Rules: Single line per key. No code blocks, markdown, or commentary. Use &quot;null&quot; if missing/unreadable. Numbers as plain digits (no &quot;$&quot; or commas). Tax rates as decimals (e.g. 0.09).
+        ///Rules: Single line per key. No code blocks, markdown, or commentary. Use &quot;null&quot; if missing/unreadable. Numbers as plain digits (no &quot;$&quot; or commas). Tax rates as decimals (e.g. 0.09). Confidence as a decimal from 0.00 to 1.00 based on overall header extraction certainty.
         ///
         ///Keys &amp; Definitions:
         ///company-name| Issuing supplier name
         ///company-uen| Singapore UEN (e.g. 201234567M)
-        ///company-tax-registration-number| GST Reg No (e.g. M90000000X)
-        ///document-number| Invoice or reference number
-        ///document-type| Exactly one of| Invo [rest of string was truncated]&quot;;.
+        ///company-tax-registration-number| GST Reg No (e.g. M900 [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExtractDocumentHeaderInfo {
             get {
@@ -96,13 +92,10 @@ namespace ILP.Shared.InfoExtraction {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Extract all line items from the document table into a pipe-delimited CSV.
-        ///Rules: Output header row then data rows only. Exactly one line per item (strip internal newlines/tabs). No markdown blocks or commentary. Use &quot;null&quot; if missing. Numbers as plain digits (no &quot;$&quot; or commas). Quantities default to 1.00 if unstated. Tax rates as decimals (e.g. 0.09, 0.00).
+        ///   Looks up a localized string similar to Extract all line items from the document table into a pipe-delimited CSV followed by overall confidence.
+        ///Rules: Output CSV header row and data rows, then `[CONFIDENCE]`. Exactly one line per item (strip internal newlines/tabs). No markdown blocks or commentary. Use &quot;null&quot; if missing. Numbers as plain digits (no &quot;$&quot; or commas). Quantities default to 1.00 if unstated. Tax rates as decimals (e.g. 0.09, 0.00). Confidence as decimal from 0.00 to 1.00 based on overall table extraction certainty.
         ///
-        ///Columns &amp; Definitions:
-        ///sn| Sequential item index (1, 2, ...)
-        ///description| Product or service description
-        ///quantity| Billed quantity (default 1.00) [rest of string was truncated]&quot;;.
+        ///Columns &amp; Def [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ExtractDocumentLineItemInfo {
             get {
