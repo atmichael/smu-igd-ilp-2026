@@ -80,6 +80,35 @@ namespace ILP.Shared.Test.InfoExtraction.Provider
         }
 
         [Fact]
+        public async Task GetChatRequest_IncludesInlineImageAndDocumentAttachment()
+        {
+            const string imageData = "AQID";
+            var emailBody = $"<img src=\"data:image/png;base64,{imageData}\" />";
+            var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(directory);
+
+            try
+            {
+                var attachmentPath = Path.Combine(directory, "invoice.pdf");
+                var attachmentBytes = new byte[] { 4, 5, 6 };
+                await File.WriteAllBytesAsync(attachmentPath, attachmentBytes, TestContext.Current.CancellationToken);
+
+                var request = await EmailInfoExtractionProvider.GetChatRequest(emailBody, attachmentPath, "");
+                var content = request.Messages[0].Content;
+                var image = Assert.Single(content, item => item.Type == "image_url");
+                var attachment = Assert.Single(content, item => item.Type == "file");
+
+                Assert.Equal($"data:image/png;base64,{imageData}", image.ImageUrl!.Url);
+                Assert.Equal("invoice.pdf", attachment.File!.FileName);
+                Assert.Equal($"data:application/pdf;base64,{Convert.ToBase64String(attachmentBytes)}", attachment.File.FileData);
+            }
+            finally
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+
+        [Fact]
         public async Task GetChatRequest_PreservesFormattedHtmlDocumentBodyAsReadableText()
         {
             const string emailBody = """
