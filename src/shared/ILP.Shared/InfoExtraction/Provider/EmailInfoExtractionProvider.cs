@@ -4,9 +4,11 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
+using System.Net;
 using System.Text;
 using System.Linq;
 using ILP.Shared.Helper;
+using System.Text.RegularExpressions;
 
 namespace ILP.Shared.InfoExtraction.Provider
 {
@@ -69,7 +71,7 @@ namespace ILP.Shared.InfoExtraction.Provider
             var builder = new StringBuilder();
             builder.AppendLine("Email Content:");
             var body = string.IsNullOrWhiteSpace(emailBody) ? "-" : emailBody;
-            builder.AppendLine(body.Trim());
+            builder.AppendLine(ConvertHtmlToText(body).Trim());
 
             // 2. Build OpenRouter request message 
             var request = new ChatRequestDto()
@@ -96,14 +98,100 @@ namespace ILP.Shared.InfoExtraction.Provider
                     byte[] attachmentBytes = await File.ReadAllBytesAsync(attachmentPath);
                     string base64Attachment = Convert.ToBase64String(attachmentBytes);
                     string dataUri = $"data:{mimeType};base64,{base64Attachment}";
-                    var fileInfo = new AttachmentFileDto() { FileName = Path.GetFileName(attachmentPath), FileData = dataUri };
-                    var attachment = new ChatMessageContentDto() { Type = "file", File = fileInfo };
-                    prompt.Content.Add(attachment);
+                    if (mimeType.StartsWith("image/", StringComparison.Ordinal))
+                    {
+                        prompt.Content.Add(new ChatMessageContentDto()
+                        {
+                            Type = "image_url",
+                            ImageUrl = new ChatMessageImageUrlDto() { Url = dataUri }
+                        });
+                    }
+                    else
+                    {
+                        var fileInfo = new AttachmentFileDto() { FileName = Path.GetFileName(attachmentPath), FileData = dataUri };
+                        var attachment = new ChatMessageContentDto() { Type = "file", File = fileInfo };
+                        prompt.Content.Add(attachment);
+                    }
                 }
+            }
+
+            foreach (var imageSource in GetInlineImageSources(emailBody))
+            {
+                prompt.Content.Add(new ChatMessageContentDto()
+                {
+                    Type = "image_url",
+                    ImageUrl = new ChatMessageImageUrlDto() { Url = imageSource }
+                });
             }
 
             request.Messages.Add(prompt);
             return request;
+        }
+
+        private static IEnumerable<string> GetInlineImageSources(string emailBody)
+        {
+            var sources = new HashSet<string>(StringComparer.Ordinal);
+            var imageTags = Regex.Matches(emailBody ?? "", @"<img\b[^>]*>", RegexOptions.IgnoreCase);
+
+            foreach (Match imageTag in imageTags)
+            {
+                var sourceMatch = Regex.Match(
+                    imageTag.Value,
+                    @"\bsrc\s*=\s*(?:""(?<source>[^""]*)""|'(?<source>[^']*)'|(?<source>[^\s>]+))",
+                    RegexOptions.IgnoreCase);
+
+                if (!sourceMatch.Success)
+                {
+                    continue;
+                }
+
+                var source = WebUtility.HtmlDecode(sourceMatch.Groups["source"].Value).Trim();
+                if (IsSupportedImageSource(source))
+                {
+                    sources.Add(source);
+                }
+            }
+
+            return sources;
+        }
+
+        private static bool IsSupportedImageSource(string source)
+        {
+            if (source.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+            {
+                var separator = source.IndexOf(',');
+                if (separator < 0 || !source[..separator].EndsWith(";base64", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+
+                var mimeType = source[5..source.IndexOf(';')].ToLowerInvariant();
+                if (mimeType is not ("image/png" or "image/jpeg" or "image/gif" or "image/webp"))
+                {
+                    return false;
+                }
+
+                var base64Image = source[(separator + 1)..];
+                return base64Image.Length > 0
+                    && Regex.IsMatch(
+                        base64Image,
+                        @"\A(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?\z");
+            }
+
+            return Uri.TryCreate(source, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        }
+
+        private static string ConvertHtmlToText(string content)
+        {
+            content = Regex.Replace(content, @"<br\b[^>]*>|</(?:p|div|tr|li|h[1-6])\s*>", "\n", RegexOptions.IgnoreCase);
+            content = Regex.Replace(content, @"</?(?:td|th)\b[^>]*>", " | ", RegexOptions.IgnoreCase);
+            content = Regex.Replace(content, @"<[^>]+>", " ");
+            content = WebUtility.HtmlDecode(content);
+            content = Regex.Replace(content, @"[ \t]*\|[ \t]*", " | ");
+            content = Regex.Replace(content, @"[ \t]*\n[ \t]*", "\n");
+            content = Regex.Replace(content, @"\n{2,}", "\n");
+            return content;
         }
 
         private static string? GetAttachmentMimeType(string attachmentPath)

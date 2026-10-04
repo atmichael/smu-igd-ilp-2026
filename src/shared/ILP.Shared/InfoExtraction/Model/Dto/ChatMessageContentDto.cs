@@ -15,5 +15,14 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
 
         [JsonProperty("file")]
         public AttachmentFileDto? File { get; set; } = null;
+
+        [JsonProperty("image_url")]
+        public ChatMessageImageUrlDto? ImageUrl { get; set; } = null;
+    }
+
+    public class ChatMessageImageUrlDto
+    {
+        [JsonProperty("url")]
+        public string Url { get; set; } = "";
     }
 }
