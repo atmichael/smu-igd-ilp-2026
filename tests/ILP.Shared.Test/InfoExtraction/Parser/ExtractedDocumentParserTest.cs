@@ -23,6 +23,7 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
 
             [LINE_ITEMS]
             1|Pallet|2.00|10.00|20.00|0.09|1.80
+            2|Service|1.00|50.00|50.00|null|null
 
             [CONFIDENCE]
             confidence|0.95
@@ -33,20 +34,32 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
         {
             var fields = ExtractedDocumentParser.Parse(SampleOutput);
 
-            Assert.Equal("INV-2026-00422", fields[ExtractedDocumentDto.DocumentNumber]);
-            Assert.Equal("PO-88192, DO-1002", fields[ExtractedDocumentDto.RelatedDocumentNumbers]);
-            Assert.Null(fields[ExtractedDocumentDto.CompanyTaxRegistrationNumber]);
+            Assert.Equal("INV-2026-00422", fields[ExtractedDocumentDto.FieldNames.DocumentNumber]);
+            Assert.Equal("PO-88192, DO-1002", fields[ExtractedDocumentDto.FieldNames.RelatedDocumentNumbers]);
+            Assert.Null(fields[ExtractedDocumentDto.FieldNames.CompanyTaxRegistrationNumber]);
             Assert.Equal(ExtractedDocumentDto.All.Count, fields.Count);
             Assert.Equal(0.95m, fields.Confidence);
-            Assert.Equal("ACME LOGISTICS PTE LTD", fields.GetCompany().Name);
-            Assert.Equal("201509876K", fields.GetCompany().UEN);
-            Assert.Equal("INV-2026-00422", fields.GetDocumentInfo().RefNumber);
-            Assert.Equal(1200.00m, fields.GetDocumentInfo().Subtotal);
-            var item = Assert.Single(fields.GetLineItems());
+            var company = fields.GetCompany();
+            Assert.Equal("ACME LOGISTICS PTE LTD", company.Name);
+            Assert.Equal("201509876K", company.UEN);
+            Assert.Equal(string.Empty, company.TaxRegistrationNumber);
+            var documentInfo = fields.GetDocumentInfo();
+            Assert.Equal("INV-2026-00422", documentInfo.RefNumber);
+            Assert.Equal("Invoice", documentInfo.TypeCode);
+            Assert.Equal(new DateTime(2026, 10, 4), documentInfo.SentDate);
+            Assert.Equal("PO-88192, DO-1002", documentInfo.RelatedDocumentNumbers);
+            Assert.Equal(1200.00m, documentInfo.Subtotal);
+            Assert.Equal(0.09m, documentInfo.SubtotalTaxRate);
+            Assert.Equal(108.00m, documentInfo.SubtotalTaxAmount);
+            Assert.Equal(1308.00m, documentInfo.TotalAmount);
+            var items = fields.GetLineItems();
+            Assert.Equal(2, items.Count);
+            var item = items[0];
             Assert.Equal(1, item.SerialNumber);
             Assert.Equal("Pallet", item.Description);
             Assert.Equal(20.00m, item.Amount);
             Assert.Equal(1.80m, item.TaxAmount);
+            Assert.Equal(21.80m, item.GetTotalAmount());
         }
 
         [Fact]
@@ -93,7 +106,7 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             Assert.Equal("invoice", document.DocumentType);
             Assert.Equal("INV-2026-00422", document.SourceReference);
             Assert.Equal(ExtractedDocumentDto.All.Count - 1, document.Records!.Count);
-            var total = Assert.Single(document.Records, record => record.RecordType == ExtractedDocumentDto.TotalAmount);
+            var total = Assert.Single(document.Records, record => record.RecordType == ExtractedDocumentDto.FieldNames.TotalAmount);
             Assert.Equal("document-header", total.RecordCategory);
             Assert.Equal("1308.00", total.RawValue);
             Assert.Equal("extracted", Assert.Single(total.Provenance!).EventType);

@@ -112,7 +112,7 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
         var document = package.GetProperty("documents")[0];
         Assert.Equal("INV-77", document.GetProperty("sourceReference").GetString());
         Assert.Contains(document.GetProperty("records").EnumerateArray(), record =>
-            record.GetProperty("recordType").GetString() == ExtractedDocumentDto.TotalAmount
+            record.GetProperty("recordType").GetString() == ExtractedDocumentDto.FieldNames.TotalAmount
             && record.GetProperty("recordCategory").GetString() == "document-header");
     }
 

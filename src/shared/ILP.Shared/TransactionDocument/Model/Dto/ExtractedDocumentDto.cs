@@ -6,31 +6,34 @@ namespace ILP.Shared.TransactionDocument.Model.Dto
     /// <summary>Keys and values returned by the ExtractDocumentContent prompt.</summary>
     public class ExtractedDocumentDto : IReadOnlyDictionary<string, string?>
     {
-        public const string CompanyName = "company-name";
-        public const string CompanyUen = "company-uen";
-        public const string CompanyTaxRegistrationNumber = "company-tax-registration-number";
-        public const string DocumentNumber = "document-number";
-        public const string DocumentType = "document-type";
-        public const string DocumentDate = "document-date";
-        public const string RelatedDocumentNumbers = "related-document-numbers";
-        public const string Subtotal = "subtotal";
-        public const string SubtotalTaxRate = "subtotal-tax-rate";
-        public const string SubtotalTaxAmount = "subtotal-tax-amount";
-        public const string TotalAmount = "total-amount";
+        public static class FieldNames
+        {
+            public const string CompanyName = "company-name";
+            public const string CompanyUen = "company-uen";
+            public const string CompanyTaxRegistrationNumber = "company-tax-registration-number";
+            public const string DocumentNumber = "document-number";
+            public const string DocumentType = "document-type";
+            public const string DocumentDate = "document-date";
+            public const string RelatedDocumentNumbers = "related-document-numbers";
+            public const string Subtotal = "subtotal";
+            public const string SubtotalTaxRate = "subtotal-tax-rate";
+            public const string SubtotalTaxAmount = "subtotal-tax-amount";
+            public const string TotalAmount = "total-amount";
+        }
 
         public static IReadOnlyList<string> All { get; } =
         [
-            CompanyName,
-            CompanyUen,
-            CompanyTaxRegistrationNumber,
-            DocumentNumber,
-            DocumentType,
-            DocumentDate,
-            RelatedDocumentNumbers,
-            Subtotal,
-            SubtotalTaxRate,
-            SubtotalTaxAmount,
-            TotalAmount
+            FieldNames.CompanyName,
+            FieldNames.CompanyUen,
+            FieldNames.CompanyTaxRegistrationNumber,
+            FieldNames.DocumentNumber,
+            FieldNames.DocumentType,
+            FieldNames.DocumentDate,
+            FieldNames.RelatedDocumentNumbers,
+            FieldNames.Subtotal,
+            FieldNames.SubtotalTaxRate,
+            FieldNames.SubtotalTaxAmount,
+            FieldNames.TotalAmount
         ];
 
         private readonly Dictionary<string, string?> _headerFields = new(StringComparer.OrdinalIgnoreCase);
@@ -87,37 +90,37 @@ namespace ILP.Shared.TransactionDocument.Model.Dto
             _headerFields[key] = value;
             switch (key)
             {
-                case CompanyName:
+                case FieldNames.CompanyName:
                     CompanyName = value;
                     break;
-                case CompanyUen:
+                case FieldNames.CompanyUen:
                     CompanyUen = value;
                     break;
-                case CompanyTaxRegistrationNumber:
+                case FieldNames.CompanyTaxRegistrationNumber:
                     CompanyTaxRegistrationNumber = value;
                     break;
-                case DocumentNumber:
+                case FieldNames.DocumentNumber:
                     DocumentNumber = value;
                     break;
-                case DocumentType:
+                case FieldNames.DocumentType:
                     DocumentType = value;
                     break;
-                case DocumentDate:
+                case FieldNames.DocumentDate:
                     DocumentDate = value;
                     break;
-                case RelatedDocumentNumbers:
+                case FieldNames.RelatedDocumentNumbers:
                     RelatedDocumentNumbers = value;
                     break;
-                case Subtotal:
+                case FieldNames.Subtotal:
                     Subtotal = value;
                     break;
-                case SubtotalTaxRate:
+                case FieldNames.SubtotalTaxRate:
                     SubtotalTaxRate = value;
                     break;
-                case SubtotalTaxAmount:
+                case FieldNames.SubtotalTaxAmount:
                     SubtotalTaxAmount = value;
                     break;
-                case TotalAmount:
+                case FieldNames.TotalAmount:
                     TotalAmount = value;
                     break;
             }

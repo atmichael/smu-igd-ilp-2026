@@ -23,8 +23,8 @@ public static class ExtractedDocumentMapper
         string? modelVersion = null,
         string? schemaVersion = null)
     {
-        headerFields.TryGetValue(ExtractedDocumentDto.DocumentNumber, out var documentNumber);
-        headerFields.TryGetValue(ExtractedDocumentDto.DocumentType, out var documentType);
+        headerFields.TryGetValue(ExtractedDocumentDto.FieldNames.DocumentNumber, out var documentNumber);
+        headerFields.TryGetValue(ExtractedDocumentDto.FieldNames.DocumentType, out var documentType);
 
         return new EvidenceDocumentRequest
         {
