@@ -77,6 +77,7 @@ public enum DocumentType
 [JsonConverter(typeof(KebabCaseEnumConverter<RecordCategory>))]
 public enum RecordCategory
 {
+    DocumentHeader,
     InvoiceLine,
     PurchaseOrderCommitment,
     GoodsReceipt,

@@ -77,8 +77,9 @@ Each business term has one owning feature and one meaning (constitution Principl
 | Term | Meaning | Owner | Code / API |
 |---|---|---|---|
 | Source document | A file received by intake. Camera, upload, and mailbox all create the same record; only `channel` and `origin` differ. | 01-03 Intake | `SourceDocumentMetadata`, `/api/source-documents`, `sourceDocumentId`, `channel`, `origin` |
-| Source reference | The business reference printed on a document (invoice, order, or receipt number). | 08 Evidence storage | `sourceReference` |
-| Document type | What a document is: supplier invoice, purchase order, goods receipt, and so on. | 05 Classification | `documentType` (evidence storage uses a coarser list until aligned) |
+| Source reference | The business reference printed on a document (invoice, order, or receipt number). Also named `DocumentDto.RefNumber` and extraction key `document-number`. | 08 Evidence storage | `sourceReference` |
+| Document type | What a document is: invoice, purchase order, delivery order, and so on (labels from the shared extraction prompt). | 05 Classification | `documentType`, extraction key `document-type` (evidence storage uses a coarser list until aligned) |
+| Extracted document | The typed values read from one document: header, supplier, and line items. | 06 Invoice extraction | `DocumentDto`, `DocumentItemDto`, `CompanyDto`; header keys in `DocumentHeaderFields` |
 | Evidence | Documents and values that support a match or approval decision. | 08 Evidence storage | `ILP.Shared.Evidence` |
 | Evidence package | One versioned set of evidence documents and records for a case; a case can have several. | 08 Evidence storage | `EvidencePackage`, `/api/evidence-packages` |
 | Evidence document | An original invoice, order, or receipt kept in an evidence package. | 08 Evidence storage | `EvidenceDocument`, `documentId` |

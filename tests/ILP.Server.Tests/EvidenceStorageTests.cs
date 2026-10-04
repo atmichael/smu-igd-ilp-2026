@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Shared.Evidence;
+using ILP.Shared.InfoExtraction;
 using Xunit;
 
 namespace ILP.Server.Tests;
@@ -93,6 +94,25 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
         var metadata = clientEvent.GetProperty("metadata");
         Assert.Equal(SensitiveDataGuard.Redacted, metadata.GetProperty("apiKey").GetString());
         Assert.Equal($"was {SensitiveDataGuard.Redacted}", metadata.GetProperty("note").GetString());
+    }
+
+    [Fact]
+    public async Task Create_FromExtractedDocumentHeader_StoresHeaderRecordsKeyedByExtractionKeys()
+    {
+        var fields = DocumentHeaderParser.Parse("document-number| INV-77\ndocument-type| Invoice\ntotal-amount| 1308.00");
+        var request = new CreateEvidencePackageRequest
+        {
+            CaseId = NewCase(),
+            Documents = [ExtractedDocumentMapper.ToEvidenceDocument(fields, "protected://evidence/inv-77.pdf", "sha256:abc")]
+        };
+
+        var package = await ReadJson(await _client.PostAsJsonAsync(BasePath, request));
+
+        var document = package.GetProperty("documents")[0];
+        Assert.Equal("INV-77", document.GetProperty("sourceReference").GetString());
+        Assert.Contains(document.GetProperty("records").EnumerateArray(), record =>
+            record.GetProperty("recordType").GetString() == DocumentHeaderFields.TotalAmount
+            && record.GetProperty("recordCategory").GetString() == "document-header");
     }
 
     [Fact]

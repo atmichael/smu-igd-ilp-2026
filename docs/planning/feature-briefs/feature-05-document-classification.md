@@ -8,14 +8,14 @@ Classify supported documents as a supplier invoice, buyer purchase order, servic
 
 When classification is uncertain or unsupported, show that status for user review rather than silently assigning a type. Preserve the classification with the source document and extracted text. Clarify how users correct a classification and whether classification applies to a whole document or individual pages. Do not include type-specific field extraction, matching, or payment approval.
 
-This feature owns the document-type vocabulary. Use these kebab-case names without abbreviations in code and APIs: `supplier-invoice`, `purchase-order`, `service-order`, `goods-receipt`, `delivery-evidence`, `service-acceptance`, `supplier-statement`, plus `unclassified` for uncertain or unsupported documents. Evidence storage (Feature 08) currently stores a coarser `documentType`; align it with this list when this feature is specified:
+This feature owns the document-type vocabulary and builds on the labels the shared extraction prompt (`src/shared/ILP.Shared/InfoExtraction/Prompts/ExtractDocumentHeaderInfo.md`) already returns: Invoice, Purchase Order, Delivery Order, Service Order, Sales Order, and Statement of Account. In code and APIs use their kebab-case form without abbreviations: `invoice`, `purchase-order`, `delivery-order`, `service-order`, `sales-order`, `statement-of-account`. Add `goods-receipt` and `service-acceptance` (needed for three-way matching) and `unclassified` (uncertain or unsupported documents) to the prompt and this list. `ExtractedDocumentMapper.ToDocumentType` maps them to the coarser evidence-storage `documentType` (Feature 08) until that is aligned:
 
-| Classification | Evidence storage today | Record category |
+| Classification | Evidence storage today | Record categories (besides `document-header`) |
 |---|---|---|
-| `supplier-invoice` | `invoice` | `invoice-line` |
+| `invoice` | `invoice` | `invoice-line` |
 | `purchase-order`, `service-order` | `purchase-order` | `purchase-order-commitment` |
-| `goods-receipt`, `delivery-evidence` | `receipt` | `goods-receipt` |
+| `delivery-order`, `goods-receipt` | `receipt` | `goods-receipt` |
 | `service-acceptance` | `receipt` | `service-acceptance` |
-| `supplier-statement` | `other-evidence` (not a match input) | none |
+| `sales-order`, `statement-of-account` | `other-evidence` (not a match input) | none |
 
 A seller-side sales order is not a supported match document; flag it for review rather than mapping it to `purchase-order`.

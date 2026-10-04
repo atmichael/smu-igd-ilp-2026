@@ -74,7 +74,7 @@ erDiagram
     }
 ```
 
-`IntakeSourceDocument` (Features 01-03) and `MatchReview` (Features 10/11) are owned by other features; evidence storage only holds their IDs. Document types map to record categories: `invoice` to `invoice-line`, `purchase-order` to `purchase-order-commitment`, `receipt` to `goods-receipt` or `service-acceptance`; `other-evidence` may hold any category.
+`IntakeSourceDocument` (Features 01-03) and `MatchReview` (Features 10/11) are owned by other features; evidence storage only holds their IDs. Document types map to record categories: every type accepts `document-header` (header fields keyed by the shared extraction keys); `invoice` adds `invoice-line`, `purchase-order` adds `purchase-order-commitment`, `receipt` adds `goods-receipt` or `service-acceptance`; `other-evidence` may hold any category. `ExtractedDocumentMapper` builds an evidence document from the shared extraction output.
 
 ### Package lifecycle
 
@@ -162,8 +162,8 @@ A structured value extracted from or associated with an evidence document.
 |---|---|---|
 | `recordId` | UUID | Stable identifier for the record. |
 | `documentId` | UUID | Parent document identifier. |
-| `recordCategory` | enum | `invoice-line`, `purchase-order-commitment`, `goods-receipt`, `service-acceptance`; must suit the document type. |
-| `recordType` | string | For example `amount`, `quantity`, `vendor`, `line-item`, `match-key`. |
+| `recordCategory` | enum | `document-header` (any document type), `invoice-line`, `purchase-order-commitment`, `goods-receipt`, `service-acceptance`; must suit the document type. |
+| `recordType` | string | For header fields, the shared extraction key from `DocumentHeaderFields` (for example `document-number`, `total-amount`); for line values, a kebab-case field name such as `amount` or `quantity`. |
 | `rawValue` | string? | Original extracted or observed value before any user or system correction. |
 | `currentValue` | string? | Current approved or corrected value used in the evidence set. Defaults to `rawValue`. |
 | `reviewStatus` | enum | `draft`, `pending-review`, `reviewed`, `confirmed`, `rejected`, `superseded`, `archived`. |

@@ -31,9 +31,9 @@ public static class EvidencePackageValidator
 
     private static readonly Dictionary<DocumentType, RecordCategory[]> AllowedCategories = new()
     {
-        [DocumentType.Invoice] = [RecordCategory.InvoiceLine],
-        [DocumentType.PurchaseOrder] = [RecordCategory.PurchaseOrderCommitment],
-        [DocumentType.Receipt] = [RecordCategory.GoodsReceipt, RecordCategory.ServiceAcceptance],
+        [DocumentType.Invoice] = [RecordCategory.DocumentHeader, RecordCategory.InvoiceLine],
+        [DocumentType.PurchaseOrder] = [RecordCategory.DocumentHeader, RecordCategory.PurchaseOrderCommitment],
+        [DocumentType.Receipt] = [RecordCategory.DocumentHeader, RecordCategory.GoodsReceipt, RecordCategory.ServiceAcceptance],
         [DocumentType.OtherEvidence] = Enum.GetValues<RecordCategory>()
     };
 

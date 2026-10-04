@@ -1,9 +1,9 @@
 <!--
 Sync Impact Report
-Version: 1.2.0 -> 1.2.1 (PATCH: clarification, no new obligations)
-Principles modified: none
-Sections modified: Architecture and Security Constraints (shared source-document intake for camera, upload, and mailbox; mailbox collector submits through the API; pilot storage and development-only test sign-in stated as current, not target)
-Prior: 1.1.0 -> 1.2.0 added IX. Intuitive and Consistent Naming (one term per concept, owned terms, cardinality, role-based names, no abbreviations).
+Version: 1.2.1 -> 1.3.0 (MINOR: new obligation)
+Principles modified: I. Data Integrity and Human Review (names the shared document contract); IX. Intuitive and Consistent Naming (new bullet: build on established shared contracts; record name mappings instead of parallel models)
+Sections modified: none
+Prior: 1.2.0 -> 1.2.1 clarified Architecture and Security Constraints (shared intake, pilot storage, development-only sign-in); 1.1.0 -> 1.2.0 added IX.
 Templates: plan/spec/tasks templates read the constitution at runtime; no template edits required.
 Follow-up TODO: Create the detailed frontend design-system document and shared MUI theme module (carried from 1.1.0); until then, frontend plans record the gap as a deviation. Set RATIFICATION_DATE.
 -->
@@ -13,7 +13,7 @@ Follow-up TODO: Create the detailed frontend design-system document and shared M
 ## Core Principles
 
 ### I. Data Integrity and Human Review
-OCR and LLM outputs are untrusted candidate data. Validate them against a versioned invoice contract and retain traceability to the source document. Uncertain, invalid, or mismatched results MUST be presented for human review before downstream use.
+OCR and LLM outputs are untrusted candidate data. Validate them against the shared, versioned document contract in `ILP.Shared` (`DocumentDto` and the extraction keys) and retain traceability to the source document. Uncertain, invalid, or mismatched results MUST be presented for human review before downstream use.
 
 ### II. Clear System Boundaries
 The React and TypeScript dashboard MUST use the ASP.NET Core API for application operations. Provider credentials and OCR/LLM requests MUST remain on the backend. Production components use .NET by default; Python experiments require a clear benefit and a documented production boundary.
@@ -42,6 +42,7 @@ Names for entities, types, API resources and fields, statuses, and services MUST
 - Prefer names that say what a thing holds or does and that cannot be confused with a sibling type (for example `ProvenanceEntry` rather than `ProvenanceRecord` next to `StructuredRecord`). Where a spec defines a domain term such as "provenance", code SHOULD use the same term so specs and code can be searched together, and the feature's data model SHOULD define it once in plain language.
 - One term per concept: an entity's type, ID field, API route, folder, user-facing messages, and spec wording MUST use the same term (for example `EvidencePackage`, `evidencePackageId`, `/api/evidence-packages`, "evidence package").
 - Reuse established domain terms from the feature briefs and existing specs. A feature MUST NOT name a new entity with a term another feature owns; referring to the owner's concept by its identifier is allowed (for example `caseId` refers to the case owned by document packet tracking). Owned terms are listed in the [feature brief index](../../docs/planning/feature-briefs/feature-brief-index.md#owned-terms).
+- Build on established shared contracts. Before adding a model, reuse or extend the existing one in `ILP.Shared` (for example, the typed extracted document is `DocumentDto`, and evidence header records use the extraction keys in `DocumentHeaderFields`). A parallel model MUST state its reason in the plan. Where an established contract names a concept differently (for example `RefNumber`, `document-number`, and `sourceReference`), record the mapping in the owned-terms table and rename only with the owning feature's agreement.
 - Names MUST NOT imply a cardinality or ownership the model does not have (for example, do not call something "the case's file" when a case can have several).
 - Inside a feature namespace, name types by their role (`RetentionRules`); keep a feature prefix only where the bare name would collide across features (`EvidenceDocument` versus the intake source document).
 - API and JSON names MUST NOT use abbreviations (`purchase-order-commitment`, not `po-commitment`).
@@ -62,4 +63,4 @@ Feature specifications MUST define inputs, outputs, failure cases, validation ex
 
 This constitution governs feature specifications, plans, implementation, and reviews. Pull requests MUST identify and justify deviations from its principles. Amendments require team review and approval, a rationale, and a semantic version update: MAJOR for incompatible changes to principles, MINOR for new or materially expanded requirements, and PATCH for clarifications that do not change obligations.
 
-**Version**: 1.2.1 | **Ratified**: TODO(RATIFICATION_DATE): Set when the team formally adopts this constitution. | **Last Amended**: 2026-10-04
+**Version**: 1.3.0 | **Ratified**: TODO(RATIFICATION_DATE): Set when the team formally adopts this constitution. | **Last Amended**: 2026-10-04
