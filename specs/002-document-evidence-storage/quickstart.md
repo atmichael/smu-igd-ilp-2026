@@ -17,7 +17,7 @@ From the repository root:
 dotnet run --project .\src\server\ILP.Server\ILP.Server.csproj
 ```
 
-The API exposes `/api/evidence-packages` using the shared contract layer and does not call ingestion, extraction, or matching services. All routes require authentication; the development test scheme accepts any `Authorization: Test <value>` header.
+The API exposes `/api/evidence-packages` using the shared contract layer and does not call ingestion, extraction, or matching services. All routes require authentication; in the Development environment the test scheme accepts an `Authorization: Test <value>` header (the API does not start in other environments until Feature 17).
 
 ## Automated checks
 

@@ -2,13 +2,14 @@
 
 ## Purpose and status
 
-Describe the target flow for turning invoice images or PDFs into reviewed, validated data. The repository has a React camera-capture client and an ASP.NET Core source-document intake endpoint, as well as a .NET console prototype. Camera intake is not yet connected to OCR, LLM extraction, durable evidence storage, or a review workflow. The current API intake uses in-memory idempotency state and test authentication; it is a prototype, not production processing.
+Describe the target flow for turning invoice images or PDFs into reviewed, validated data. The repository has a React camera-capture client, an ASP.NET Core source-document intake endpoint, an evidence-storage API, a mailbox collector prototype, and a .NET console prototype. Camera intake is not yet connected to OCR, LLM extraction, evidence storage, or a review workflow. Intake uses in-memory idempotency state, and sign-in is a development-only test scheme (the API does not start outside Development until Feature 17); this is a prototype, not production processing.
 
 ## Components
 
 ```mermaid
 flowchart LR
   U[React upload and camera capture] --> A[ASP.NET Core API]
+  M[Mailbox collector] --> A
   A --> I[Validate and retain source evidence]
   I --> N[Normalize pages and extract text when needed]
   N --> C[Classify document]
@@ -29,7 +30,7 @@ The API owns file validation, orchestration, provider configuration, and respons
 
 ## Processing flow
 
-1. The client uploads a PDF or image, or submits camera-captured pages.
+1. The client uploads a PDF or image or submits camera-captured pages, or the mailbox collector submits an email attachment. All three use the [shared source-document intake contract](../../specs/001-camera-capture/contracts/source-document-intake.md) and differ only in `channel` and `origin`.
 2. The API validates the request and retains the original document and page order.
 3. The processing flow checks page quality and normalizes pages; it uses embedded PDF text or OCR where appropriate.
 4. The system classifies the document and routes supplier invoices to structured invoice extraction. Extraction may use text, source-page images, or both.
@@ -41,7 +42,7 @@ Provider choice is configuration on the server, not a browser credential or prov
 
 ## Current prototype and validation path
 
-The web client currently captures one to three JPEG pages and submits them to `POST /api/source-documents`. The API validates the intake payload and returns a source-document ID, but it does not yet persist the images durably or invoke OCR/LLM extraction. OpenRouter configuration is loaded by the API at startup, but camera intake does not call the extraction provider.
+The web client currently captures one to three JPEG pages and submits them to `POST /api/source-documents` with `channel` = `camera-capture`. The API validates the intake payload and returns a source-document ID, but it does not yet persist the images durably or invoke OCR/LLM extraction. OpenRouter configuration is loaded by the API at startup, but camera intake does not call the extraction provider. The mailbox collector prototype (`src/server/ILP.Collector`) still sends attachments straight to extraction instead of through intake; Feature 03 moves it onto the shared intake path.
 
 A separate evidence-storage layer retains confirmed invoice, purchase-order, and receipt artifacts with source references, review status, provenance, and audit events. This persistence layer is additive to intake and references the original source-document IDs instead of redefining the intake contracts.
 

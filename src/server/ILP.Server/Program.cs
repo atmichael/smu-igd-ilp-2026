@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using ILP.Server.Config;
@@ -10,9 +11,16 @@ using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if (!builder.Environment.IsDevelopment())
+{
+    // The only sign-in is the development test scheme until Feature 17 adds real authentication.
+    throw new InvalidOperationException(
+        "No production authentication is configured (Feature 17). Run with ASPNETCORE_ENVIRONMENT=Development.");
+}
+
 builder.Services.AddOpenApi();
-builder.Services.AddAuthentication("Test")
-    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("Test", _ => { });
+builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
+    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
 
 builder.Services.AddAuthorization(options =>
 {
@@ -66,6 +74,8 @@ public partial class Program { }
 
 public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions>
 {
+    public const string SchemeName = "Test";
+
     public TestAuthHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
@@ -76,7 +86,8 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (Request.Headers.Authorization.Count == 0)
+        if (!AuthenticationHeaderValue.TryParse(Request.Headers.Authorization, out var header)
+            || !string.Equals(header.Scheme, SchemeName, StringComparison.OrdinalIgnoreCase))
         {
             return Task.FromResult(AuthenticateResult.NoResult());
         }

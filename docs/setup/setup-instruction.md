@@ -61,7 +61,7 @@ Run the API tests from the repository root:
 dotnet test .\tests\ILP.Server.Tests\ILP.Server.Tests.csproj
 ```
 
-The client tests mock camera APIs and do not require a physical camera. API intake currently uses in-memory storage and test authentication; it is a development prototype, not production persistence or authentication. MySQL in `setup/docker-compose.yml` is not currently used by this intake path.
+The client tests mock camera APIs and do not require a physical camera. API intake currently uses in-memory storage. Evidence packages (`/api/evidence-packages`) are saved as one JSON file each under `src/server/ILP.Server/App_Data/evidence-store/` (gitignored). Sign-in is a development-only test scheme: send `Authorization: Test <any value>`; the API refuses to start outside the Development environment until access control (Feature 17) exists. MySQL in `setup/docker-compose.yml` is not currently used by the API. Sample requests are in `src/server/ILP.Server/ILP.Server.http`.
 
 ## API key
 
@@ -99,4 +99,4 @@ uv tool install specify-cli
 specify version
 ```
 
-Do not run `specify init` for another clone; `.specify/` and `.github/skills/` are already part of the repo. For each feature, use `/speckit-specify`, `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-analyze`, `/speckit-implement`, and `/speckit-converge` in Copilot Chat. Maintainers should complete `.specify/memory/constitution.md`, which is currently a template.
+Do not run `specify init` for another clone; `.specify/` and `.github/skills/` are already part of the repo. For each feature, use `/speckit-specify`, `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`, `/speckit-analyze`, `/speckit-implement`, and `/speckit-converge` in Copilot Chat. These commands check plans against the project constitution in `.specify/memory/constitution.md`; shared business terms and their owning features are listed in the [feature brief index](../planning/feature-briefs/feature-brief-index.md#owned-terms).

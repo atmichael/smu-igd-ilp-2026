@@ -8,7 +8,7 @@ Authenticate users before they access real invoice records. Define permissions f
 
 Clarify identity provider, roles, tenant or team boundaries, retention of access events, and any maker-checker requirements. Payment approval itself is outside this feature.
 
-Evidence storage (Feature 08) currently requires only a signed-in user (`EvidenceStoragePolicy`), and a development test scheme accepts any `Authorization: Test` header; neither is acceptable for shared or production use. Define who may perform each evidence action:
+Evidence storage (Feature 08) and intake currently require only a signed-in user (`EvidenceStoragePolicy`, `SourceDocumentIntakePolicy`). The only sign-in is a development test scheme (`Authorization: Test <value>`, always the same test user), and the API refuses to start outside the Development environment until this feature provides real authentication. Define who may perform each evidence action:
 
 - Create evidence packages and correct record values while a package is open.
 - Change review status, finalize a package to `confirmed`, and replace confirmed evidence with a new version.

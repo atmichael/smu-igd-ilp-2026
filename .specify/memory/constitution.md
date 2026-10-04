@@ -1,10 +1,11 @@
 <!--
 Sync Impact Report
-Version: 1.1.0 -> 1.2.0 (uncommitted amendment)
-Principles added: IX. Intuitive and Consistent Naming
-Sections modified: none (IX expanded before ratification: one term per concept, owned terms, cardinality, role-based names, no abbreviations)
+Version: 1.2.0 -> 1.2.1 (PATCH: clarification, no new obligations)
+Principles modified: none
+Sections modified: Architecture and Security Constraints (shared source-document intake for camera, upload, and mailbox; mailbox collector submits through the API; pilot storage and development-only test sign-in stated as current, not target)
+Prior: 1.1.0 -> 1.2.0 added IX. Intuitive and Consistent Naming (one term per concept, owned terms, cardinality, role-based names, no abbreviations).
 Templates: plan/spec/tasks templates read the constitution at runtime; no template edits required.
-Follow-up TODO: Create the detailed frontend design-system document and shared MUI theme module (carried from 1.1.0). Set RATIFICATION_DATE.
+Follow-up TODO: Create the detailed frontend design-system document and shared MUI theme module (carried from 1.1.0); until then, frontend plans record the gap as a deviation. Set RATIFICATION_DATE.
 -->
 
 # Invoice Processing Constitution
@@ -51,7 +52,7 @@ Rationale: AP users, reviewers, and auditors read these names in the API and aud
 
 ## Architecture and Security Constraints
 
-The target architecture is a React and TypeScript dashboard, an ASP.NET Core API, and shared C# contracts. The API coordinates Gmail or image inputs, OCR, LLM providers, validation, and review workflows. Feature specifications and documentation MUST distinguish implemented behavior from planned components. Python may be used for bounded experiments, but production interfaces and ownership MUST be documented.
+The target architecture is a React and TypeScript dashboard, an ASP.NET Core API, and shared C# contracts. Every document channel (camera capture, file upload, and mailbox) enters through the shared source-document intake API; the mailbox collector is a backend worker that submits to that API rather than calling extraction providers directly. The API coordinates intake, OCR, LLM providers, validation, evidence storage, and review workflows. Feature specifications and documentation MUST distinguish implemented behavior from planned components; today evidence storage is a file-backed pilot store and sign-in is a development-only test scheme until access control (Feature 17) is delivered. Python may be used for bounded experiments, but production interfaces and ownership MUST be documented.
 
 ## Development Workflow and Quality Gates
 
@@ -61,4 +62,4 @@ Feature specifications MUST define inputs, outputs, failure cases, validation ex
 
 This constitution governs feature specifications, plans, implementation, and reviews. Pull requests MUST identify and justify deviations from its principles. Amendments require team review and approval, a rationale, and a semantic version update: MAJOR for incompatible changes to principles, MINOR for new or materially expanded requirements, and PATCH for clarifications that do not change obligations.
 
-**Version**: 1.2.0 | **Ratified**: TODO(RATIFICATION_DATE): Set when the team formally adopts this constitution. | **Last Amended**: 2026-10-04
+**Version**: 1.2.1 | **Ratified**: TODO(RATIFICATION_DATE): Set when the team formally adopts this constitution. | **Last Amended**: 2026-10-04

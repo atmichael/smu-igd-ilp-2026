@@ -90,10 +90,14 @@ tests/
 | IV. Deterministic Financial Decisions | Pass: financial evaluation remains out of scope. |
 | V. Privacy and Credential Security | Pass with dependencies: transient local pages are discarded on exit; API validates content and avoids sensitive logs; durable access controls belong to Features 08 and 17. |
 | VI. Practical Verification | Pass: client state tests, API integration tests, and the supported physical-device matrix are defined. |
+| VII. Consistent Frontend Design | Deviation: the shared frontend design-system document and MUI theme module do not exist yet (constitution follow-up TODO). The capture UI uses MUI components with feature CSS and must be aligned once the design system is published. |
+| VIII. Usable and Accessible Workflows | Pass with open check: explicit start, review, retry, and exit actions and recovery states are defined (US2); keyboard operation and WCAG 2.2 AA contrast are not yet recorded in the device validation. |
+| IX. Intuitive and Consistent Naming | Pass: the intake field is `channel` and the contract is shared with file upload and mailbox (T018). |
 
-No constitution violations or unjustified complexity are introduced.
+No other constitution violations or unjustified complexity are introduced.
 
 ## Complexity Tracking
 
-No constitution violations or complexity exceptions require justification.
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| Violation | Why needed | Simpler alternative rejected because |
+|---|---|---|
+| VII: no shared design system referenced | The design-system document does not exist yet | Blocking camera capture on it would delay the MVP; the UI already uses MUI and will be aligned when the document is published |

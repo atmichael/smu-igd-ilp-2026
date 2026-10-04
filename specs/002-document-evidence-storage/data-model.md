@@ -140,7 +140,7 @@ The original invoice, purchase order, receipt, or associated source artifact ret
 |---|---|---|
 | `documentId` | UUID | Stable document identifier. |
 | `evidencePackageId` | UUID | Parent package identifier. |
-| `sourceDocumentId` | string? | Optional reference to the intake-level source document ID. |
+| `sourceDocumentId` | string? | Optional reference to the intake source document (`/api/source-documents`) this document came from. |
 | `documentType` | enum | `invoice`, `purchase-order`, `receipt`, `other-evidence`. |
 | `sourceReference` | string | Business reference printed on the document (invoice, purchase-order, or receipt number); with `caseId` it drives duplicate detection. Channel identifiers such as an email message ID stay in the intake source document's `origin`. |
 | `storageLocation` | string | Protected storage path or object identifier for the original file. Required on create; withheld (`null`) when archived. |
@@ -267,7 +267,7 @@ The lifecycle state of a document or record.
 
 ## Compatibility with existing intake contracts
 
-The existing source-document intake DTOs and the Gmail/camera acquisition workflows remain valid as intake-level contracts for collecting or importing source evidence. This feature does not replace those models with the final evidence package model. Instead, the evidence package references the source-document IDs and their source metadata while adding package-level provenance, review status, and audit history. This keeps the current inbox workflow and intake pipeline stable while preserving the durable evidence model required for traceability.
+The [shared source-document intake contract](../001-camera-capture/contracts/source-document-intake.md) (camera capture, file upload, and mailbox channels) remains the intake-level contract for collecting or importing documents. This feature does not replace it with the evidence package model. Instead, each evidence document references its intake source document through `sourceDocumentId` while adding package-level provenance, review status, and audit history. This keeps intake stable while preserving the durable evidence model required for traceability.
 
 ## State transitions
 
