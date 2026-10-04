@@ -47,6 +47,11 @@ namespace ILP.Shared.Test.InfoExtraction
         [InlineData("Delivery Order", DocumentType.Receipt)]
         [InlineData("Sales Order", DocumentType.OtherEvidence)]
         [InlineData("Statement of Account", DocumentType.OtherEvidence)]
+        [InlineData("purchase-order", DocumentType.PurchaseOrder)]
+        [InlineData("goods-receipt", DocumentType.Receipt)]
+        [InlineData("service-acceptance", DocumentType.Receipt)]
+        [InlineData("sales-order", DocumentType.OtherEvidence)]
+        [InlineData("unclassified", DocumentType.OtherEvidence)]
         [InlineData(null, DocumentType.OtherEvidence)]
         public void ToDocumentType_MapsPromptLabels(string? label, DocumentType expected)
         {

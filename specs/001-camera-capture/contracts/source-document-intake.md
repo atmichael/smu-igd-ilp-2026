@@ -84,10 +84,10 @@ Use `application/problem+json` with a stable, non-sensitive error code and a use
 
 | Status | Meaning | Client behavior |
 |---|---|---|
-| `400` | Missing/invalid channel, empty pages, or page count outside 1-3 | Keep session pages for correction/review; do not mark submitted. |
-| `401` / `403` | Application authentication or authorization failure | Explain that submission is unavailable; retain pages until user retries or exits. |
+| `400` | Missing `Idempotency-Key`, missing/invalid channel, empty pages, or page count outside 1-3 | Keep session pages for correction/review; do not mark submitted. |
+| `401` / `403` | Application authentication or authorization failure (`403` arrives with Feature 17 roles; today only `401` is returned) | Explain that submission is unavailable; retain pages until user retries or exits. |
 | `409` | Idempotency key was reused with different content | Do not retry automatically; explain that the submission could not be reconciled. |
-| `413` | Configured total request-size limit exceeded | Explain that the capture is too large; retain pages for a safe retry path. |
+| `413` | Request exceeds the server request-size limit (the ASP.NET Core default, about 30 MB; no smaller limit is configured yet) | Explain that the capture is too large; retain pages for a safe retry path. |
 | `415` | Unsupported media type or invalid image content | Explain the capture could not be accepted; do not create a document. |
 | `5xx` | Intake or evidence-storage failure | Report a recoverable submission failure; do not report success or a partial document. |
 

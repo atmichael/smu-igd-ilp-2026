@@ -5,13 +5,13 @@ namespace ILP.Shared.Evidence;
 /// <summary>Turns the shared extraction output (DocumentHeaderFields keys) into an evidence document request.</summary>
 public static class ExtractedDocumentMapper
 {
-    /// <summary>Maps the prompt's document-type labels; sales orders and statements are kept but are never match inputs.</summary>
+    /// <summary>Maps prompt labels ("Purchase Order") or Feature 05 names ("purchase-order"); sales orders and statements are kept but are never match inputs.</summary>
     public static DocumentType ToDocumentType(string? extractedType) =>
-        extractedType?.Trim().ToLowerInvariant() switch
+        extractedType?.Trim().Replace('-', ' ').ToLowerInvariant() switch
         {
             "invoice" => DocumentType.Invoice,
             "purchase order" or "service order" => DocumentType.PurchaseOrder,
-            "delivery order" => DocumentType.Receipt,
+            "delivery order" or "goods receipt" or "service acceptance" => DocumentType.Receipt,
             _ => DocumentType.OtherEvidence
         };
 

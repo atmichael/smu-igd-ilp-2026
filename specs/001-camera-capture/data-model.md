@@ -53,5 +53,6 @@ The durable result of one confirmed capture, created by the shared intake/storag
 | `submittedBy` | string | Authenticated user name. |
 | `mediaType` | string | `image/jpeg` for camera captures. |
 | `contentHash` | string | `sha256:` hash over the accepted pages. |
+| `storageLocation` | string | `protected://source-documents/{sourceDocumentId}`: where the original pages are kept in the protected content store (Feature 08). |
 
-The shared evidence-storage feature owns persistent identifiers, storage locations, retrieval, and audit metadata. A failed or invalid submission must not create a partial `SourceDocument`.
+The record and its idempotency key are persisted, and the record and pages can be read back through `GET /api/source-documents/{id}` and `/pages/{n}` (see the [intake contract](contracts/source-document-intake.md#read-operations)). The shared evidence-storage feature owns storage locations, retrieval, and audit metadata. A failed or invalid submission must not create a partial `SourceDocument`.
