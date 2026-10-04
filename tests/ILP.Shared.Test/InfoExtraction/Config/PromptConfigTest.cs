@@ -15,22 +15,14 @@ public class PromptConfigTest
         try
         {
             var contentPath = Path.Combine(directory, "content.md");
-            var headerInfoPath = Path.Combine(directory, "header.md");
-            var lineItemInfoPath = Path.Combine(directory, "line-items.md");
             File.WriteAllText(contentPath, "initial prompt");
-            File.WriteAllText(headerInfoPath, "header prompt");
-            File.WriteAllText(lineItemInfoPath, "line-item prompt");
 
             PromptConfig.Initialize(new TestConfiguration(new Dictionary<string, string?>
             {
-                ["Prompts:ExtractDocumentContent"] = Path.GetRelativePath(AppContext.BaseDirectory, contentPath),
-                ["Prompts:ExtractDocumentHeaderInfo"] = Path.GetRelativePath(AppContext.BaseDirectory, headerInfoPath),
-                ["Prompts:ExtractDocumentLineItemInfo"] = Path.GetRelativePath(AppContext.BaseDirectory, lineItemInfoPath)
+                ["Prompts:ExtractDocumentContent"] = Path.GetRelativePath(AppContext.BaseDirectory, contentPath)
             }));
 
             Assert.Equal("initial prompt", PromptConfig.ExtractDocumentContent);
-            Assert.Equal("header prompt", PromptConfig.ExtractDocumentHeaderInfo);
-            Assert.Equal("line-item prompt", PromptConfig.ExtractDocumentLineItemInfo);
 
             File.WriteAllText(contentPath, "updated prompt");
 

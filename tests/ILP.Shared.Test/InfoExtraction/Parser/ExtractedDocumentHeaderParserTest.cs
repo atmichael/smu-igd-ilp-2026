@@ -14,6 +14,7 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             company-tax-registration-number| null
             document-number| INV-2026-00422
             document-type| Invoice
+            document-date| 2026-10-04
             related-document-numbers| PO-88192, DO-1002
             subtotal| 1200.00
             subtotal-tax-rate| 0.09

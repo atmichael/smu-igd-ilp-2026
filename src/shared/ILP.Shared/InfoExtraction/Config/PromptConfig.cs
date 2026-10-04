@@ -5,22 +5,14 @@ namespace ILP.Server.Config;
 public static class PromptConfig
 {
     private static string m_extractDocumentContentPath = string.Empty;
-    private static string m_extractDocumentHeaderInfoPath = string.Empty;
-    private static string m_extractDocumentLineItemInfoPath = string.Empty;
 
     public static string ExtractDocumentContent { get { return File.ReadAllText(m_extractDocumentContentPath); } }
-    public static string ExtractDocumentHeaderInfo { get { return File.ReadAllText(m_extractDocumentHeaderInfoPath); } }
-    public static string ExtractDocumentLineItemInfo { get { return File.ReadAllText(m_extractDocumentLineItemInfoPath); } }
 
     public static void Initialize(IConfiguration config)
     {
         var contentPath = GetPromptPath(config, nameof(ExtractDocumentContent));
-        var headerInfoPath = GetPromptPath(config, nameof(ExtractDocumentHeaderInfo));
-        var lineItemInfoPath = GetPromptPath(config, nameof(ExtractDocumentLineItemInfo));
 
         m_extractDocumentContentPath = contentPath;
-        m_extractDocumentHeaderInfoPath = headerInfoPath;
-        m_extractDocumentLineItemInfoPath = lineItemInfoPath;
     }
 
     private static string GetPromptPath(IConfiguration config, string promptName)

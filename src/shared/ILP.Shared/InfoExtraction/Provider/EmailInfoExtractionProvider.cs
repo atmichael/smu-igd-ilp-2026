@@ -11,15 +11,6 @@ namespace ILP.Shared.InfoExtraction.Provider
 {
     public class EmailInfoExtractionProvider
     {
-        public static async Task<string> GetDocumentHeader(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
-        {
-            return await GetOpenRouterChatResponse(emailBody, attachmentPath, PromptConfig.ExtractDocumentHeaderInfo, parentTraceId, inlineImages);
-        }
-
-        public static async Task<string> GetDocumentLineItem(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
-        {
-            return await GetOpenRouterChatResponse(emailBody, attachmentPath, PromptConfig.ExtractDocumentLineItemInfo, parentTraceId, inlineImages);
-        }
 
         public static async Task<string> GetDocumentContent(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
