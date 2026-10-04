@@ -51,6 +51,7 @@ builder.Services.AddCors(options =>
 });
 
 OpenRouterConfig.Initialize(builder.Configuration);
+PromptConfig.Initialize(builder.Configuration);
 
 var app = builder.Build();
 

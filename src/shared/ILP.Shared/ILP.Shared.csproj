@@ -41,19 +41,4 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Update="InfoExtraction\InfoExtractionPrompts.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>InfoExtractionPrompts.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Update="InfoExtraction\InfoExtractionPrompts.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>InfoExtractionPrompts.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
-
 </Project>

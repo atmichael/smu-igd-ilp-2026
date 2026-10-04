@@ -9,6 +9,7 @@ var builder = Host.CreateApplicationBuilder();
 
 // Initialize OpenRouterConfig config class
 OpenRouterConfig.Initialize(builder.Configuration);
+PromptConfig.Initialize(builder.Configuration);
 
 // Initialize Logger
 Log.Logger = new LoggerConfiguration()
