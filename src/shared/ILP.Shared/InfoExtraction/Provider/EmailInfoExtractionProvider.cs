@@ -16,20 +16,20 @@ namespace ILP.Shared.InfoExtraction.Provider
     {
         public static async Task<string> GetDocumentHeader(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
-            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentHeaderInfo, parentTraceId, inlineImages);
+            return await GetOpenRouterChatResponse(emailBody, attachmentPath, () => PromptConfig.ExtractDocumentHeaderInfo, parentTraceId, inlineImages);
         }
 
         public static async Task<string> GetDocumentLineItem(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
-            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentLineItemInfo, parentTraceId, inlineImages);
+            return await GetOpenRouterChatResponse(emailBody, attachmentPath, () => PromptConfig.ExtractDocumentLineItemInfo, parentTraceId, inlineImages);
         }
 
         public static async Task<string> GetDocumentContent(string emailBody, string attachmentPath = "", string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
-            return await GetOpenRouterChatResponse(emailBody, attachmentPath, InfoExtractionPrompts.ExtractDocumentContent, parentTraceId, inlineImages);
+            return await GetOpenRouterChatResponse(emailBody, attachmentPath, () => PromptConfig.ExtractDocumentContent, parentTraceId, inlineImages);
         }
 
-        private static async Task<string> GetOpenRouterChatResponse(string emailBody, string attachmentPath, string systemPrompt, string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
+        private static async Task<string> GetOpenRouterChatResponse(string emailBody, string attachmentPath, Func<string> getSystemPrompt, string parentTraceId = "", IReadOnlyDictionary<string, string>? inlineImages = null)
         {
             if (!HasExtractableInput(emailBody, attachmentPath, inlineImages))
             {
@@ -38,7 +38,7 @@ namespace ILP.Shared.InfoExtraction.Provider
 
             string traceId = string.IsNullOrEmpty(parentTraceId) ? Guid.NewGuid().ToString() : parentTraceId;
 
-            var request = await GetChatRequest(emailBody, attachmentPath, systemPrompt, inlineImages);
+            var request = await GetChatRequest(emailBody, attachmentPath, getSystemPrompt(), inlineImages);
             string requestJson = JsonConvert.SerializeObject(request);
 
             LogHelper.Trace(traceId, $"OpenRouterRequest: {requestJson}");
