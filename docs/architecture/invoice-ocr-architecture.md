@@ -47,6 +47,24 @@ A separate evidence-storage layer retains confirmed invoice, purchase-order, and
 
 The console prototype sends a PDF directly to OpenRouter using `google/gemini-2.5-flash` and returns transcribed text. Ollama is not integrated into the console or camera workflow; current Ollama instructions describe a separate manual experiment. There is no provider switch or automated, like-for-like evaluation yet. See the [feature brief index](../planning/feature-briefs/feature-brief-index.md) for the implementation sequence and [Feature 06](../planning/feature-briefs/feature-06-ap-line-item-conversion.md) and [Feature 20](../planning/feature-briefs/feature-20-model-quality-evaluation.md) for extraction and evaluation requirements.
 
+## Evidence storage boundary
+
+The evidence package API (`/api/evidence-packages`, see [the contract](../../specs/002-document-evidence-storage/contracts/document-evidence-storage.md)) is persistence, retrieval, provenance, and audit only. It does not ingest, extract, classify, match, or approve. The [data model overview](../../specs/002-document-evidence-storage/data-model.md#overview) has a terminology table, an entity diagram, and the package lifecycle.
+
+| Concern | Owner |
+|---|---|
+| Capturing or importing source files | Intake (`/api/source-documents`, mailbox collector) |
+| Producing candidate values | Extraction and classification features |
+| Deciding a match or discrepancy | Three-way matching features |
+| Retaining documents, records, provenance, review status, audit, and the link to a match decision | Evidence storage |
+
+- Packages reference intake documents through `sourceDocumentId`; intake contracts are unchanged.
+- New evidence is `draft` or `pending-review`; only `POST /{id}/finalize` produces `confirmed` evidence. Final evidence is deduplicated by source reference and case, and changes after finalization require an explicit replacement that supersedes the prior version.
+- Corrections, verification results, and status changes append provenance entries and audit events; earlier values are never overwritten.
+- Failed saves are recorded as `failed` (create) or leave the prior state (later operations); no success response is returned.
+- Finalized evidence is retained for the 3-year pilot default before archive, after which content and values are withheld on retrieval. Production retention must be confirmed before go-live; deletion is not automated.
+- Storage is a file-backed JSON store under `EvidenceStorage:RootPath` for the pilot. Duplicate checks are serialized within a single API instance; scaling out requires a store-level uniqueness constraint.
+
 ## Example response
 
 ```json

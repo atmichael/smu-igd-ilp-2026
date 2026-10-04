@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Shared.Evidence;
 using Microsoft.AspNetCore.Mvc;
@@ -8,157 +9,81 @@ public static class EvidencePackagesEndpoints
 {
     public static void MapEvidencePackagesEndpoints(this IEndpointRouteBuilder app)
     {
-        var store = new EvidencePackageStore();
+        var group = app.MapGroup("/api/evidence-packages")
+            .RequireAuthorization(EvidenceStorageServiceCollectionExtensions.AuthorizationPolicy);
 
-        app.MapPost("/api/evidence-packages", async (HttpRequest request) =>
-        {
-            try
+        group.MapPost("", (CreateEvidencePackageRequest request, EvidencePackageService service, ClaimsPrincipal user) =>
+            Execute(() =>
             {
-                var payload = await request.ReadFromJsonAsync<CreateEvidencePackageRequest>();
-                if (payload is null)
-                {
-                    return Results.BadRequest(new ProblemDetails
-                    {
-                        Title = "Invalid request payload.",
-                        Detail = "The evidence package request body is required.",
-                        Status = StatusCodes.Status400BadRequest
-                    });
-                }
+                var package = service.Create(request, ActorId(user));
+                return Results.Created($"/api/evidence-packages/{package.EvidencePackageId}", package);
+            }));
 
-                var package = store.Create(payload);
-                return Results.Created($"/api/evidence-packages/{package.EvidencePackageId}", MapResponse(package));
-            }
-            catch (DuplicateEvidenceException ex)
-            {
-                return Results.Conflict(new ProblemDetails
-                {
-                    Title = "Duplicate final evidence.",
-                    Detail = ex.Message,
-                    Status = StatusCodes.Status409Conflict
-                });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Results.BadRequest(new ProblemDetails
-                {
-                    Title = "Invalid evidence package.",
-                    Detail = ex.Message,
-                    Status = StatusCodes.Status400BadRequest
-                });
-            }
-            catch (Exception)
-            {
-                return Results.Problem(
-                    title: "Evidence package save failed.",
-                    detail: "Persistence failed and no success state should be reported.",
-                    statusCode: StatusCodes.Status500InternalServerError);
-            }
-        });
+        group.MapGet("/{evidencePackageId}", (string evidencePackageId, EvidencePackageService service) =>
+            Execute(() => Results.Ok(service.Get(evidencePackageId))));
 
-        app.MapGet("/api/evidence-packages/{evidencePackageId}", (string evidencePackageId) =>
-        {
-            var package = store.GetById(evidencePackageId);
-            if (package is null)
-            {
-                return Results.NotFound(new ProblemDetails
-                {
-                    Title = "Evidence package not found.",
-                    Detail = $"No package was found for {evidencePackageId}.",
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
+        group.MapGet("", (string? caseId, string? documentId, string? sourceReference, string? reviewStatus, EvidencePackageService service) =>
+            Execute(() => Results.Ok(service.Query(caseId, documentId, sourceReference, reviewStatus))));
 
-            return Results.Ok(MapResponse(package));
-        });
+        group.MapPost("/{evidencePackageId}/finalize", (string evidencePackageId, EvidencePackageService service, ClaimsPrincipal user) =>
+            Execute(() => Results.Ok(service.Finalize(evidencePackageId, ActorId(user)))));
 
-        app.MapGet("/api/evidence-packages", (string? caseId, string? documentId, string? sourceReference, string? reviewStatus) =>
-        {
-            var packages = store.Query(caseId, documentId, sourceReference, reviewStatus);
-            return Results.Ok(packages.Select(MapResponse).ToList());
-        });
+        group.MapPost("/{evidencePackageId}/status", (string evidencePackageId, StatusChangeRequest request, EvidencePackageService service, ClaimsPrincipal user) =>
+            Execute(() => Results.Ok(service.ChangeStatus(evidencePackageId, request, ActorId(user)))));
 
-        app.MapPost("/api/evidence-packages/{evidencePackageId}/finalize", (string evidencePackageId) =>
-        {
-            try
-            {
-                var package = store.Finalize(evidencePackageId);
-                return Results.Ok(MapResponse(package));
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return Results.NotFound(new ProblemDetails
-                {
-                    Title = "Evidence package not found.",
-                    Detail = ex.Message,
-                    Status = StatusCodes.Status404NotFound
-                });
-            }
-        });
+        group.MapPost("/{evidencePackageId}/records/{recordId}/corrections",
+            (string evidencePackageId, string recordId, RecordCorrectionRequest request, EvidencePackageService service, ClaimsPrincipal user) =>
+                Execute(() => Results.Ok(service.CorrectRecord(evidencePackageId, recordId, request, ActorId(user)))));
+
+        group.MapPost("/{evidencePackageId}/records/{recordId}/verifications",
+            (string evidencePackageId, string recordId, RecordVerificationRequest request, EvidencePackageService service, ClaimsPrincipal user) =>
+                Execute(() => Results.Ok(service.VerifyRecord(evidencePackageId, recordId, request, ActorId(user)))));
+
+        group.MapPost("/{evidencePackageId}/match-outcomes", (string evidencePackageId, MatchOutcomeRequest request, EvidencePackageService service, ClaimsPrincipal user) =>
+            Execute(() => Results.Ok(service.LinkMatchOutcome(evidencePackageId, request, ActorId(user)))));
+
+        group.MapPost("/{evidencePackageId}/archive", (string evidencePackageId, EvidencePackageService service, ClaimsPrincipal user) =>
+            Execute(() => Results.Ok(service.Archive(evidencePackageId, ActorId(user)))));
     }
 
-    private static object MapResponse(EvidencePackage package) => new
+    private static string? ActorId(ClaimsPrincipal user) => user.Identity?.Name;
+
+    private static IResult Execute(Func<IResult> action)
     {
-        evidencePackageId = package.EvidencePackageId,
-        caseId = package.CaseId,
-        sourceType = package.SourceType,
-        status = package.Status,
-        createdAt = package.CreatedAt,
-        updatedAt = package.UpdatedAt,
-        retentionPolicy = package.RetentionPolicy,
-        relatedMatchReviewId = package.RelatedMatchReviewId,
-        documents = package.Documents.Select(document => new
+        try
         {
-            sourceDocumentId = document.SourceDocumentId,
-            evidencePackageId = document.EvidencePackageId,
-            documentType = document.DocumentType,
-            sourceReference = document.SourceReference,
-            storageLocation = document.StorageLocation,
-            checksum = document.Checksum,
-            reviewStatus = document.ReviewStatus,
-            contentHash = document.ContentHash,
-            createdAt = document.CreatedAt,
-            records = document.Records.Select(record => new
-            {
-                recordId = record.RecordId,
-                sourceDocumentId = record.SourceDocumentId,
-                recordCategory = record.RecordCategory,
-                recordType = record.RecordType,
-                rawValue = record.RawValue,
-                currentValue = record.CurrentValue,
-                reviewStatus = record.ReviewStatus,
-                provenanceVersion = record.ProvenanceVersion,
-                sourceReference = record.SourceReference,
-                modelVersion = record.ModelVersion,
-                schemaVersion = record.SchemaVersion,
-                verificationStatus = record.VerificationStatus,
-                matchedEvidenceId = record.MatchedEvidenceId,
-                provenance = record.Provenance.Select(p => new
+            return action();
+        }
+        catch (EvidenceValidationException ex)
+        {
+            return Results.ValidationProblem(ex.Errors, title: "Invalid evidence package.", statusCode: ex.StatusCode);
+        }
+        catch (EvidenceNotFoundException ex)
+        {
+            return Problem(StatusCodes.Status404NotFound, "Evidence not found.", ex.Message);
+        }
+        catch (EvidenceDuplicateException ex)
+        {
+            return Problem(StatusCodes.Status409Conflict, "Duplicate final evidence.", ex.Message);
+        }
+        catch (EvidencePreconditionException ex)
+        {
+            return Problem(StatusCodes.Status412PreconditionFailed, "Evidence state does not allow this operation.", ex.Message);
+        }
+        catch (EvidencePersistenceException ex)
+        {
+            return Results.Problem(
+                title: "Evidence package save failed.",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError,
+                extensions: new Dictionary<string, object?>
                 {
-                    provenanceId = p.ProvenanceId,
-                    recordId = p.RecordId,
-                    evidencePackageId = p.EvidencePackageId,
-                    eventType = p.EventType,
-                    actorType = p.ActorType,
-                    actorId = p.ActorId,
-                    previousValue = p.PreviousValue,
-                    newValue = p.NewValue,
-                    sourceReference = p.SourceReference,
-                    timestamp = p.Timestamp,
-                    reason = p.Reason
-                }).ToList()
-            }).ToList()
-        }).ToList(),
-        auditEvents = package.AuditEvents.Select(auditEvent => new
-        {
-            auditEventId = auditEvent.AuditEventId,
-            evidencePackageId = auditEvent.EvidencePackageId,
-            recordId = auditEvent.RecordId,
-            eventType = auditEvent.EventType,
-            actorType = auditEvent.ActorType,
-            actorId = auditEvent.ActorId,
-            message = auditEvent.Message,
-            metadata = auditEvent.Metadata,
-            timestamp = auditEvent.Timestamp
-        }).ToList()
-    };
+                    ["evidencePackageId"] = ex.EvidencePackageId,
+                    ["reviewStatus"] = ex.VisibleStatus
+                });
+        }
+    }
+
+    private static IResult Problem(int statusCode, string title, string detail) =>
+        Results.Problem(new ProblemDetails { Status = statusCode, Title = title, Detail = detail });
 }

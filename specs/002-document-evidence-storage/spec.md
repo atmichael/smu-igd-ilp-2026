@@ -17,7 +17,7 @@
 - Q: How long should finalized evidence be retained before archival or deletion? → A: 3-year pilot retention; review and extend to the production retention policy before go-live.
 - Q: How should the system handle a repeated submission for the same source document or case? → A: Deduplicate final evidence for the same source and case; allow a new version only on explicit replacement or reprocessing.
 - Q: How should draft evidence be stored before it is approved for the final evidence set? → A: Keep drafts as separate pending records with an explicit review status and finalization step.
-- Q: What identifier model should tie source documents, structured records, and audit events together? → A: Use a case-level evidence package ID plus document and record IDs, with each audit event linked to the changed record or package.
+- Q: What identifier model should tie source documents, structured records, and audit events together? → A: Use an evidence package ID plus document and record IDs, with each audit event linked to the changed record or package.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -27,12 +27,12 @@ As an accounts-payable user, I want all confirmed invoice, purchase-order, and r
 
 **Why this priority**: Traceability is the foundation of reliable AP review and dispute handling; without reliable retention, the match cannot be trusted or audited.
 
-**Independent Test**: Create or confirm a document packet containing an invoice, a purchase order, and a receipt, then retrieve it later by document and related record identifiers. Confirm that each stored item remains linked to its source and current review status.
+**Independent Test**: Create or confirm an evidence package containing an invoice, a purchase order, and a receipt, then retrieve it later by document and related record identifiers. Confirm that each stored item remains linked to its source and current review status.
 
 **Acceptance Scenarios**:
 
 1. **Given** an invoice, purchase order, and receipt have all been confirmed for a case, **When** the evidence package is saved, **Then** the original documents and their associated structured records are retained together with their source and review status.
-2. **Given** an evidence package has been stored, **When** the user searches by invoice, purchase order, receipt, or case identifier, **Then** they can retrieve the matching document packet and associated records.
+2. **Given** an evidence package has been stored, **When** the user searches by invoice, purchase order, receipt, or case identifier, **Then** they can retrieve the matching evidence package and associated records.
 3. **Given** a review status has changed, **When** the evidence package is reopened, **Then** the current status is visible alongside the stored source and evidence history.
 
 ---
@@ -90,7 +90,7 @@ As an AP operations lead, I want invoice payable lines, purchase-order commitmen
 - **FR-006**: The system MUST record the review status of each stored document and structured record so that users can distinguish draft, pending-review, reviewed, confirmed, rejected, superseded, and archived states.
 - **FR-007**: The system MUST not record raw invoice contents or credentials in ordinary logs; sensitive details MUST remain within protected evidence and audit channels.
 - **FR-008**: The system MUST not show a successful save state when persistence fails; failed or incomplete saves MUST remain clearly marked as unsuccessful or pending.
-- **FR-009**: The system MUST associate each evidence record with stable identifiers that allow the original document, record set, related case, and audit events to be linked consistently through a case-level evidence package ID, document ID, and record ID model.
+- **FR-009**: The system MUST associate each evidence record with stable identifiers that allow the original document, record set, related case, and audit events to be linked consistently through an evidence package ID, document ID, and record ID model.
 - **FR-010**: The system MUST store draft or in-progress evidence as separate pending records with a distinct review status and MUST require an explicit finalization step before the record is treated as approved evidence.
 - **FR-011**: The system MUST deduplicate final evidence records for the same original source and case, and MUST allow a new evidence version only when a replacement or reprocessing workflow explicitly marks the resubmission as a new version.
 - **FR-012**: The system MUST support retention rules that keep finalized evidence for a 3-year pilot default before any archive or deletion workflow, with a production policy review required before go-live to confirm whether a longer retention period is needed.
@@ -104,7 +104,7 @@ As an AP operations lead, I want invoice payable lines, purchase-order commitmen
 - **Evidence Package**: The complete set of documents and structured records associated with a confirmed invoice, purchase order, or receipt for a single review case.
 - **Source Document**: The original invoice, purchase order, receipt, or related file retained as the authoritative physical or digital source for a case.
 - **Structured Record**: An extracted or confirmed payable line, purchase-order commitment, or receipt/service-acceptance entry, with its own provenance and review status.
-- **Provenance Record**: The history of how a value was created or changed, including source, extraction, correction, verification, and reviewer actions.
+- **Provenance Entry**: One step in the history of how a value was created or changed, including source, extraction, correction, verification, and reviewer actions.
 - **Audit Event**: A historical record of a material action such as source attachment, model or schema versioning, verification result, user correction, or match outcome.
 - **Review Status**: The current lifecycle state of a document or record, such as draft, pending-review, reviewed, confirmed, rejected, superseded, or archived.
 
@@ -126,3 +126,4 @@ As an AP operations lead, I want invoice payable lines, purchase-order commitmen
 - Existing application identity and authorization controls limit who can view, change, or archive stored evidence.
 - The current source-document intake DTOs and mailbox/camera intake workflows remain valid as intake-level contracts for collecting or importing source records; this feature adds an additional durable evidence package layer that references source document IDs rather than redefining those intake contracts.
 - This feature covers persistence, retrieval, provenance, and auditability only; ingestion, extraction, classification, matching rules, and payment approval remain separate responsibilities.
+- Cases are created and tracked by document packet tracking (Feature 15). Until that exists, `caseId` is a business reference supplied by the caller and is not validated against a case register.

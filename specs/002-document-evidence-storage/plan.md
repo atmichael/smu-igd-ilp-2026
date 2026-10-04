@@ -42,6 +42,7 @@ Build the server-owned durable evidence-storage service for AP review cases: ret
 | VI. Practical Verification | Define concrete validation for save, retrieve, provenance, and failure states. | Pass: API and persistence tests are specified in the quickstart and contract design. |
 | VII. Consistent Frontend Design | Frontend design system is irrelevant because no UI work is introduced. | N/A: no frontend implementation is proposed in this feature. |
 | VIII. Usable and Accessible Workflows | User workflow is not a UI deliverable for this feature. | N/A: storage/retrieval backend workflow is validated through API and persistence checks. |
+| IX. Intuitive and Consistent Naming | Names are plain-language and do not collide with other features. | Pass: keeps the established "evidence" term from the feature briefs; the package is `EvidencePackage` because a case can have several ("case file" was considered and rejected: it implies one per case and "case" is owned by Feature 15); stored documents are `EvidenceDocument` so "source document" keeps its intake meaning; uses `ProvenanceEntry` (the spec's term, without the "Record" clash with `StructuredRecord`); services are named by role inside the `EvidenceStorage` namespace. |
 
 No constitution violations are identified. The feature remains within the repository’s backend architecture and specifically excludes the other workstreams that are owned by adjacent features.
 
@@ -95,6 +96,7 @@ tests/
 | VI. Practical Verification | Pass: contract and integration test scenarios cover save, retrieval, provenance, deduplication, and failure states. |
 | VII. Consistent Frontend Design | N/A: no frontend work is planned. |
 | VIII. Usable and Accessible Workflows | N/A: no direct UI workflow is part of the feature. |
+| IX. Intuitive and Consistent Naming | Pass: entity, field, and service names were reviewed and renamed together across code, tests, contract, and data model. |
 
 No constitution violations or unjustified complexity are introduced.
 

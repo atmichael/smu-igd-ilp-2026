@@ -69,3 +69,18 @@ flowchart TB
 **Later AP workflows:** [03 Mailbox collection](feature-03-mailbox-collection.md) - Partially covered; [09 Procurement evidence](feature-09-procurement-evidence-extraction.md) - Not started; [15 Packet tracking](feature-15-document-packet-tracking.md) - Not started; [10 Three-way matching](feature-10-three-way-matching.md) - Not started; [11 Match review](feature-11-three-way-match-review.md) - Not started; [13 Straight-through review](feature-13-straight-through-review-orchestration.md) - Not started; [14 Audit analytics](feature-14-audit-analytics.md) - Not started.
 
 Start a small Feature 20 comparison alongside Feature 06; complete full evaluation before Feature 13. Features 17 and 18 gate production use. Feature 16 is needed for reference-based checks; three-way matching also depends on Feature 09. A match is not payment approval.
+
+## Owned Terms
+
+Each business term has one owning feature and one meaning (constitution Principle IX). Other features refer to it by its identifier.
+
+| Term | Meaning | Owner | Code / API |
+|---|---|---|---|
+| Source document | A file received by intake (camera, scan, mailbox). | 01-03 Intake | `SourceDocumentMetadata`, `/api/source-documents`, `sourceDocumentId` |
+| Evidence | Documents and values that support a match or approval decision. | 08 Evidence storage | `ILP.Shared.Evidence` |
+| Evidence package | One versioned set of evidence documents and records for a case; a case can have several. | 08 Evidence storage | `EvidencePackage`, `/api/evidence-packages` |
+| Evidence document | An original invoice, order, or receipt kept in an evidence package. | 08 Evidence storage | `EvidenceDocument`, `documentId` |
+| Structured record | One value read from a document, such as an invoice line amount. | 08 Evidence storage | `StructuredRecord`, `recordId` |
+| Provenance | Where a value came from and every change since. | 08 Evidence storage | `ProvenanceEntry` |
+| Case, packet | The AP case and the set of documents expected and received for it. | 15 Packet tracking | `caseId` |
+| Match result, match review | The outcome of a three-way match and its review. | 10-11 Matching | `matchReviewId` (evidence storage links it through `MatchOutcome`) |

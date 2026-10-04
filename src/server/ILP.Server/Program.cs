@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using ILP.Server.Config;
 using ILP.Server.Endpoints.EvidencePackages;
 using ILP.Server.Endpoints.SourceDocuments;
+using ILP.Server.Features.EvidenceStorage;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -19,7 +20,14 @@ builder.Services.AddAuthorization(options =>
     {
         policy.RequireAuthenticatedUser();
     });
+
+    options.AddPolicy(EvidenceStorageServiceCollectionExtensions.AuthorizationPolicy, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+    });
 });
+
+builder.Services.AddEvidenceStorage(builder.Configuration);
 
 builder.Services.AddCors(options =>
 {

@@ -14,7 +14,7 @@
 
 **Decision**: Create a server-owned evidence package boundary that persists the original source documents, associated structured records, provenance data, review statuses, and audit events as one package per case and source relationship. Keep the package model separate from the intake and extraction flows.
 
-**Rationale**: The spec requires a single traceable packet that can be retrieved later by document, case, source reference, or review status without mixing intake logic with evidence retention. A dedicated package boundary makes deduplication, draft/final state, and auditability explicit.
+**Rationale**: The spec requires a single traceable evidence package that can be retrieved later by document, case, source reference, or review status without mixing intake logic with evidence retention. A dedicated package boundary makes deduplication, draft/final state, and auditability explicit.
 
 **Alternatives considered**: Storing only structured records in a single table would lose the original source document and provenance chain; storing everything as unstructured blobs with no normalized records would make review and matching difficult.
 
@@ -60,7 +60,7 @@
 
 ### Retention and archive policy
 
-**Decision**: Finalized evidence will default to a 3-year pilot retention before archival or deletion, with a production policy review required before go-live. Archive/deletion logic stays outside this feature’s core implementation while the storage model retains the metadata needed for policy-driven lifecycle processing.
+**Decision**: Finalized evidence will default to a 3-year pilot retention before archival or deletion, with a production policy review required before go-live. The implementation records `retentionUntil` and supports archive once it has passed (content and values are then withheld on retrieval); deletion is not automated and waits for the production policy review.
 
 **Rationale**: The spec explicitly answers the retention clarification and states the default retention period and policy review requirement. The architecture should therefore keep retention metadata and a future archive workflow hook without forcing a broad implementation in this feature.
 
@@ -68,7 +68,7 @@
 
 ### Retrieval and match auditability
 
-**Decision**: Retrieval operations will support lookup by evidence package ID, case ID, document ID, source reference, record ID, and review status. Match outcomes will retain a link to the evidence package used for the decision so later review can explain the basis for a match or discrepancy.
+**Decision**: Retrieval operations will support lookup by evidence package ID, case ID, document ID (evidence or intake), source reference, and review status, as required by FR-013. Match outcomes will retain a link to the evidence package and supporting record IDs used for the decision so later review can explain the basis for a match or discrepancy.
 
 **Rationale**: The feature must support later audit and review and the match outcome must remain anchored to actual stored evidence rather than transient memory. This keeps the evidence package useful beyond initial intake.
 

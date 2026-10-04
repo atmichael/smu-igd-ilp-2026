@@ -1,9 +1,10 @@
 <!--
 Sync Impact Report
-Version: 1.0.0 -> 1.1.0 (uncommitted amendment)
-Principles added: VII. Consistent Frontend Design; VIII. Usable and Accessible Workflows
-Sections modified: Development Workflow and Quality Gates
-Follow-up TODO: Create the detailed frontend design-system document and shared MUI theme module.
+Version: 1.1.0 -> 1.2.0 (uncommitted amendment)
+Principles added: IX. Intuitive and Consistent Naming
+Sections modified: none (IX expanded before ratification: one term per concept, owned terms, cardinality, role-based names, no abbreviations)
+Templates: plan/spec/tasks templates read the constitution at runtime; no template edits required.
+Follow-up TODO: Create the detailed frontend design-system document and shared MUI theme module (carried from 1.1.0). Set RATIFICATION_DATE.
 -->
 
 # Invoice Processing Constitution
@@ -34,6 +35,20 @@ All React and TypeScript interfaces MUST use the shared Material UI theme and fo
 ### VIII. Usable and Accessible Workflows
 Interfaces MUST make the next meaningful action easy to find, use plain and consistent language, and provide clear loading, empty, success, and error states. Errors MUST explain what happened and offer a useful recovery action where possible. Recoverable failures MUST preserve user-entered data and in-progress work. Destructive actions MUST be clearly distinguished and require confirmation when their effects are difficult to undo. Core workflows MUST support keyboard operation, visible focus, semantic labels, WCAG 2.2 AA contrast, and status communication that does not rely on color alone.
 
+### IX. Intuitive and Consistent Naming
+Names for entities, types, API resources and fields, statuses, and services MUST be understandable to an accounts-payable user or a new team member without a glossary, and MUST mean the same thing in every feature.
+
+- Prefer names that say what a thing holds or does and that cannot be confused with a sibling type (for example `ProvenanceEntry` rather than `ProvenanceRecord` next to `StructuredRecord`). Where a spec defines a domain term such as "provenance", code SHOULD use the same term so specs and code can be searched together, and the feature's data model SHOULD define it once in plain language.
+- One term per concept: an entity's type, ID field, API route, folder, user-facing messages, and spec wording MUST use the same term (for example `EvidencePackage`, `evidencePackageId`, `/api/evidence-packages`, "evidence package").
+- Reuse established domain terms from the feature briefs and existing specs. A feature MUST NOT name a new entity with a term another feature owns; referring to the owner's concept by its identifier is allowed (for example `caseId` refers to the case owned by document packet tracking). Owned terms are listed in the [feature brief index](../../docs/planning/feature-briefs/feature-brief-index.md#owned-terms).
+- Names MUST NOT imply a cardinality or ownership the model does not have (for example, do not call something "the case's file" when a case can have several).
+- Inside a feature namespace, name types by their role (`RetentionRules`); keep a feature prefix only where the bare name would collide across features (`EvidenceDocument` versus the intake source document).
+- API and JSON names MUST NOT use abbreviations (`purchase-order-commitment`, not `po-commitment`).
+- Specs and plans that introduce a new entity or API resource SHOULD state the chosen name and, where the choice is not obvious, the alternatives considered.
+- Renames MUST be applied across code, tests, contracts, and specs in the same change.
+
+Rationale: AP users, reviewers, and auditors read these names in the API and audit trail; jargon or inconsistent names slow review and cause cross-feature confusion.
+
 ## Architecture and Security Constraints
 
 The target architecture is a React and TypeScript dashboard, an ASP.NET Core API, and shared C# contracts. The API coordinates Gmail or image inputs, OCR, LLM providers, validation, and review workflows. Feature specifications and documentation MUST distinguish implemented behavior from planned components. Python may be used for bounded experiments, but production interfaces and ownership MUST be documented.
@@ -46,4 +61,4 @@ Feature specifications MUST define inputs, outputs, failure cases, validation ex
 
 This constitution governs feature specifications, plans, implementation, and reviews. Pull requests MUST identify and justify deviations from its principles. Amendments require team review and approval, a rationale, and a semantic version update: MAJOR for incompatible changes to principles, MINOR for new or materially expanded requirements, and PATCH for clarifications that do not change obligations.
 
-**Version**: 1.1.0 | **Ratified**: TODO(RATIFICATION_DATE): Set when the team formally adopts this constitution. | **Last Amended**: 2026-10-03
+**Version**: 1.2.0 | **Ratified**: TODO(RATIFICATION_DATE): Set when the team formally adopts this constitution. | **Last Amended**: 2026-10-04
