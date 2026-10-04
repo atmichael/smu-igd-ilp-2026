@@ -14,11 +14,29 @@ namespace ILP.Server.Endpoints.SourceDocuments;
 
 public static class SourceDocumentsEndpoints
 {
-    private static readonly ConcurrentDictionary<string, SourceDocumentEntry> IdempotencyCache = new();
+    // Serializes the idempotency check and save so concurrent retries cannot create two documents.
+    private static readonly object IntakeLock = new();
 
     public static void MapEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/api/source-documents", async (HttpRequest request, IDocumentContentStore contentStore, ILoggerFactory loggerFactory) =>
+        app.MapGet("/api/source-documents/{sourceDocumentId}", (string sourceDocumentId, ISourceDocumentRepository records) =>
+            records.Get(sourceDocumentId) is { } record ? Results.Ok(record.Document) : Results.NotFound())
+            .RequireAuthorization("SourceDocumentIntakePolicy");
+
+        app.MapGet("/api/source-documents/{sourceDocumentId}/pages/{pageNumber:int}",
+            (string sourceDocumentId, int pageNumber, ISourceDocumentRepository records, IDocumentContentStore contentStore) =>
+            {
+                if (records.Get(sourceDocumentId) is not { } record || pageNumber < 1 || pageNumber > record.Document.PageCount)
+                {
+                    return Results.NotFound();
+                }
+
+                var content = contentStore.Read(record.Document.SourceDocumentId, PageFileName(pageNumber));
+                return content is null ? Results.NotFound() : Results.File(content, record.Document.MediaType);
+            })
+            .RequireAuthorization("SourceDocumentIntakePolicy");
+
+        app.MapPost("/api/source-documents", async (HttpRequest request, IDocumentContentStore contentStore, ISourceDocumentRepository records, ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("SourceDocumentIntake");
             if (!request.HasFormContentType)
@@ -103,55 +121,59 @@ public static class SourceDocumentsEndpoints
 
             var pageHashes = ComputePageHashes(pages);
             var payloadHash = channel + pageHashes;
-            if (IdempotencyCache.TryGetValue(idempotencyKey, out var existing))
+
+            lock (IntakeLock)
             {
-                if (string.Equals(existing.PayloadHash, payloadHash, StringComparison.Ordinal))
+                if (records.FindByIdempotencyKey(idempotencyKey) is { } existing)
                 {
-                    return Results.Created($"/api/source-documents/{existing.Document.SourceDocumentId}", existing.Document);
+                    if (string.Equals(existing.PayloadHash, payloadHash, StringComparison.Ordinal))
+                    {
+                        return Results.Created($"/api/source-documents/{existing.Document.SourceDocumentId}", existing.Document);
+                    }
+
+                    return Results.Conflict(new ProblemDetails
+                    {
+                        Title = "Idempotency key conflict.",
+                        Detail = "The same idempotency key was reused for different payload content.",
+                        Status = StatusCodes.Status409Conflict,
+                    });
                 }
 
-                return Results.Conflict(new ProblemDetails
+                var metadata = new SourceDocumentMetadata
                 {
-                    Title = "Idempotency key conflict.",
-                    Detail = "The same idempotency key was reused for different payload content.",
-                    Status = StatusCodes.Status409Conflict,
-                });
+                    Channel = channel,
+                    Status = "received",
+                    ReceivedAt = DateTimeOffset.UtcNow,
+                    SubmittedBy = request.HttpContext.User.Identity?.Name,
+                    MediaType = "image/jpeg",
+                    PageCount = files.Count,
+                    ContentHash = $"sha256:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(pageHashes))).ToLowerInvariant()}",
+                };
+
+                try
+                {
+                    metadata.StorageLocation = contentStore.Save(
+                        metadata.SourceDocumentId,
+                        pages.Select((bytes, index) => new DocumentContentPart(PageFileName(index + 1), bytes)).ToList());
+                    records.Save(new SourceDocumentRecord(metadata, idempotencyKey, payloadHash));
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError("Source document {SourceDocumentId} could not be stored ({ExceptionType}).", metadata.SourceDocumentId, ex.GetType().Name);
+                    return Results.Problem(
+                        title: "Source document could not be stored.",
+                        detail: "No source document was created. Retry the submission with the same Idempotency-Key.",
+                        statusCode: StatusCodes.Status500InternalServerError);
+                }
+
+                logger.LogInformation("Accepted camera capture source document {SourceDocumentId} with {PageCount} pages.", metadata.SourceDocumentId, metadata.PageCount);
+
+                return Results.Created($"/api/source-documents/{metadata.SourceDocumentId}", metadata);
             }
-
-            var metadata = new SourceDocumentMetadata
-            {
-                Channel = channel,
-                Status = "received",
-                ReceivedAt = DateTimeOffset.UtcNow,
-                SubmittedBy = request.HttpContext.User.Identity?.Name,
-                MediaType = "image/jpeg",
-                PageCount = files.Count,
-                ContentHash = $"sha256:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(pageHashes))).ToLowerInvariant()}",
-            };
-
-            try
-            {
-                metadata.StorageLocation = contentStore.Save(
-                    metadata.SourceDocumentId,
-                    pages.Select((bytes, index) => new DocumentContentPart($"page-{index + 1}.jpg", bytes)).ToList());
-            }
-            catch (Exception ex)
-            {
-                logger.LogError("Source document {SourceDocumentId} could not be stored ({ExceptionType}).", metadata.SourceDocumentId, ex.GetType().Name);
-                return Results.Problem(
-                    title: "Source document could not be stored.",
-                    detail: "No source document was created. Retry the submission with the same Idempotency-Key.",
-                    statusCode: StatusCodes.Status500InternalServerError);
-            }
-
-            var entry = new SourceDocumentEntry(metadata, payloadHash);
-            IdempotencyCache[idempotencyKey] = entry;
-
-            logger.LogInformation("Accepted camera capture source document {SourceDocumentId} with {PageCount} pages.", metadata.SourceDocumentId, metadata.PageCount);
-
-            return Results.Created($"/api/source-documents/{metadata.SourceDocumentId}", metadata);
         }).RequireAuthorization("SourceDocumentIntakePolicy");
     }
+
+    private static string PageFileName(int pageNumber) => $"page-{pageNumber}.jpg";
 
     private static string ComputePageHashes(IReadOnlyList<byte[]> pages)
     {
@@ -163,6 +185,4 @@ public static class SourceDocumentsEndpoints
 
         return builder.ToString();
     }
-
-    private sealed record SourceDocumentEntry(SourceDocumentMetadata Document, string PayloadHash);
 }

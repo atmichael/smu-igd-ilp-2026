@@ -11,6 +11,9 @@ public interface IDocumentContentStore
     string Save(string sourceDocumentId, IReadOnlyList<DocumentContentPart> parts);
 
     bool Exists(string sourceDocumentId);
+
+    /// <summary>Returns one stored part, or null when the document or part does not exist.</summary>
+    byte[]? Read(string sourceDocumentId, string fileName);
 }
 
 public static class DocumentContentLocations
@@ -67,6 +70,17 @@ public sealed class FileDocumentContentStore : IDocumentContentStore
     public bool Exists(string sourceDocumentId) =>
         DocumentContentLocations.ParseId(sourceDocumentId) is { } id
         && Directory.Exists(Path.Combine(_rootPath, id.ToString("D")));
+
+    public byte[]? Read(string sourceDocumentId, string fileName)
+    {
+        if (DocumentContentLocations.ParseId(sourceDocumentId) is not { } id)
+        {
+            return null;
+        }
+
+        var path = Path.Combine(_rootPath, id.ToString("D"), Path.GetFileName(fileName));
+        return File.Exists(path) ? File.ReadAllBytes(path) : null;
+    }
 }
 
 public class InMemoryDocumentContentStore : IDocumentContentStore
@@ -86,4 +100,7 @@ public class InMemoryDocumentContentStore : IDocumentContentStore
 
     public IReadOnlyList<DocumentContentPart>? Get(string sourceDocumentId) =>
         DocumentContentLocations.ParseId(sourceDocumentId) is { } id && _documents.TryGetValue(id, out var parts) ? parts : null;
+
+    public byte[]? Read(string sourceDocumentId, string fileName) =>
+        Get(sourceDocumentId)?.FirstOrDefault(part => string.Equals(part.FileName, Path.GetFileName(fileName), StringComparison.Ordinal))?.Content;
 }

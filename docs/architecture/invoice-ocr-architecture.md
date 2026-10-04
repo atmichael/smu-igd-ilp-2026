@@ -2,7 +2,7 @@
 
 ## Purpose and status
 
-Describe the target flow for turning invoice images or PDFs into reviewed, validated data. The repository has a React camera-capture client, an ASP.NET Core source-document intake endpoint, an evidence-storage API, a mailbox collector prototype, and a .NET console prototype. Camera intake is not yet connected to OCR, LLM extraction, evidence storage, or a review workflow. Intake uses in-memory idempotency state, and sign-in is a development-only test scheme (the API does not start outside Development until Feature 17); this is a prototype, not production processing.
+Describe the target flow for turning invoice images or PDFs into reviewed, validated data. The repository has a React camera-capture client, an ASP.NET Core source-document intake endpoint, an evidence-storage API, a mailbox collector prototype, and a .NET console prototype. Camera intake is not yet connected to OCR, LLM extraction, evidence storage, or a review workflow. Intake stores originals and source-document records on local disk (see [Storage decision](#storage-decision)), and sign-in is a development-only test scheme (the API does not start outside Development until Feature 17); this is a prototype, not production processing.
 
 ## Components
 
@@ -65,6 +65,18 @@ The evidence package API (`/api/evidence-packages`, see [the contract](../../spe
 - Failed saves are recorded as `failed` (create) or leave the prior state (later operations); no success response is returned.
 - Finalized evidence is retained for the 3-year pilot default before archive, after which content and values are withheld on retrieval. Production retention must be confirmed before go-live; deletion is not automated.
 - Storage is a file-backed JSON store under `EvidenceStorage:RootPath` for the pilot. Duplicate checks are serialized within a single API instance; scaling out requires a store-level uniqueness constraint.
+
+## Storage decision
+
+Original files and metadata are stored separately, and files are never stored as database blobs.
+
+| Data | Pilot (now) | Target |
+|---|---|---|
+| Original files and derived page images (all channels) | Local folder behind `IDocumentContentStore` (`EvidenceStorage:ContentRootPath`) | Object storage (MinIO locally; S3 or Azure Blob when deployed), behind the same interface |
+| Intake source-document records and idempotency keys | JSON files (`EvidenceStorage:SourceDocumentRecordsPath`) | MySQL |
+| Evidence packages, records, provenance, audit | JSON files (`EvidenceStorage:RootPath`) | MySQL, with the schema agreed with Feature 06 (`DocumentDto`) |
+
+Metadata moves to MySQL when the review queue and multiple reviewers arrive (Feature 07). Files are served only through authorized API endpoints (`GET /api/source-documents/{id}` and `/pages/{n}`), never through public links. Encryption at rest, deletion after retention, and multi-instance storage are required before production.
 
 ## Example response
 

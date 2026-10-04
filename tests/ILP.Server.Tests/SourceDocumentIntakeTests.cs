@@ -97,6 +97,59 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
     }
 
     [Fact]
+    public async Task GetSourceDocument_ReturnsRecordAndOriginalPages()
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "reviewer");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var intake = await (await client.PostAsync("/api/source-documents", CameraCapture()))
+            .Content.ReadFromJsonAsync<SourceDocumentResponse>();
+
+        var record = await client.GetFromJsonAsync<SourceDocumentResponse>($"/api/source-documents/{intake!.SourceDocumentId}");
+        var page = await client.GetAsync($"/api/source-documents/{intake.SourceDocumentId}/pages/1");
+        var missingPage = await client.GetAsync($"/api/source-documents/{intake.SourceDocumentId}/pages/2");
+        var unknown = await client.GetAsync($"/api/source-documents/{Guid.NewGuid()}");
+        var traversal = await client.GetAsync("/api/source-documents/..%2F..%2Fsecrets/pages/1");
+
+        Assert.Equal(intake.StorageLocation, record!.StorageLocation);
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Equal("image/jpeg", page.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(JpegBytes, await page.Content.ReadAsByteArrayAsync());
+        Assert.Equal(HttpStatusCode.NotFound, missingPage.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, traversal.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetSourceDocumentPage_WithoutAuthentication_IsUnauthorized()
+    {
+        var response = await _factory.CreateClient().GetAsync($"/api/source-documents/{Guid.NewGuid()}/pages/1");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public void FileSourceDocumentRepository_KeepsRecordsAndIdempotencyKeysAcrossInstances()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"ilp-intake-{Guid.NewGuid():N}");
+        try
+        {
+            var document = new ILP.Shared.SourceDocuments.SourceDocumentMetadata { PageCount = 1 };
+            new FileSourceDocumentRepository(root).Save(new SourceDocumentRecord(document, "key-1", "hash-1"));
+
+            var reopened = new FileSourceDocumentRepository(root);
+
+            Assert.Equal(1, reopened.Get(document.SourceDocumentId)!.Document.PageCount);
+            Assert.Equal(document.SourceDocumentId, reopened.FindByIdempotencyKey("key-1")!.Document.SourceDocumentId);
+            Assert.Null(reopened.Get(@"..\..\secrets"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task PostSourceDocuments_WithLegacySourceFieldOnly_IsRejected()
     {
         var client = _factory.CreateClient();

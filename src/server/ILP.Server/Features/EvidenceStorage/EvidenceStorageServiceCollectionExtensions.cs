@@ -33,6 +33,18 @@ public static class EvidenceStorageServiceCollectionExtensions
             return new FileDocumentContentStore(Path.Combine(environment.ContentRootPath, options.ContentRootPath));
         });
 
+        services.AddSingleton<ISourceDocumentRepository>(provider =>
+        {
+            var options = configuration.GetSection(EvidenceStorageOptions.SectionName).Get<EvidenceStorageOptions>() ?? new EvidenceStorageOptions();
+            if (string.Equals(options.Provider, "InMemory", StringComparison.OrdinalIgnoreCase))
+            {
+                return new InMemorySourceDocumentRepository();
+            }
+
+            var environment = provider.GetRequiredService<IWebHostEnvironment>();
+            return new FileSourceDocumentRepository(Path.Combine(environment.ContentRootPath, options.SourceDocumentRecordsPath));
+        });
+
         services.AddSingleton<AuditTrailService>();
         services.AddSingleton<RecordChangeService>();
         services.AddSingleton<MatchOutcomeLinkService>();

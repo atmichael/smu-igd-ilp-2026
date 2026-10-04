@@ -8,7 +8,14 @@
 
 Every channel creates the same source-document record through this one endpoint; only the request parts and the channel-specific `origin` differ. Downstream features (text extraction, classification, evidence storage) never branch on the channel. Evidence storage (Feature 08) links its `EvidenceDocument` to the result through `sourceDocumentId`. Authorization is the application-wide policy supplied by Feature 17.
 
-Each submission has an `Idempotency-Key` UUID. The client reuses that key only when retrying the identical submission after an ambiguous network result. Reuse of the same key and payload returns the original source-document result; reuse with different content returns `409 Conflict`. This behavior depends on the deduplication capability planned in Feature 18.
+Each submission has an `Idempotency-Key` UUID. The client reuses that key only when retrying the identical submission after an ambiguous network result. Reuse of the same key and payload returns the original source-document result; reuse with different content returns `409 Conflict`. Idempotency keys are stored with the source-document record, so retries are recognised after an API restart; broader duplicate detection is planned in Feature 18.
+
+## Read operations
+
+Both require the same authorization as intake and return `404` for unknown or non-GUID IDs.
+
+- `GET /api/source-documents/{sourceDocumentId}` returns the source-document record (same shape as the success response).
+- `GET /api/source-documents/{sourceDocumentId}/pages/{pageNumber}` returns the original page (`1` to `pageCount`) with its `mediaType`, for human review.
 
 ## Channels
 

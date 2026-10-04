@@ -241,3 +241,12 @@ With multiple developers:
 - [X] T060 Store accepted intake pages in the content store before reporting success, return `storageLocation`, and return `500` without creating a source document when storage fails, in `src/server/ILP.Server/Endpoints/SourceDocuments/SourceDocumentsEndpoints.cs`
 - [X] T061 Fill a missing evidence `storageLocation` from the intake content referenced by `sourceDocumentId` in `src/server/ILP.Server/Features/EvidenceStorage/EvidencePackageService.cs`
 - [X] T062 Add tests for stored pages, storage failure and retry, evidence location resolution, and the file content store in `tests/ILP.Server.Tests/SourceDocumentIntakeTests.cs` and `tests/ILP.Server.Tests/EvidenceStorageTests.cs`
+
+---
+
+## Phase 10: Durable Intake Records and Review Access
+
+- [X] T063 Persist intake source-document records and idempotency keys (`ISourceDocumentRepository`, JSON files under `EvidenceStorage:SourceDocumentRecordsPath`, in-memory for tests) in `src/server/ILP.Server/Features/EvidenceStorage/SourceDocumentRepository.cs`, replacing the in-memory idempotency cache in `src/server/ILP.Server/Endpoints/SourceDocuments/SourceDocumentsEndpoints.cs`
+- [X] T064 Add authorized `GET /api/source-documents/{id}` and `GET /api/source-documents/{id}/pages/{pageNumber}` for human review, reading pages through `IDocumentContentStore.Read`
+- [X] T065 Add tests for reading records and pages, `404` for unknown or non-GUID IDs, `401` without sign-in, and the file repository across instances in `tests/ILP.Server.Tests/SourceDocumentIntakeTests.cs`
+- [X] T066 Record the storage decision (files in a folder now and object storage later, never database blobs; metadata in JSON now and MySQL with the review queue) in `plan.md` and `docs/architecture/invoice-ocr-architecture.md`

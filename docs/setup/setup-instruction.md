@@ -61,7 +61,7 @@ Run the API tests from the repository root:
 dotnet test .\tests\ILP.Server.Tests\ILP.Server.Tests.csproj
 ```
 
-The client tests mock camera APIs and do not require a physical camera. API intake keeps its idempotency state in memory and stores accepted original pages under `src/server/ILP.Server/App_Data/source-documents/` (one folder per source document). Evidence packages (`/api/evidence-packages`) are saved as one JSON file each under `src/server/ILP.Server/App_Data/evidence-store/` (gitignored). Sign-in is a development-only test scheme: send `Authorization: Test <any value>`; the API refuses to start outside the Development environment until access control (Feature 17) exists. MySQL in `setup/docker-compose.yml` is not currently used by the API. Sample requests are in `src/server/ILP.Server/ILP.Server.http`.
+The client tests mock camera APIs and do not require a physical camera. API intake stores accepted original pages under `src/server/ILP.Server/App_Data/source-documents/` (one folder per source document) and the source-document records, including idempotency keys, under `App_Data/source-document-records/`. Evidence packages (`/api/evidence-packages`) are saved as one JSON file each under `src/server/ILP.Server/App_Data/evidence-store/` (gitignored). Sign-in is a development-only test scheme: send `Authorization: Test <any value>`; the API refuses to start outside the Development environment until access control (Feature 17) exists. MySQL in `setup/docker-compose.yml` is not currently used by the API. Sample requests are in `src/server/ILP.Server/ILP.Server.http`.
 
 ## API key
 
