@@ -62,7 +62,7 @@ namespace ILP.Shared.InfoExtraction.Provider
             return doc == null ? "" : string.Join(",", doc.Choices.Select(s => s.Message.Content).ToArray());
         }
 
-        private static async Task<ChatRequestDto> GetChatRequest(string emailBody, string attachmentPath, string systemPrompt)
+        internal static async Task<ChatRequestDto> GetChatRequest(string emailBody, string attachmentPath, string systemPrompt)
         {
 
             // 1. Build email content placeholder 
@@ -90,16 +90,35 @@ namespace ILP.Shared.InfoExtraction.Provider
 
             if (!string.IsNullOrEmpty(attachmentPath) && File.Exists(attachmentPath))
             {
-                byte[] pdfBytes = await File.ReadAllBytesAsync(attachmentPath);
-                string base64Pdf = Convert.ToBase64String(pdfBytes);
-                string pdfDataUri = $"data:application/pdf;base64,{base64Pdf}";
-                var fileInfo = new AttachmentFileDto() { FileName = Path.GetFileName(attachmentPath), FileData = pdfDataUri };
-                var attachment = new ChatMessageContentDto() { Type = "file", File = fileInfo };
-                prompt.Content.Add(attachment);
+                string? mimeType = GetAttachmentMimeType(attachmentPath);
+                if (mimeType != null)
+                {
+                    byte[] attachmentBytes = await File.ReadAllBytesAsync(attachmentPath);
+                    string base64Attachment = Convert.ToBase64String(attachmentBytes);
+                    string dataUri = $"data:{mimeType};base64,{base64Attachment}";
+                    var fileInfo = new AttachmentFileDto() { FileName = Path.GetFileName(attachmentPath), FileData = dataUri };
+                    var attachment = new ChatMessageContentDto() { Type = "file", File = fileInfo };
+                    prompt.Content.Add(attachment);
+                }
             }
 
             request.Messages.Add(prompt);
             return request;
+        }
+
+        private static string? GetAttachmentMimeType(string attachmentPath)
+        {
+            return Path.GetExtension(attachmentPath).ToLowerInvariant() switch
+            {
+                ".pdf" => "application/pdf",
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".doc" => "application/msword",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".xls" => "application/vnd.ms-excel",
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                _ => null
+            };
         }
     }
 }
