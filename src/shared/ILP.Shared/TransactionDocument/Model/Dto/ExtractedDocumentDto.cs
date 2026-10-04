@@ -1,7 +1,7 @@
 namespace ILP.Shared.TransactionDocument.Model.Dto
 {
     /// <summary>Keys returned by the ExtractDocumentContent prompt; evidence records use them as their record type.</summary>
-    public static class ExtractedDocumentHeaderDto
+    public static class ExtractedDocumentDto
     {
         public const string CompanyName = "company-name";
         public const string CompanyUen = "company-uen";

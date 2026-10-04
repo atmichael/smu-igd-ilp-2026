@@ -3,7 +3,7 @@ using ILP.Shared.TransactionDocument.Model.Dto;
 namespace ILP.Shared.InfoExtraction.Parser
 {
 
-    public static class ExtractedDocumentHeaderParser
+    public static class ExtractedDocumentParser
     {
         /// <summary>Parses the prompt's "key| value" lines; "null" or blank values become null and unknown keys are ignored.</summary>
         public static IReadOnlyDictionary<string, string?> Parse(string? modelOutput)
@@ -23,7 +23,7 @@ namespace ILP.Shared.InfoExtraction.Parser
                 }
 
                 var key = line[..separator].Trim().ToLowerInvariant();
-                if (!ExtractedDocumentHeaderDto.All.Contains(key))
+                if (!ExtractedDocumentDto.All.Contains(key))
                 {
                     continue;
                 }

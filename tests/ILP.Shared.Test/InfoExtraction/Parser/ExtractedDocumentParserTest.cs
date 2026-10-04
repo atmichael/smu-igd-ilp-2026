@@ -5,7 +5,7 @@ using Xunit;
 
 namespace ILP.Shared.Test.InfoExtraction.Parser
 {
-    public class ExtractedDocumentHeaderParserTest
+    public class ExtractedDocumentParserTest
     {
         // Same shape as the "Output Format" example in Prompts/ExtractDocumentHeaderInfo.md.
         private const string SampleOutput = """
@@ -25,18 +25,18 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
         [Fact]
         public void Parse_ReadsKnownKeysAndTreatsNullAsMissing()
         {
-            var fields = ExtractedDocumentHeaderParser.Parse(SampleOutput);
+            var fields = ExtractedDocumentParser.Parse(SampleOutput);
 
-            Assert.Equal("INV-2026-00422", fields[ExtractedDocumentHeaderDto.DocumentNumber]);
-            Assert.Equal("PO-88192, DO-1002", fields[ExtractedDocumentHeaderDto.RelatedDocumentNumbers]);
-            Assert.Null(fields[ExtractedDocumentHeaderDto.CompanyTaxRegistrationNumber]);
-            Assert.Equal(ExtractedDocumentHeaderDto.All.Count, fields.Count);
+            Assert.Equal("INV-2026-00422", fields[ExtractedDocumentDto.DocumentNumber]);
+            Assert.Equal("PO-88192, DO-1002", fields[ExtractedDocumentDto.RelatedDocumentNumbers]);
+            Assert.Null(fields[ExtractedDocumentDto.CompanyTaxRegistrationNumber]);
+            Assert.Equal(ExtractedDocumentDto.All.Count, fields.Count);
         }
 
         [Fact]
         public void Parse_IgnoresUnknownKeysAndCommentary()
         {
-            var fields = ExtractedDocumentHeaderParser.Parse("Here is the result:\nfavourite-colour| blue\ntotal-amount| 10.00");
+            var fields = ExtractedDocumentParser.Parse("Here is the result:\nfavourite-colour| blue\ntotal-amount| 10.00");
 
             Assert.Equal("10.00", Assert.Single(fields).Value);
         }
@@ -62,14 +62,14 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
         [Fact]
         public void ToEvidenceDocument_CreatesOneHeaderRecordPerExtractedField()
         {
-            var fields = ExtractedDocumentHeaderParser.Parse(SampleOutput);
+            var fields = ExtractedDocumentParser.Parse(SampleOutput);
 
             var document = ExtractedDocumentMapper.ToEvidenceDocument(fields, "protected://evidence/inv.pdf", "sha256:abc", modelVersion: "gemini-2.5-flash");
 
             Assert.Equal("invoice", document.DocumentType);
             Assert.Equal("INV-2026-00422", document.SourceReference);
-            Assert.Equal(ExtractedDocumentHeaderDto.All.Count - 1, document.Records!.Count);
-            var total = Assert.Single(document.Records, record => record.RecordType == ExtractedDocumentHeaderDto.TotalAmount);
+            Assert.Equal(ExtractedDocumentDto.All.Count - 1, document.Records!.Count);
+            var total = Assert.Single(document.Records, record => record.RecordType == ExtractedDocumentDto.TotalAmount);
             Assert.Equal("document-header", total.RecordCategory);
             Assert.Equal("1308.00", total.RawValue);
             Assert.Equal("extracted", Assert.Single(total.Provenance!).EventType);

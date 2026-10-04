@@ -100,7 +100,7 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
     [Fact]
     public async Task Create_FromExtractedDocumentHeader_StoresHeaderRecordsKeyedByExtractionKeys()
     {
-        var fields = ExtractedDocumentHeaderParser.Parse("document-number| INV-77\ndocument-type| Invoice\ntotal-amount| 1308.00");
+        var fields = ExtractedDocumentParser.Parse("document-number| INV-77\ndocument-type| Invoice\ntotal-amount| 1308.00");
         var request = new CreateEvidencePackageRequest
         {
             CaseId = NewCase(),
@@ -112,7 +112,7 @@ public class EvidenceStorageTests : IClassFixture<EvidenceApiFactory>
         var document = package.GetProperty("documents")[0];
         Assert.Equal("INV-77", document.GetProperty("sourceReference").GetString());
         Assert.Contains(document.GetProperty("records").EnumerateArray(), record =>
-            record.GetProperty("recordType").GetString() == ExtractedDocumentHeaderDto.TotalAmount
+            record.GetProperty("recordType").GetString() == ExtractedDocumentDto.TotalAmount
             && record.GetProperty("recordCategory").GetString() == "document-header");
     }
 
