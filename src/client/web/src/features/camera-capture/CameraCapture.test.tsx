@@ -10,7 +10,7 @@ describe('CameraCapture', () => {
         onSubmit={() =>
           Promise.resolve({
             sourceDocumentId: 'doc-1',
-            source: 'camera-capture',
+            channel: 'camera-capture',
             pageCount: 1,
             status: 'received',
           })
@@ -31,7 +31,7 @@ describe('CameraCapture', () => {
         onSubmit={() =>
           Promise.resolve({
             sourceDocumentId: 'doc-1',
-            source: 'camera-capture',
+            channel: 'camera-capture',
             pageCount: 1,
             status: 'received',
           })
@@ -59,7 +59,7 @@ describe('CameraCapture', () => {
         onSubmit={() =>
           Promise.resolve({
             sourceDocumentId: 'doc-1',
-            source: 'camera-capture',
+            channel: 'camera-capture',
             pageCount: 1,
             status: 'received',
           })
@@ -101,7 +101,7 @@ describe('CameraCapture', () => {
         onSubmit={() =>
           Promise.resolve({
             sourceDocumentId: 'doc-1',
-            source: 'camera-capture',
+            channel: 'camera-capture',
             pageCount: 1,
             status: 'received',
           })
@@ -170,7 +170,7 @@ describe('CameraCapture', () => {
         onSubmit={() =>
           Promise.resolve({
             sourceDocumentId: 'doc-1',
-            source: 'camera-capture',
+            channel: 'camera-capture',
             pageCount: 1,
             status: 'received',
           })

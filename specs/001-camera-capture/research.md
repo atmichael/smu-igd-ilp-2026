@@ -31,7 +31,7 @@
 
 ### Submission and system boundaries
 
-**Decision**: Submit one explicit confirmation as `multipart/form-data` to the shared `POST /api/source-documents` intake contract. Include `source=camera-capture` and one to three repeated `pages` JPEG parts in accepted order. Return a source-document ID only after the shared intake/storage boundary has accepted the complete set. Camera capture does not implement a private persistence pipeline.
+**Decision**: Submit one explicit confirmation as `multipart/form-data` to the shared `POST /api/source-documents` intake contract. Include `channel=camera-capture` and one to three repeated `pages` JPEG parts in accepted order. Return a source-document ID only after the shared intake/storage boundary has accepted the complete set. Camera capture does not implement a private persistence pipeline.
 
 **Rationale**: Multipart uploads avoid base64 expansion and match ASP.NET Core's supported file-upload model. A common source-document intake contract lets camera and scanned upload converge. Durable storage is provided by Feature 08; the API boundary verifies the entire request and must not create a partial source document.
 

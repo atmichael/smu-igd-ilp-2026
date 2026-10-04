@@ -31,7 +31,7 @@ public static class SourceDocumentsEndpoints
             }
 
             var form = await request.ReadFormAsync();
-            var source = form["source"].ToString();
+            var channel = form["channel"].ToString();
             var files = form.Files.GetFiles("pages").ToList();
             var idempotencyKey = request.Headers["Idempotency-Key"].FirstOrDefault();
 
@@ -45,12 +45,13 @@ public static class SourceDocumentsEndpoints
                 });
             }
 
-            if (!string.Equals(source, "camera-capture", StringComparison.Ordinal))
+            // file-upload and mailbox are planned channels (Features 01 and 03) and are rejected until implemented.
+            if (!string.Equals(channel, SourceDocumentChannels.CameraCapture, StringComparison.Ordinal))
             {
                 return Results.BadRequest(new ProblemDetails
                 {
-                    Title = "Invalid source value.",
-                    Detail = "The source must be camera-capture.",
+                    Title = "Invalid channel value.",
+                    Detail = "The channel must be camera-capture.",
                     Status = StatusCodes.Status400BadRequest,
                 });
             }
@@ -91,7 +92,8 @@ public static class SourceDocumentsEndpoints
                 }
             }
 
-            var payloadHash = ComputePayloadHash(source, files);
+            var pageHashes = ComputePageHashes(files);
+            var payloadHash = channel + pageHashes;
             if (IdempotencyCache.TryGetValue(idempotencyKey, out var existing))
             {
                 if (string.Equals(existing.PayloadHash, payloadHash, StringComparison.Ordinal))
@@ -109,9 +111,13 @@ public static class SourceDocumentsEndpoints
 
             var metadata = new SourceDocumentMetadata
             {
-                Source = source,
-                PageCount = files.Count,
+                Channel = channel,
                 Status = "received",
+                ReceivedAt = DateTimeOffset.UtcNow,
+                SubmittedBy = request.HttpContext.User.Identity?.Name,
+                MediaType = "image/jpeg",
+                PageCount = files.Count,
+                ContentHash = $"sha256:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(pageHashes))).ToLowerInvariant()}",
             };
 
             var entry = new SourceDocumentEntry(metadata, payloadHash);
@@ -123,11 +129,10 @@ public static class SourceDocumentsEndpoints
         }).RequireAuthorization("SourceDocumentIntakePolicy");
     }
 
-    private static string ComputePayloadHash(string source, IReadOnlyList<IFormFile> files)
+    private static string ComputePageHashes(IReadOnlyList<IFormFile> files)
     {
         using var sha = SHA256.Create();
         var builder = new StringBuilder();
-        builder.Append(source);
 
         foreach (var file in files)
         {

@@ -26,7 +26,7 @@ description: "Actionable implementation tasks for camera document capture"
 
 **Purpose**: Define shared state and contract prerequisites before story implementation.
 
-- [X] T003 [P] Add source-document metadata types in `src/shared/ILP.Shared/SourceDocuments/SourceDocumentMetadata.cs` with `source=camera-capture`, server-assigned `sourceDocumentId`, `pageCount` constrained to 1-3, and `status=received`.
+- [X] T003 [P] Add source-document metadata types in `src/shared/ILP.Shared/SourceDocuments/SourceDocumentMetadata.cs` with `channel=camera-capture`, server-assigned `sourceDocumentId`, `pageCount` constrained to 1-3, and `status=received`.
 - [X] T004 [P] Implement the client capture state and transition model in `src/client/web/src/features/camera-capture/camera-capture-model.ts` using the states `idle`, `requestingPermission`, `liveCapture`, `pageReview`, `documentReview`, `submitting`, `submitted`, `recoverableError`, and `cancelled`; enforce zero to three accepted pages, one pending page, and one-based positions from 1 through 3.
 - [X] T005 Align `specs/001-camera-capture/contracts/source-document-intake.md` with the shared scanned-upload contract and the Feature 08 storage, Feature 17 authorization, and Feature 18 idempotency interfaces before implementing the endpoint; preserve one shared intake path and do not add camera-specific persistence.
 - [X] T006 [P] Configure the ASP.NET Core development CORS policy for the configured HTTPS React origin in `src/server/ILP.Server/Program.cs` and `src/server/ILP.Server/appsettings.Development.json` without allowing arbitrary origins.
@@ -39,19 +39,19 @@ description: "Actionable implementation tasks for camera document capture"
 
 **Goal**: Capture, review, order, and explicitly submit one source document containing one to three original camera images.
 
-**Independent Test**: On current stable Safari for iOS/iPadOS and Chrome on Android over HTTPS, capture one and three pages, retake/remove a page, then submit. Verify one `POST /api/source-documents` request contains the accepted JPEG pages in order with `source=camera-capture`, and a successful response returns one source-document ID. Verify cancel sends no request.
+**Independent Test**: On current stable Safari for iOS/iPadOS and Chrome on Android over HTTPS, capture one and three pages, retake/remove a page, then submit. Verify one `POST /api/source-documents` request contains the accepted JPEG pages in order with `channel=camera-capture`, and a successful response returns one source-document ID. Verify cancel sends no request.
 
 ### Tests for User Story 1
 
 - [X] T007 [P] [US1] Add client tests in `src/client/web/src/features/camera-capture/CameraCapture.test.tsx` for explicit camera start, JPEG preview, accept/retake/remove, accepted order, the three-page maximum, and confirm-versus-cancel submission behavior.
-- [X] T008 [P] [US1] Add API integration tests in `tests/ILP.Server.Tests/SourceDocumentIntakeTests.cs` for multipart source metadata, one-to-three ordered JPEG parts, server-assigned IDs, idempotent same-payload retries, and atomic rejection of invalid content/count/size without partial storage.
+- [X] T008 [P] [US1] Add API integration tests in `tests/ILP.Server.Tests/SourceDocumentIntakeTests.cs` for multipart channel metadata, one-to-three ordered JPEG parts, server-assigned IDs, idempotent same-payload retries, and atomic rejection of invalid content/count/size without partial storage.
 
 ### Implementation for User Story 1
 
 - [X] T009 [P] [US1] Implement explicit video-only camera acquisition, rear-camera preference with device fallback, still-frame JPEG `Blob` capture, and page preview in `src/client/web/src/features/camera-capture/CameraCapture.tsx`.
 - [X] T010 [US1] Implement document review in `src/client/web/src/features/camera-capture/CameraCapture.tsx` and `src/client/web/src/features/camera-capture/CameraCapture.css`; accept one to three pages, preserve accepted order, renumber one-based positions from 1 through 3 after removal, and prevent adding a fourth page until one is removed.
-- [X] T011 [P] [US1] Implement `src/client/web/src/features/camera-capture/source-document-api.ts` to send one `multipart/form-data` request after confirmation with `source=camera-capture`, repeated `pages` parts in accepted order, and one UUID `Idempotency-Key` reused only for retries of the identical payload.
-- [X] T012 [P] [US1] Implement `POST /api/source-documents` in `src/server/ILP.Server/Endpoints/SourceDocuments/SourceDocumentsEndpoints.cs`; validate exactly one source value and one to three `image/jpeg` pages by media type, image signature, order, and configured request-size limit; require the app authorization policy; delegate atomic persistence to Feature 08 and deduplication to Feature 18; return `201` with the server-assigned ID only after the full document is stored.
+- [X] T011 [P] [US1] Implement `src/client/web/src/features/camera-capture/source-document-api.ts` to send one `multipart/form-data` request after confirmation with `channel=camera-capture`, repeated `pages` parts in accepted order, and one UUID `Idempotency-Key` reused only for retries of the identical payload.
+- [X] T012 [P] [US1] Implement `POST /api/source-documents` in `src/server/ILP.Server/Endpoints/SourceDocuments/SourceDocumentsEndpoints.cs`; validate exactly one channel value and one to three `image/jpeg` pages by media type, image signature, order, and configured request-size limit; require the app authorization policy; delegate atomic persistence to Feature 08 and deduplication to Feature 18; return `201` with the server-assigned ID only after the full document is stored.
 - [X] T013 [US1] Integrate `CameraCapture` with the app shell in `src/client/web/src/App.tsx`, expose a host exit callback that returns to source selection without losing parent-owned work, and show the accepted source-document ID/status after successful submission.
 
 **Checkpoint**: P1 works end to end when the shared intake, evidence-storage, authorization, and deduplication dependencies are available; no OCR or upload-picker behavior is included.
@@ -82,6 +82,7 @@ description: "Actionable implementation tasks for camera document capture"
 **Purpose**: Verify the feature against the supported-device matrix and documented workflow.
 
 - [X] T017 [P] Run the client lint, test, and build commands plus `dotnet test .\tests\ILP.Server.Tests\ILP.Server.Tests.csproj`, execute the HTTPS device scenarios in `specs/001-camera-capture/quickstart.md`, and record device/OS/browser outcomes in that file.
+- [X] T018 Make the intake contract shared across camera, file upload, and mailbox (Constitution IX): rename the `source` field to `channel` in `src/shared/ILP.Shared/SourceDocuments/SourceDocumentMetadata.cs`, `src/server/ILP.Server/Endpoints/SourceDocuments/SourceDocumentsEndpoints.cs`, the web client, and tests; return `receivedAt`, `submittedBy`, `mediaType`, and `contentHash`; document the planned `file-upload` and `mailbox` channels and `origin` in `specs/001-camera-capture/contracts/source-document-intake.md`
 
 ---
 

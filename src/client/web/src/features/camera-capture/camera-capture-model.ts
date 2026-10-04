@@ -24,7 +24,7 @@ export interface CameraCaptureSession {
 }
 
 export interface SourceDocumentSubmissionRequest {
-  source: 'camera-capture'
+  channel: 'camera-capture'
   pages: Blob[]
   idempotencyKey: string
 }
@@ -47,7 +47,7 @@ export function buildSubmissionRequest(
   idempotencyKey = crypto.randomUUID(),
 ): SourceDocumentSubmissionRequest {
   return {
-    source: 'camera-capture',
+    channel: 'camera-capture',
     pages: pages.map((page) => page.file),
     idempotencyKey,
   }

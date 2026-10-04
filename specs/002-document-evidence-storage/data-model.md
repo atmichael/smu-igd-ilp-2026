@@ -142,7 +142,7 @@ The original invoice, purchase order, receipt, or associated source artifact ret
 | `evidencePackageId` | UUID | Parent package identifier. |
 | `sourceDocumentId` | string? | Optional reference to the intake-level source document ID. |
 | `documentType` | enum | `invoice`, `purchase-order`, `receipt`, `other-evidence`. |
-| `sourceReference` | string | Original reference from upstream source (document number, mailbox item ID, or similar). |
+| `sourceReference` | string | Business reference printed on the document (invoice, purchase-order, or receipt number); with `caseId` it drives duplicate detection. Channel identifiers such as an email message ID stay in the intake source document's `origin`. |
 | `storageLocation` | string | Protected storage path or object identifier for the original file. Required on create; withheld (`null`) when archived. |
 | `checksum` | string | Integrity hash supplied by the caller. |
 | `reviewStatus` | enum | `draft`, `pending-review`, `reviewed`, `confirmed`, `rejected`, `superseded`, `archived`. |

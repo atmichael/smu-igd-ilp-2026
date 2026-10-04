@@ -40,14 +40,18 @@ A retake replaces the pending/rejected image and must not submit the rejected bl
 
 ## SourceDocument
 
-The durable result of one confirmed capture, created by the shared intake/storage service.
+The durable result of one confirmed capture, created by the shared intake/storage service. Camera, file upload, and mailbox share this record; see the [shared intake contract](contracts/source-document-intake.md#channels).
 
 | Field | Type | Rules |
 |---|---|---|
 | `sourceDocumentId` | UUID | Assigned by the server only after accepting the complete submission. |
-| `source` | enum | `camera-capture`. |
+| `channel` | enum | `camera-capture` for this feature; `file-upload` and `mailbox` are owned by Features 01 and 03. |
 | `pages` | ordered image records | One to three original JPEG images in the order confirmed by the user. |
 | `pageCount` | integer | Must equal the number of accepted pages and be in the range 1-3. |
 | `status` | enum | `received` after successful intake; OCR and downstream states are outside this feature. |
+| `receivedAt` | timestamp | Server time the submission was accepted. |
+| `submittedBy` | string | Authenticated user name. |
+| `mediaType` | string | `image/jpeg` for camera captures. |
+| `contentHash` | string | `sha256:` hash over the accepted pages. |
 
 The shared evidence-storage feature owns persistent identifiers, storage locations, retrieval, and audit metadata. A failed or invalid submission must not create a partial `SourceDocument`.
