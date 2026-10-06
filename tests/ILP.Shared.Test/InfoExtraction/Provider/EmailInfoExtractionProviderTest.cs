@@ -1,4 +1,6 @@
+using ILP.Server.Config;
 using ILP.Shared.InfoExtraction.Provider;
+using ILP.Shared.Test.InfoExtraction.Config;
 
 namespace ILP.Shared.Test.InfoExtraction.Provider
 {
@@ -134,6 +136,14 @@ namespace ILP.Shared.Test.InfoExtraction.Provider
         [InlineData("<p>Please see attached.</p>")]
         public async Task GetDocumentContent_ReturnsEmptyWithoutAnExtractableDocument(string emailBody)
         {
+            var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(directory);
+            var contentPath = Path.Combine(directory, "content.md");
+            File.WriteAllText(contentPath, "initial prompt");
+            PromptConfig.Initialize(new TestConfiguration(new Dictionary<string, string?>
+            {
+                ["Prompts:ExtractDocumentContent"] = Path.GetRelativePath(AppContext.BaseDirectory, contentPath)
+            }));
             var result = await EmailInfoExtractionProvider.GetDocumentContent(emailBody);
 
             Assert.Empty(result);
