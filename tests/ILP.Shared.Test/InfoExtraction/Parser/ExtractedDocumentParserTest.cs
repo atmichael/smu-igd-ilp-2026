@@ -1,11 +1,11 @@
 using ILP.Shared.Evidence;
-using ILP.Shared.InfoExtraction;
-using ILP.Shared.Model.Dto;
+using ILP.Shared.InfoExtraction.Parser;
+using ILP.Shared.TransactionDocument.Model.Dto;
 using Xunit;
 
-namespace ILP.Shared.Test.InfoExtraction
+namespace ILP.Shared.Test.InfoExtraction.Parser
 {
-    public class DocumentHeaderParserTest
+    public class ExtractedDocumentParserTest
     {
         // Same shape as the "Output Format" example in Prompts/ExtractDocumentHeaderInfo.md.
         private const string SampleOutput = """
@@ -14,6 +14,7 @@ namespace ILP.Shared.Test.InfoExtraction
             company-tax-registration-number| null
             document-number| INV-2026-00422
             document-type| Invoice
+            document-date| 2026-10-04
             related-document-numbers| PO-88192, DO-1002
             subtotal| 1200.00
             subtotal-tax-rate| 0.09
@@ -24,18 +25,18 @@ namespace ILP.Shared.Test.InfoExtraction
         [Fact]
         public void Parse_ReadsKnownKeysAndTreatsNullAsMissing()
         {
-            var fields = DocumentHeaderParser.Parse(SampleOutput);
+            var fields = ExtractedDocumentParser.Parse(SampleOutput);
 
-            Assert.Equal("INV-2026-00422", fields[DocumentHeaderFields.DocumentNumber]);
-            Assert.Equal("PO-88192, DO-1002", fields[DocumentHeaderFields.RelatedDocumentNumbers]);
-            Assert.Null(fields[DocumentHeaderFields.CompanyTaxRegistrationNumber]);
-            Assert.Equal(DocumentHeaderFields.All.Count, fields.Count);
+            Assert.Equal("INV-2026-00422", fields[ExtractedDocumentDto.DocumentNumber]);
+            Assert.Equal("PO-88192, DO-1002", fields[ExtractedDocumentDto.RelatedDocumentNumbers]);
+            Assert.Null(fields[ExtractedDocumentDto.CompanyTaxRegistrationNumber]);
+            Assert.Equal(ExtractedDocumentDto.All.Count, fields.Count);
         }
 
         [Fact]
         public void Parse_IgnoresUnknownKeysAndCommentary()
         {
-            var fields = DocumentHeaderParser.Parse("Here is the result:\nfavourite-colour| blue\ntotal-amount| 10.00");
+            var fields = ExtractedDocumentParser.Parse("Here is the result:\nfavourite-colour| blue\ntotal-amount| 10.00");
 
             Assert.Equal("10.00", Assert.Single(fields).Value);
         }
@@ -61,14 +62,14 @@ namespace ILP.Shared.Test.InfoExtraction
         [Fact]
         public void ToEvidenceDocument_CreatesOneHeaderRecordPerExtractedField()
         {
-            var fields = DocumentHeaderParser.Parse(SampleOutput);
+            var fields = ExtractedDocumentParser.Parse(SampleOutput);
 
             var document = ExtractedDocumentMapper.ToEvidenceDocument(fields, "protected://evidence/inv.pdf", "sha256:abc", modelVersion: "gemini-2.5-flash");
 
             Assert.Equal("invoice", document.DocumentType);
             Assert.Equal("INV-2026-00422", document.SourceReference);
-            Assert.Equal(DocumentHeaderFields.All.Count - 1, document.Records!.Count);
-            var total = Assert.Single(document.Records, record => record.RecordType == DocumentHeaderFields.TotalAmount);
+            Assert.Equal(ExtractedDocumentDto.All.Count - 1, document.Records!.Count);
+            var total = Assert.Single(document.Records, record => record.RecordType == ExtractedDocumentDto.TotalAmount);
             Assert.Equal("document-header", total.RecordCategory);
             Assert.Equal("1308.00", total.RawValue);
             Assert.Equal("extracted", Assert.Single(total.Provenance!).EventType);
