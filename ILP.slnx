@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/client/">
+    <Project Path="src/client/windows-console/ILP.Console/ILP.Console.csproj" />
+  </Folder>
+  <Folder Name="/server/">
+    <Project Path="src/server/ILP.Collector/ILP.Collector.csproj" Id="08d170c0-f57a-4bf3-9c9b-887b0bb33e27" />
+    <Project Path="src/server/ILP.Server/ILP.Server.csproj" />
+    <Project Path="tests/ILP.Server.Tests/ILP.Server.Tests.csproj" />
+  </Folder>
+  <Folder Name="/shared/">
+    <Project Path="src/shared/ILP.Shared/ILP.Shared.csproj" />
+    <Project Path="tests/ILP.Shared.Test/ILP.Shared.Test.csproj" />
+  </Folder>
+</Solution>
