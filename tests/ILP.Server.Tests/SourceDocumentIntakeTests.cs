@@ -140,8 +140,11 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
             new FileSourceDocumentRepository(root).Save(new SourceDocumentPersistenceRecord(document, "key-1", "hash-1"));
 
             var reopened = new FileSourceDocumentRepository(root);
+            var storedRecord = reopened.Get(document.SourceDocumentId)!;
 
-            Assert.Equal(1, reopened.Get(document.SourceDocumentId)!.Document.PageCount);
+            Assert.Equal(1, storedRecord.Document.PageCount);
+            Assert.Equal("key-1", storedRecord.IdempotencyKey);
+            Assert.Equal("hash-1", storedRecord.PayloadHash);
             Assert.Equal(document.SourceDocumentId, reopened.FindByIdempotencyKey("key-1")!.Document.SourceDocumentId);
             Assert.Null(reopened.Get(@"..\..\secrets"));
         }
