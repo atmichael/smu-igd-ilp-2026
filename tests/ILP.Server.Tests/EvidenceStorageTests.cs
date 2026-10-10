@@ -7,8 +7,8 @@ using System.Text.Json.Nodes;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Shared.Evidence;
 using ILP.Shared.InfoExtraction.Parser;
-using ILP.Shared.TransactionDocument.Model.Constant;
-using ILP.Shared.TransactionDocument.Model.Dto;
+using ILP.Shared.TransactionDocument.Constant;
+using ILP.Shared.TransactionDocument.Dto;
 using Xunit;
 
 namespace ILP.Server.Tests;

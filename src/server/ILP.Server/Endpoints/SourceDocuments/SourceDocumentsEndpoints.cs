@@ -135,7 +135,7 @@ public static class SourceDocumentsEndpoints
                 {
                     // Not cancelled with the request, so a started save either completes or rolls back.
                     metadata.StorageLocation = await contentStore.SaveAsync(metadata.SourceDocumentId, intake.Parts, CancellationToken.None);
-                    records.Save(new SourceDocumentRecord(metadata, idempotencyKey, payloadHash));
+                    records.Save(new SourceDocumentPersistenceRecord(metadata, idempotencyKey, payloadHash));
                 }
                 catch (Exception ex)
                 {

@@ -1,7 +1,7 @@
 using ILP.Shared.Evidence;
 using ILP.Shared.InfoExtraction.Parser;
-using ILP.Shared.TransactionDocument.Model.Constant;
-using ILP.Shared.TransactionDocument.Model.Dto;
+using ILP.Shared.TransactionDocument.Constant;
+using ILP.Shared.TransactionDocument.Dto;
 using Xunit;
 
 namespace ILP.Shared.Test.InfoExtraction.Parser
@@ -45,6 +45,8 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             Assert.Equal("201509876K", company.UEN);
             Assert.Equal(string.Empty, company.TaxRegistrationNumber);
             var documentInfo = fields.GetDocumentInfo();
+            Assert.Equal("ACME LOGISTICS PTE LTD", documentInfo.Company.Name);
+            Assert.Equal("201509876K", documentInfo.Company.UEN);
             Assert.Equal("INV-2026-00422", documentInfo.RefNumber);
             Assert.Equal("Invoice", documentInfo.TypeCode);
             Assert.Equal(new DateTime(2026, 10, 4), documentInfo.SentDate);
@@ -53,7 +55,7 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             Assert.Equal(0.09m, documentInfo.SubtotalTaxRate);
             Assert.Equal(108.00m, documentInfo.SubtotalTaxAmount);
             Assert.Equal(1308.00m, documentInfo.TotalAmount);
-            var items = fields.GetLineItems();
+            var items = documentInfo.DocumentItems;
             Assert.Equal(2, items.Count);
             var item = items[0];
             Assert.Equal(1, item.SerialNumber);
