@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="TransactionDocument\Model\Enum\" />
+    <Folder Include="TransactionDocument\Enum\" />
   </ItemGroup>
 
   <ItemGroup>

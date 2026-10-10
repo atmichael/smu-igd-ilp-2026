@@ -1,4 +1,4 @@
-using ILP.Shared.TransactionDocument.Model.Dto;
+using ILP.Shared.TransactionDocument.Dto;
 using System.Globalization;
 
 namespace ILP.Shared.InfoExtraction.Parser
