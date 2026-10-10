@@ -137,7 +137,7 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         try
         {
             var document = new ILP.Shared.SourceDocuments.SourceDocumentMetadata { PageCount = 1 };
-            new FileSourceDocumentRepository(root).Save(new SourceDocumentRecord(document, "key-1", "hash-1"));
+            new FileSourceDocumentRepository(root).Save(new SourceDocumentPersistenceRecord(document, "key-1", "hash-1"));
 
             var reopened = new FileSourceDocumentRepository(root);
 

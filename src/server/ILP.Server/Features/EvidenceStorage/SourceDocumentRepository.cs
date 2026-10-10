@@ -4,17 +4,14 @@ using ILP.Shared.SourceDocuments;
 
 namespace ILP.Server.Features.EvidenceStorage;
 
-/// <summary>An accepted intake submission plus the idempotency data needed to recognise retries after a restart.</summary>
-public sealed record SourceDocumentRecord(SourceDocumentMetadata Document, string IdempotencyKey, string PayloadHash);
-
 /// <summary>Durable intake records; the original files themselves live in <see cref="IDocumentContentStore"/>.</summary>
 public interface ISourceDocumentRepository
 {
-    SourceDocumentRecord? Get(string sourceDocumentId);
+    SourceDocumentPersistenceRecord? Get(string sourceDocumentId);
 
-    SourceDocumentRecord? FindByIdempotencyKey(string idempotencyKey);
+    SourceDocumentPersistenceRecord? FindByIdempotencyKey(string idempotencyKey);
 
-    void Save(SourceDocumentRecord record);
+    void Save(SourceDocumentPersistenceRecord record);
 }
 
 public sealed class FileSourceDocumentRepository : ISourceDocumentRepository
@@ -28,19 +25,19 @@ public sealed class FileSourceDocumentRepository : ISourceDocumentRepository
         Directory.CreateDirectory(_rootPath);
     }
 
-    public SourceDocumentRecord? Get(string sourceDocumentId)
+    public SourceDocumentPersistenceRecord? Get(string sourceDocumentId)
     {
         var path = ResolvePath(sourceDocumentId);
         return path is not null && File.Exists(path) ? Read(path) : null;
     }
 
     // Pilot scale: a linear scan is acceptable until intake records move to the database.
-    public SourceDocumentRecord? FindByIdempotencyKey(string idempotencyKey) =>
+    public SourceDocumentPersistenceRecord? FindByIdempotencyKey(string idempotencyKey) =>
         Directory.EnumerateFiles(_rootPath, "*.json")
             .Select(Read)
             .FirstOrDefault(record => string.Equals(record.IdempotencyKey, idempotencyKey, StringComparison.Ordinal));
 
-    public void Save(SourceDocumentRecord record)
+    public void Save(SourceDocumentPersistenceRecord record)
     {
         var path = ResolvePath(record.Document.SourceDocumentId)
             ?? throw new InvalidOperationException("Source document identifiers must be GUIDs.");
@@ -53,20 +50,20 @@ public sealed class FileSourceDocumentRepository : ISourceDocumentRepository
     private string? ResolvePath(string sourceDocumentId) =>
         DocumentContentLocations.ParseId(sourceDocumentId) is { } id ? Path.Combine(_rootPath, $"{id:D}.json") : null;
 
-    private static SourceDocumentRecord Read(string path) =>
-        JsonSerializer.Deserialize<SourceDocumentRecord>(File.ReadAllText(path), JsonOptions)
+    private static SourceDocumentPersistenceRecord Read(string path) =>
+        JsonSerializer.Deserialize<SourceDocumentPersistenceRecord>(File.ReadAllText(path), JsonOptions)
             ?? throw new InvalidDataException("Source document record file is empty.");
 }
 
 public sealed class InMemorySourceDocumentRepository : ISourceDocumentRepository
 {
-    private readonly ConcurrentDictionary<string, SourceDocumentRecord> _records = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, SourceDocumentPersistenceRecord> _records = new(StringComparer.OrdinalIgnoreCase);
 
-    public SourceDocumentRecord? Get(string sourceDocumentId) =>
+    public SourceDocumentPersistenceRecord? Get(string sourceDocumentId) =>
         _records.TryGetValue(sourceDocumentId, out var record) ? record : null;
 
-    public SourceDocumentRecord? FindByIdempotencyKey(string idempotencyKey) =>
+    public SourceDocumentPersistenceRecord? FindByIdempotencyKey(string idempotencyKey) =>
         _records.Values.FirstOrDefault(record => string.Equals(record.IdempotencyKey, idempotencyKey, StringComparison.Ordinal));
 
-    public void Save(SourceDocumentRecord record) => _records[record.Document.SourceDocumentId] = record;
+    public void Save(SourceDocumentPersistenceRecord record) => _records[record.Document.SourceDocumentId] = record;
 }
