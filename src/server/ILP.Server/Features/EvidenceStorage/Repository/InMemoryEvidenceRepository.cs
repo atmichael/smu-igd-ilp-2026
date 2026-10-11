@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 using ILP.Shared.Evidence;
 
-namespace ILP.Server.Features.EvidenceStorage;
+namespace ILP.Server.Features.EvidenceStorage.Repository;
 
 /// <summary>Non-durable repository for tests; stores serialized snapshots to mirror the file store's copy semantics.</summary>
 public class InMemoryEvidenceRepository : IEvidenceRepository

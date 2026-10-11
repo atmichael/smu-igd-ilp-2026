@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ILP.Server.Features.EvidenceStorage;
+using ILP.Server.Features.EvidenceStorage.Repository;
+using ILP.Shared.SourceDocuments.Dto;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -136,8 +138,8 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         var root = Path.Combine(Path.GetTempPath(), $"ilp-intake-{Guid.NewGuid():N}");
         try
         {
-            var document = new ILP.Shared.SourceDocuments.SourceDocumentMetadata { PageCount = 1 };
-            new FileSourceDocumentRepository(root).Save(new SourceDocumentPersistenceRecord(document, "key-1", "hash-1"));
+            var document = new SourceDocumentMetadataDto { PageCount = 1 };
+            new FileSourceDocumentRepository(root).Save(new SourceDocumentPersistenceDto(document, "key-1", "hash-1"));
 
             var reopened = new FileSourceDocumentRepository(root);
             var storedRecord = reopened.Get(document.SourceDocumentId)!;

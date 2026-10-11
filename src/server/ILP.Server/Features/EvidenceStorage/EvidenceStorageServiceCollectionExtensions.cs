@@ -1,3 +1,6 @@
+using ILP.Server.Features.EvidenceStorage.Repository;
+using ILP.Server.Features.EvidenceStorage.Service;
+
 namespace ILP.Server.Features.EvidenceStorage;
 
 public static class EvidenceStorageServiceCollectionExtensions

@@ -1,4 +1,5 @@
 using ILP.Shared.Evidence;
+using ILP.Shared.InfoExtraction.Model.Dto;
 using ILP.Shared.InfoExtraction.Parser;
 using ILP.Shared.TransactionDocument.Constant;
 using ILP.Shared.TransactionDocument.Dto;

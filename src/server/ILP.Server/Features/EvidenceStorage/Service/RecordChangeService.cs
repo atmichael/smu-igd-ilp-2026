@@ -1,6 +1,7 @@
+using ILP.Server.Features.EvidenceStorage.Exceptions;
 using ILP.Shared.Evidence;
 
-namespace ILP.Server.Features.EvidenceStorage;
+namespace ILP.Server.Features.EvidenceStorage.Service;
 
 /// <summary>Applies append-only value and status changes to records; prior values remain in the record's provenance.</summary>
 public sealed class RecordChangeService

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using ILP.Shared.Evidence;
 
-namespace ILP.Server.Features.EvidenceStorage;
+namespace ILP.Server.Features.EvidenceStorage.Repository;
 
 /// <summary>Durable repository persisting one JSON document per evidence package with atomic replace-on-write.</summary>
 public sealed class FileEvidenceRepository : IEvidenceRepository

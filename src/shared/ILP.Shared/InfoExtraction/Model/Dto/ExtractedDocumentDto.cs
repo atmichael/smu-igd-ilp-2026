@@ -1,8 +1,9 @@
 using ILP.Shared.TransactionDocument.Constant;
+using ILP.Shared.TransactionDocument.Dto;
 using System.Collections;
 using System.Globalization;
 
-namespace ILP.Shared.TransactionDocument.Dto
+namespace ILP.Shared.InfoExtraction.Model.Dto
 {
     /// <summary>Keys and values returned by the ExtractDocumentContent prompt.</summary>
     public class ExtractedDocumentDto : IReadOnlyDictionary<string, string?>

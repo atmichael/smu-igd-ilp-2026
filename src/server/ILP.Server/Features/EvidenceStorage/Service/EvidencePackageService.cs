@@ -1,6 +1,8 @@
+using ILP.Server.Features.EvidenceStorage.Exceptions;
+using ILP.Server.Features.EvidenceStorage.Repository;
 using ILP.Shared.Evidence;
 
-namespace ILP.Server.Features.EvidenceStorage;
+namespace ILP.Server.Features.EvidenceStorage.Service;
 
 /// <summary>
 /// Orchestrates evidence package lifecycle. Writes are serialized so duplicate checks and saves are atomic within this process;

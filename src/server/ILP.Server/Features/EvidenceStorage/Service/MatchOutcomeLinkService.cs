@@ -1,6 +1,7 @@
+using ILP.Server.Features.EvidenceStorage.Exceptions;
 using ILP.Shared.Evidence;
 
-namespace ILP.Server.Features.EvidenceStorage;
+namespace ILP.Server.Features.EvidenceStorage.Service;
 
 /// <summary>Links a match decision made elsewhere to the evidence it relied on; it does not evaluate matching rules.</summary>
 public sealed class MatchOutcomeLinkService

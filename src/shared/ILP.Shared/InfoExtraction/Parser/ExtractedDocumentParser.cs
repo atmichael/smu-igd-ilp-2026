@@ -1,3 +1,4 @@
+using ILP.Shared.InfoExtraction.Model.Dto;
 using ILP.Shared.TransactionDocument.Dto;
 using System.Globalization;
 

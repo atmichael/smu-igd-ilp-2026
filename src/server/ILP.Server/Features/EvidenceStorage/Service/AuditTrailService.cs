@@ -1,6 +1,6 @@
 using ILP.Shared.Evidence;
 
-namespace ILP.Server.Features.EvidenceStorage;
+namespace ILP.Server.Features.EvidenceStorage.Service;
 
 /// <summary>Appends server-generated audit events; events are never edited or removed once added.</summary>
 public sealed class AuditTrailService

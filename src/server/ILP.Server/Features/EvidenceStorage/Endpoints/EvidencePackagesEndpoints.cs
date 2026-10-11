@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using ILP.Server.Features.EvidenceStorage;
+using ILP.Server.Features.EvidenceStorage.Exceptions;
+using ILP.Server.Features.EvidenceStorage.Service;
 using ILP.Shared.Evidence;
 using Microsoft.AspNetCore.Mvc;
 
-namespace ILP.Server.Endpoints.EvidencePackages;
+namespace ILP.Server.Features.EvidenceStorage.Endpoints;
 
 public static class EvidencePackagesEndpoints
 {
