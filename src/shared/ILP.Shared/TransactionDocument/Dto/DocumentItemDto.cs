@@ -1,4 +1,4 @@
-﻿namespace ILP.Shared.TransactionDocument.Model.Dto
+namespace ILP.Shared.TransactionDocument.Dto
 {
     public class DocumentItemDto
     {

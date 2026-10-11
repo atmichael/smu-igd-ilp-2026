@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <Folder Include="Config\" />
+    <Folder Include="Endpoints\EvidencePackages\" />
+    <Folder Include="Endpoints\SourceDocuments\" />
   </ItemGroup>
 
 </Project>

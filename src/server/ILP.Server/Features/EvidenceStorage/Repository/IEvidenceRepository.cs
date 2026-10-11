@@ -1,6 +1,6 @@
 using ILP.Shared.Evidence;
 
-namespace ILP.Server.Features.EvidenceStorage;
+namespace ILP.Server.Features.EvidenceStorage.Repository;
 
 /// <summary>Durable store for evidence packages. Implementations return detached copies so callers cannot mutate stored state without <see cref="Save"/>.</summary>
 public interface IEvidenceRepository

@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ILP.Shared.TransactionDocument.Model.Dto
+namespace ILP.Shared.TransactionDocument.Dto
 {
     public class DocumentDto
     {
         public long Id { get; private set; }
         public string RefNumber { get; private set; }
         public string TypeCode { get; private set; }
+        public CompanyDto Company { get; private set; } = new(string.Empty, string.Empty);
         public DateTime SentDate { get; private set; }
         public decimal TotalAmount { get; private set; }
         public string? RelatedDocumentNumbers { get; private set; }
@@ -33,11 +34,13 @@ namespace ILP.Shared.TransactionDocument.Model.Dto
             string? relatedDocumentNumbers = null,
             decimal subtotal = 0m,
             decimal subtotalTaxRate = 0m,
-            decimal subtotalTaxAmount = 0m)
+            decimal subtotalTaxAmount = 0m,
+            CompanyDto? company = null)
         {
             Id = id;
             RefNumber = refNumber;
             TypeCode = typeCode;
+            Company = company ?? new CompanyDto(string.Empty, string.Empty);
             SentDate = sentDate;
             TotalAmount = totalAmount;
             RelatedDocumentNumbers = relatedDocumentNumbers;

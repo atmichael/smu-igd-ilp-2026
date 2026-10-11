@@ -1,4 +1,4 @@
-namespace ILP.Shared.TransactionDocument.Model.Constant
+namespace ILP.Shared.TransactionDocument.Constant
 {
     public static class ExtractedDocFieldNames
     {

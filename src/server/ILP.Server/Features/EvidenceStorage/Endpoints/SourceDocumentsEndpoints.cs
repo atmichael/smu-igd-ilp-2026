@@ -1,11 +1,14 @@
 using System.Security.Cryptography;
 using System.Text;
 using ILP.Server.Features.EvidenceStorage;
+using ILP.Server.Features.EvidenceStorage.Repository;
 using ILP.Shared.SourceDocuments;
+using ILP.Shared.SourceDocuments.Constant;
+using ILP.Shared.SourceDocuments.Dto;
 using Microsoft.AspNetCore.Mvc;
 using UglyToad.PdfPig;
 
-namespace ILP.Server.Endpoints.SourceDocuments;
+namespace ILP.Server.Features.EvidenceStorage.Endpoints;
 
 public static class SourceDocumentsEndpoints
 {
@@ -120,7 +123,7 @@ public static class SourceDocumentsEndpoints
                     });
                 }
 
-                var metadata = new SourceDocumentMetadata
+                var metadata = new SourceDocumentMetadataDto
                 {
                     Channel = channel,
                     Status = "received",
@@ -135,7 +138,7 @@ public static class SourceDocumentsEndpoints
                 {
                     // Not cancelled with the request, so a started save either completes or rolls back.
                     metadata.StorageLocation = await contentStore.SaveAsync(metadata.SourceDocumentId, intake.Parts, CancellationToken.None);
-                    records.Save(new SourceDocumentRecord(metadata, idempotencyKey, payloadHash));
+                    records.Save(new SourceDocumentPersistenceDto(metadata, idempotencyKey, payloadHash));
                 }
                 catch (Exception ex)
                 {

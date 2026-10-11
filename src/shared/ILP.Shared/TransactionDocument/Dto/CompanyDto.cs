@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace ILP.Shared.TransactionDocument.Model.Dto
+namespace ILP.Shared.TransactionDocument.Dto
 {
     public class CompanyDto
     {

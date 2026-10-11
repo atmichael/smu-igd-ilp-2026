@@ -17,10 +17,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="TransactionDocument\Model\Enum\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <InternalsVisibleTo Include="ILP.Shared.Test" />
   </ItemGroup>
 
