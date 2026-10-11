@@ -1,5 +1,5 @@
-using ILP.Shared.TransactionDocument.Model.Constant;
-using ILP.Shared.TransactionDocument.Model.Dto;
+using ILP.Shared.TransactionDocument.Constant;
+using ILP.Shared.TransactionDocument.Dto;
 
 namespace ILP.Shared.Evidence;
 
