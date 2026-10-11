@@ -4,6 +4,8 @@ using System.Text.Encodings.Web;
 using ILP.Server.Config;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Server.Features.EvidenceStorage.Endpoints;
+using ILP.Server.Features.InboxMonitoring.Endpoints;
+using ILP.Shared.InboxMonitoring;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -28,6 +30,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
     });
 
+    options.AddPolicy(InboxSyncEndpoints.AuthorizationPolicy, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+    });
+
     options.AddPolicy(EvidenceStorageServiceCollectionExtensions.AuthorizationPolicy, policy =>
     {
         policy.RequireAuthenticatedUser();
@@ -35,6 +42,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddEvidenceStorage(builder.Configuration);
+builder.Services.AddInboxMonitoring(builder.Configuration);
 
 builder.Services.AddCors(options =>
 {
@@ -67,6 +75,7 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapEndpoints();
 app.MapEvidencePackagesEndpoints();
+app.MapInboxSyncEndpoints();
 
 app.Run();
 

@@ -18,6 +18,7 @@ public sealed class EvidenceApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("EvidenceStorage:Provider", "InMemory");
+        builder.UseSetting("InboxMonitoring:Enabled", "false");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<TimeProvider>();
