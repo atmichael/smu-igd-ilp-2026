@@ -6,6 +6,8 @@ using System.Text.Json;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Server.Features.EvidenceStorage.Endpoints;
 using ILP.Server.Features.EvidenceStorage.Repository;
+using ILP.Shared.InboxMonitoring.Abstraction;
+using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.SourceDocuments.Constant;
 using ILP.Shared.SourceDocuments.Dto;
 using Microsoft.AspNetCore.Builder;
@@ -61,6 +63,74 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         var stored = Assert.Single(_factory.Content.Get(payload.SourceDocumentId)!);
         Assert.Equal("page-1.jpg", stored.FileName);
         Assert.Equal(jpegBytes, stored.Content);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_WhenEmailRoutingEnabled_SendsCameraPagesAsAttachments()
+    {
+        var sender = new FakeInboxMessageSender();
+        using var client = EmailEnabledClient(sender);
+
+        var response = await client.PostAsync("/api/source-documents", CameraCapture(JpegBytes, JpegBytes));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var metadata = await response.Content.ReadFromJsonAsync<SourceDocumentResponse>();
+        var email = Assert.Single(sender.SentEmails);
+        Assert.NotNull(metadata);
+        Assert.Equal("email://sent", metadata.StorageLocation);
+        Assert.Equal("intake@example.com", email.Recipient);
+        Assert.Equal("Camera Capture 261004-090000", email.Subject);
+        Assert.Equal("Please refer to attachment", email.Body);
+        Assert.Collection(email.Attachments,
+            first =>
+            {
+                Assert.Equal("page-1.jpg", first.FileName);
+                Assert.Equal(JpegBytes, first.Content);
+            },
+            second =>
+            {
+                Assert.Equal("page-2.jpg", second.FileName);
+                Assert.Equal(JpegBytes, second.Content);
+            });
+        Assert.Null(_factory.Content.Get(metadata.SourceDocumentId));
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_WhenEmailRoutingEnabled_SendsUploadAsAttachment()
+    {
+        var sender = new FakeInboxMessageSender();
+        using var client = EmailEnabledClient(sender);
+
+        var response = await client.PostAsync("/api/source-documents", FileUpload(JpegBytes, "image/jpeg", "uploaded image.jpg"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var metadata = await response.Content.ReadFromJsonAsync<SourceDocumentResponse>();
+        var email = Assert.Single(sender.SentEmails);
+        var attachment = Assert.Single(email.Attachments);
+        Assert.NotNull(metadata);
+        Assert.Equal("email://sent", metadata.StorageLocation);
+        Assert.Equal("File Upload 261004-090000", email.Subject);
+        Assert.Equal("uploaded image.jpg", attachment.FileName);
+        Assert.Equal("image/jpeg", attachment.ContentType);
+        Assert.Equal(JpegBytes, attachment.Content);
+        Assert.Null(_factory.Content.Get(metadata.SourceDocumentId));
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_WhenEmailRoutingEnabledAndRetried_DoesNotSendDuplicateEmail()
+    {
+        var sender = new FakeInboxMessageSender();
+        using var client = EmailEnabledClient(sender);
+
+        var firstResponse = await client.PostAsync("/api/source-documents", CameraCapture());
+        var first = await firstResponse.Content.ReadFromJsonAsync<SourceDocumentResponse>();
+        var retryResponse = await client.PostAsync("/api/source-documents", CameraCapture());
+        var retry = await retryResponse.Content.ReadFromJsonAsync<SourceDocumentResponse>();
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, retryResponse.StatusCode);
+        Assert.Equal(first!.SourceDocumentId, retry!.SourceDocumentId);
+        Assert.Single(sender.SentEmails);
     }
 
     [Fact]
@@ -705,6 +775,23 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         return client;
     }
 
+    private HttpClient EmailEnabledClient(FakeInboxMessageSender sender)
+    {
+        var client = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("InboxMonitoring:SendSourceDocumentsToEmail", "true");
+            builder.UseSetting("InboxMonitoring:EmailAddress", "intake@example.com");
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IInboxMessageSender>();
+                services.AddSingleton<IInboxMessageSender>(sender);
+            });
+        }).CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "camera-capture");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        return client;
+    }
+
     private static MultipartFormDataContent CameraCapture(params byte[][] pages)
     {
         var content = new MultipartFormDataContent();
@@ -738,6 +825,28 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
                 ? throw new IOException("Simulated storage failure.")
                 : base.SaveAsync(sourceDocumentId, parts, cancellationToken);
     }
+
+    private sealed class FakeInboxMessageSender : IInboxMessageSender
+    {
+        public List<SentEmail> SentEmails { get; } = [];
+
+        public Task SendAttachmentsAsync(
+            string recipient,
+            string subject,
+            string body,
+            IReadOnlyList<EmailAttachmentDto> attachments,
+            CancellationToken cancellationToken = default)
+        {
+            SentEmails.Add(new SentEmail(recipient, subject, body, attachments));
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed record SentEmail(
+        string Recipient,
+        string Subject,
+        string Body,
+        IReadOnlyList<EmailAttachmentDto> Attachments);
 
     private sealed class SourceDocumentResponse
     {

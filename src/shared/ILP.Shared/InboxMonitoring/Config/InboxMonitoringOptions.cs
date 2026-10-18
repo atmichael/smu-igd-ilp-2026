@@ -10,6 +10,8 @@ public sealed class InboxMonitoringOptions
 
     public string EmailAddress { get; set; } = "";
 
+    public bool SendSourceDocumentsToEmail { get; set; }
+
     public string ClientSecretPath { get; set; } = "";
 
     public string TokenStorePath { get; set; } = "token_store";
