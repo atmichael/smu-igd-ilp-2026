@@ -15,6 +15,7 @@ public static class SourceDocumentsEndpoints
     private const string JpegMediaType = "image/jpeg";
     private const string PngMediaType = "image/png";
     private const string PdfMediaType = "application/pdf";
+    private static readonly string FileUploadLimitText = $"{SourceDocumentLimits.FileUploadMaxBytes / (1024 * 1024)} MB";
 
     private static readonly Dictionary<string, string> FileExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -26,7 +27,7 @@ public static class SourceDocumentsEndpoints
     // Serializes the idempotency check and save so concurrent retries cannot create two documents.
     private static readonly SemaphoreSlim IntakeGate = new(1, 1);
 
-    private sealed record IntakeContent(string MediaType, int PageCount, IReadOnlyList<DocumentContentPart> Parts);
+    private sealed record IntakeContent(string MediaType, int PageCount, IReadOnlyList<DocumentContentPart> Parts, string? OriginalFileName = null);
 
     public static void MapEndpoints(this IEndpointRouteBuilder app)
     {
@@ -81,7 +82,17 @@ public static class SourceDocumentsEndpoints
                 });
             }
 
-            var form = await request.ReadFormAsync();
+            IFormCollection form;
+            try
+            {
+                form = await request.ReadFormAsync();
+            }
+            catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+            {
+                // The channel is not known yet, so the message names the upload limit generally.
+                return PayloadTooLarge($"The submission is too large. A file upload is limited to {FileUploadLimitText}.");
+            }
+
             var channel = form["channel"].ToString();
             var idempotencyKey = request.Headers["Idempotency-Key"].FirstOrDefault();
 
@@ -132,6 +143,9 @@ public static class SourceDocumentsEndpoints
                     MediaType = intake.MediaType,
                     PageCount = intake.PageCount,
                     ContentHash = $"sha256:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(pageHashes))).ToLowerInvariant()}",
+                    Origin = intake.OriginalFileName is null
+                        ? null
+                        : new SourceDocumentOriginDto { Upload = new UploadOriginDto { OriginalFileName = intake.OriginalFileName } },
                 };
 
                 try
@@ -197,6 +211,17 @@ public static class SourceDocumentsEndpoints
             return (null, BadRequest("Invalid file count.", "A file-upload source document must include exactly one file."));
         }
 
+        if (files[0].Length == 0)
+        {
+            return (null, BadRequest("Empty file.", "Choose a file that is not empty."));
+        }
+
+        // Checked before the file is copied into memory; this limit applies to file-upload only.
+        if (files[0].Length > SourceDocumentLimits.FileUploadMaxBytes)
+        {
+            return (null, PayloadTooLarge($"The file is too large. The limit is {FileUploadLimitText}."));
+        }
+
         var declared = files[0].ContentType;
         if (string.IsNullOrEmpty(declared) || !FileExtensions.ContainsKey(declared))
         {
@@ -216,7 +241,8 @@ public static class SourceDocumentsEndpoints
             return (null, UnsupportedMediaType("Unreadable PDF.", "The PDF could not be read. Upload an unencrypted, undamaged PDF."));
         }
 
-        return (new IntakeContent(mediaType!, pageCount, [new DocumentContentPart(SingleFileName(mediaType!), content, mediaType!)]), null);
+        return (new IntakeContent(mediaType!, pageCount, [new DocumentContentPart(SingleFileName(mediaType!), content, mediaType!)],
+            OriginalFileNameSanitizer.Sanitize(files[0].FileName)), null);
     }
 
     private static string? DetectMediaType(ReadOnlySpan<byte> content) =>
@@ -258,6 +284,9 @@ public static class SourceDocumentsEndpoints
 
     private static IResult UnsupportedMediaType(string title, string detail) =>
         Results.Problem(title: title, detail: detail, statusCode: StatusCodes.Status415UnsupportedMediaType);
+
+    private static IResult PayloadTooLarge(string detail) =>
+        Results.Problem(title: "Payload too large.", detail: detail, statusCode: StatusCodes.Status413PayloadTooLarge);
 
     private static string ComputePageHashes(IReadOnlyList<DocumentContentPart> parts)
     {

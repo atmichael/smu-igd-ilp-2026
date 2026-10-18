@@ -1,6 +1,6 @@
 # Source Document Intake Contract
 
-**Status**: Shared intake contract for every document channel. `camera-capture` (Feature 02) and the server side of `file-upload` (Feature 01; the upload screen is not built yet) are implemented; `mailbox` (Feature 03) is planned and currently rejected with `400`.
+**Status**: Shared intake contract for every document channel. `camera-capture` (Feature 02) and `file-upload` (Feature 01, server and upload screen) are implemented; `mailbox` (Feature 03) is planned and currently rejected with `400`.
 
 ## Operation
 
@@ -44,9 +44,9 @@ The server validates the number and order of pages, declared media type, actual 
 | Part | Cardinality | Value |
 |---|---:|---|
 | `channel` | exactly one | `file-upload` |
-| `file` | exactly one | `application/pdf`, `image/jpeg`, or `image/png`. The declared type must match the file signature; a PDF must open without a password, and its pages are counted for `pageCount`. |
+| `file` | exactly one | `application/pdf`, `image/jpeg`, or `image/png`, at most 20 MB (20 × 1024 × 1024 = 20,971,520 bytes) and not empty. The declared type must match the file signature; a PDF must open without a password, and its pages are counted for `pageCount`. |
 
-A PDF is stored as `original.pdf`; an image is stored as page 1. `origin.upload.originalFileName` is not recorded yet.
+A PDF is stored as `original.pdf`; an image is stored as page 1. The 20 MB limit applies to `file-upload` only; camera-capture and mailbox keep their own limits. `origin.upload.originalFileName` is recorded as display metadata: the final path segment only, control and Unicode format characters removed, trimmed, at most 255 characters, and omitted (with `origin`) when nothing usable remains. It is never used for type detection or storage paths and is never logged.
 
 ### Shared intake requirements
 
@@ -84,7 +84,7 @@ A PDF is stored as `original.pdf`; an image is stored as page 1. `origin.upload.
 | `pageCount` | Pages accepted (camera) or detected (file). |
 | `contentHash` | SHA-256 over the received content; used with channel identifiers for duplicate detection. |
 | `storageLocation` | Where the original file is kept in the protected document content store (Feature 08). Pages are stored with server-generated names; client filenames are never used. Evidence documents that reference this `sourceDocumentId` inherit it. |
-| `origin` | Planned; present only for `file-upload` and `mailbox` (see Channels). |
+| `origin` | Present for `file-upload` (`origin.upload.originalFileName`, display only) and, when implemented, `mailbox`; omitted for `camera-capture`. |
 
 The response must not claim success if only some pages were stored. The content store writes all pages or none; if storage fails the API returns `500`, creates no source document, and a retry with the same `Idempotency-Key` is processed as a new attempt.
 
@@ -94,10 +94,10 @@ Use `application/problem+json` with a stable, non-sensitive error code and a use
 
 | Status | Meaning | Client behavior |
 |---|---|---|
-| `400` | Missing `Idempotency-Key`, missing/invalid channel, empty pages, page count outside 1-3, or not exactly one `file` for `file-upload` | Keep session pages for correction/review; do not mark submitted. |
+| `400` | Missing `Idempotency-Key`, missing/invalid channel, empty pages, page count outside 1-3, not exactly one `file` for `file-upload`, or an empty `file` | Keep session pages for correction/review; do not mark submitted. |
 | `401` / `403` | Application authentication or authorization failure (`403` arrives with Feature 17 roles; today only `401` is returned) | Explain that submission is unavailable; retain pages until user retries or exits. |
 | `409` | Idempotency key was reused with different content | Do not retry automatically; explain that the submission could not be reconciled. |
-| `413` | Request exceeds the server request-size limit (the ASP.NET Core default, about 30 MB; no smaller limit is configured yet) | Explain that the capture is too large; retain pages for a safe retry path. |
+| `413` | Request exceeds the server request-size limit (the ASP.NET Core default, about 30 MB; no smaller limit is configured yet), or a `file-upload` `file` exceeds 20 MB. Returned as `application/problem+json` in both cases. | Explain that the capture or file is too large; retain pages for a safe retry path. |
 | `415` | Unsupported media type, content that does not match its declared type, or an unreadable or password-protected PDF | Explain the capture could not be accepted; do not create a document. |
 | `5xx` | Intake or evidence-storage failure | Report a recoverable submission failure; do not report success or a partial document. |
 

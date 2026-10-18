@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using ILP.Shared.SourceDocuments.Constant;
 
 namespace ILP.Shared.SourceDocuments.Dto;
@@ -13,4 +14,7 @@ public sealed class SourceDocumentMetadataDto
     public int PageCount { get; set; }
     public string ContentHash { get; set; } = string.Empty;
     public string StorageLocation { get; set; } = string.Empty;
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SourceDocumentOriginDto? Origin { get; set; }
 }
