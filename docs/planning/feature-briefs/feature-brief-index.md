@@ -56,13 +56,13 @@ flowchart TB
 	classDef statusPartial fill:#fef3c7,stroke:#b45309,color:#451a03
 	classDef statusTodo fill:#e5e7eb,stroke:#4b5563,color:#111827
 
-	class F02,F03,F04,F06,F08,F17,F18 statusPartial
-	class F01,F05,F07,F09,F10,F11,F12,F13,F14,F15,F16,F19,F20 statusTodo
+	class F01,F02,F03,F04,F06,F08,F17,F18 statusPartial
+	class F05,F07,F09,F10,F11,F12,F13,F14,F15,F16,F19,F20 statusTodo
 ```
 
 ## Feature Status
 
-**MVP, in order:** [01 Scanned upload](feature-01-scanned-document-upload.md) - Partially covered (server intake only); [02 Camera capture](feature-02-camera-capture.md) - Partially covered; [08 Evidence storage](feature-08-document-evidence-storage.md) - Partially covered; [04 Raw text](feature-04-raw-text-extraction.md) - Partially covered; [05 Classification](feature-05-document-classification.md) - Not started; [06 Invoice extraction](feature-06-ap-line-item-conversion.md) - Partially covered; [12 Verification](feature-12-deterministic-verification.md) - Not started; [07 Human review](feature-07-extraction-review-dashboard.md) - Not started.
+**MVP, in order:** [01 Scanned upload](feature-01-scanned-document-upload.md) - Partially covered (upload screen and server intake built; browser and device verification pending); [02 Camera capture](feature-02-camera-capture.md) - Partially covered; [08 Evidence storage](feature-08-document-evidence-storage.md) - Partially covered; [04 Raw text](feature-04-raw-text-extraction.md) - Partially covered; [05 Classification](feature-05-document-classification.md) - Not started; [06 Invoice extraction](feature-06-ap-line-item-conversion.md) - Partially covered; [12 Verification](feature-12-deterministic-verification.md) - Not started; [07 Human review](feature-07-extraction-review-dashboard.md) - Not started.
 
 **Cross-cutting:** [17 Access control](feature-17-access-control-and-review-authorization.md) - Partially covered; [18 Reliability](feature-18-processing-reliability-and-deduplication.md) - Partially covered; [19 Image quality](feature-19-document-quality-feedback.md) - Not started; [16 Reference data](feature-16-reference-data-and-rules.md) - Not started; [20 Model evaluation](feature-20-model-quality-evaluation.md) - Not started.
 

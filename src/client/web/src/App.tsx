@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Button, Paper, Stack, Typography } from '@mui/material'
 import { CameraCapture } from './features/camera-capture/CameraCapture'
-import { submitSourceDocument } from './features/camera-capture/source-document-api'
+import { FileUpload } from './features/file-upload/FileUpload'
+import { submitSourceDocument } from './features/source-documents/source-document-api'
 import './App.css'
 
 function App() {
@@ -9,6 +10,7 @@ function App() {
     { sourceDocumentId: string; channel: string; pageCount: number; status: string } | null
   >()
   const [showCameraCapture, setShowCameraCapture] = useState(false)
+  const [showFileUpload, setShowFileUpload] = useState(false)
 
   return (
     <main className="app-shell">
@@ -28,6 +30,8 @@ function App() {
                 return result
               }}
             />
+          ) : showFileUpload ? (
+            <FileUpload onExit={() => setShowFileUpload(false)} />
           ) : (
             <Paper elevation={0} className="app-shell__confirmation">
               <Stack spacing={2}>
@@ -37,6 +41,16 @@ function App() {
                 <Typography>Select how you want to submit your invoice.</Typography>
                 <Button
                   variant="contained"
+                  sx={{ minHeight: 44 }}
+                  onClick={() => {
+                    setShowFileUpload(true)
+                  }}
+                >
+                  Upload a file
+                </Button>
+                <Button
+                  variant="outlined"
+                  sx={{ minHeight: 44 }}
                   onClick={() => {
                     setShowCameraCapture(true)
                   }}

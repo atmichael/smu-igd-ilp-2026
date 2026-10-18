@@ -15,7 +15,7 @@ import {
   removeAcceptedPage,
   type CameraCaptureSession,
 } from './camera-capture-model'
-import { submitSourceDocument, type SourceDocumentResponse } from './source-document-api'
+import { submitSourceDocument, type SourceDocumentResponse } from '../source-documents/source-document-api'
 import './CameraCapture.css'
 
 interface CameraCaptureProps {

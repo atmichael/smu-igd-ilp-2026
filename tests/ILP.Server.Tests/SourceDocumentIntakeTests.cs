@@ -1,13 +1,20 @@
 using System.Net;
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ILP.Server.Features.EvidenceStorage;
+using ILP.Server.Features.EvidenceStorage.Endpoints;
 using ILP.Server.Features.EvidenceStorage.Repository;
+using ILP.Shared.SourceDocuments.Constant;
 using ILP.Shared.SourceDocuments.Dto;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Writer;
 using Xunit;
@@ -334,6 +341,265 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadWithEmptyFile_ReturnsBadRequestAndStoresNothing()
+    {
+        var store = new CountingContentStore();
+        var client = ClientWith(store);
+
+        var response = await client.PostAsync("/api/source-documents", FileUpload([], "application/pdf"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, store.SaveCalls);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadOfExactlyTheLimit_IsAccepted()
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var response = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(SourceDocumentLimits.FileUploadMaxBytes), "image/png", "exact.png"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(20 * 1024 * 1024, SourceDocumentLimits.FileUploadMaxBytes);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadOneByteOverTheLimit_ReturnsPayloadTooLargeProblemAndStoresNothing()
+    {
+        var store = new CountingContentStore();
+        var client = ClientWith(store);
+
+        var response = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(SourceDocumentLimits.FileUploadMaxBytes + 1), "image/png", "big.png"));
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Contains("20 MB", await response.Content.ReadAsStringAsync());
+        Assert.Equal(0, store.SaveCalls);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_WhenRequestExceedsTheFrameworkLimit_ReturnsPayloadTooLargeProblem()
+    {
+        var client = _factory
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+                services.AddTransient<IStartupFilter, OversizedBodyStartupFilter>()))
+            .CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "camera-capture");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+
+        var response = await client.PostAsync("/api/source-documents", FileUpload(TwoPagePdf(), "application/pdf"));
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        Assert.DoesNotContain("BadHttpRequestException", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_CameraCaptureLargerThanTheUploadLimit_IsStillAccepted()
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+        var page = new byte[(int)SourceDocumentLimits.FileUploadMaxBytes + 1024];
+        JpegBytes.CopyTo(page, 0);
+
+        var response = await client.PostAsync("/api/source-documents", CameraCapture(page));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadRejections_StoreNothing()
+    {
+        var store = new CountingContentStore();
+        var authorized = ClientWith(store);
+        var truncatedPdf = TwoPagePdf()[..40];
+        var unauthorized = _factory
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IDocumentContentStore>();
+                services.AddSingleton<IDocumentContentStore>(store);
+            }))
+            .CreateClient();
+        unauthorized.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+
+        var results = new[]
+        {
+            (await authorized.PostAsync("/api/source-documents", FileUpload([0x41], "text/plain", "notes.txt"))).StatusCode,
+            (await authorized.PostAsync("/api/source-documents", FileUpload(JpegBytes, "application/pdf"))).StatusCode,
+            (await authorized.PostAsync("/api/source-documents", FileUpload(truncatedPdf, "application/pdf"))).StatusCode,
+            (await unauthorized.PostAsync("/api/source-documents", FileUpload(TwoPagePdf(), "application/pdf"))).StatusCode,
+        };
+
+        Assert.Equal(
+            [HttpStatusCode.UnsupportedMediaType, HttpStatusCode.UnsupportedMediaType, HttpStatusCode.UnsupportedMediaType, HttpStatusCode.Unauthorized],
+            results);
+        Assert.Equal(0, store.SaveCalls);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadRetryWithSameKeyAndBytes_ReturnsOriginalEvenWithDifferentName()
+    {
+        var store = new CountingContentStore();
+        var client = ClientWith(store);
+        var pdf = TwoPagePdf();
+
+        var first = (await (await client.PostAsync("/api/source-documents", FileUpload(pdf, "application/pdf", "first.pdf")))
+            .Content.ReadFromJsonAsync<SourceDocumentResponse>())!;
+        var retry = await client.PostAsync("/api/source-documents", FileUpload(pdf, "application/pdf", "renamed.pdf"));
+
+        Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
+        var retried = (await retry.Content.ReadFromJsonAsync<SourceDocumentResponse>())!;
+        Assert.Equal(first.SourceDocumentId, retried.SourceDocumentId);
+        Assert.Equal("first.pdf", retried.Origin?.Upload?.OriginalFileName);
+        Assert.Equal(1, store.SaveCalls);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadSameKeyWithDifferentBytes_ReturnsConflictAndChangesNothing()
+    {
+        var store = new CountingContentStore();
+        var client = ClientWith(store);
+        var first = (await (await client.PostAsync("/api/source-documents", FileUpload(TwoPagePdf(), "application/pdf")))
+            .Content.ReadFromJsonAsync<SourceDocumentResponse>())!;
+
+        var response = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(64), "image/png", "other.png"));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(1, store.SaveCalls);
+        Assert.Equal("application/pdf", (await client.GetFromJsonAsync<SourceDocumentResponse>($"/api/source-documents/{first.SourceDocumentId}"))!.MediaType);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadWhenContentCannotBeStored_RetryWithSameKeySucceeds()
+    {
+        var client = ClientWith(new FailOnceContentStore());
+        var pdf = TwoPagePdf();
+
+        var failed = await client.PostAsync("/api/source-documents", FileUpload(pdf, "application/pdf"));
+        var retried = await client.PostAsync("/api/source-documents", FileUpload(pdf, "application/pdf"));
+
+        Assert.Equal(HttpStatusCode.InternalServerError, failed.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, retried.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUpload_NeverLogsOrReturnsTheFileNameOrContent()
+    {
+        const string secretName = "SECRET-NAME-12345.pdf";
+        const string contentMarker = "CONTENT-MARKER-98765";
+        var logs = new CapturingLoggerProvider();
+        var client = _factory
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton<ILoggerProvider>(logs)))
+            .CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "camera-capture");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+
+        var accepted = await client.PostAsync("/api/source-documents", FileUpload(TwoPagePdf(), "application/pdf", secretName));
+        client.DefaultRequestHeaders.Remove("Idempotency-Key");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var unsupported = await client.PostAsync("/api/source-documents", FileUpload(System.Text.Encoding.UTF8.GetBytes(contentMarker), "text/plain", secretName));
+        client.DefaultRequestHeaders.Remove("Idempotency-Key");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var oversize = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(SourceDocumentLimits.FileUploadMaxBytes + 1), "image/png", secretName));
+
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, unsupported.StatusCode);
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, oversize.StatusCode);
+        Assert.NotEmpty(logs.Entries);
+        Assert.DoesNotContain(logs.Entries, entry => entry.Contains(secretName) || entry.Contains(contentMarker));
+        foreach (var rejected in new[] { unsupported, oversize })
+        {
+            var body = await rejected.Content.ReadAsStringAsync();
+            Assert.DoesNotContain(secretName, body);
+            Assert.DoesNotContain(contentMarker, body);
+            Assert.DoesNotContain("protected://", body);
+        }
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider, ILogger
+    {
+        public ConcurrentQueue<string> Entries { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => this;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Enqueue(formatter(state, exception) + exception);
+
+        public void Dispose()
+        {
+        }
+    }
+
+    private static byte[] PngOfSize(long length)
+    {
+        var bytes = new byte[length];
+        new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }.CopyTo(bytes, 0);
+        return bytes;
+    }
+
+    private HttpClient ClientWith(IDocumentContentStore store)
+    {
+        var client = _factory
+            .WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IDocumentContentStore>();
+                services.AddSingleton(store);
+            }))
+            .CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "camera-capture");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        return client;
+    }
+
+    private sealed class CountingContentStore : InMemoryDocumentContentStore
+    {
+        private int _saveCalls;
+
+        public int SaveCalls => _saveCalls;
+
+        public override Task<string> SaveAsync(string sourceDocumentId, IReadOnlyList<DocumentContentPart> parts, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _saveCalls);
+            return base.SaveAsync(sourceDocumentId, parts, cancellationToken);
+        }
+    }
+
+    // Simulates the server's request-size limit, which TestServer does not enforce.
+    private sealed class OversizedBodyStartupFilter : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use(async (context, nextMiddleware) =>
+            {
+                context.Request.Body = new OversizedBodyStream();
+                await nextMiddleware();
+            });
+            next(app);
+        };
+    }
+
+    private sealed class OversizedBodyStream : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw TooLarge();
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) => throw TooLarge();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+        private static BadHttpRequestException TooLarge() =>
+            new("Request body too large.", StatusCodes.Status413PayloadTooLarge);
+    }
+
     private static byte[] TwoPagePdf()
     {
         var builder = new PdfDocumentBuilder();
@@ -342,12 +608,88 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         return builder.Build();
     }
 
-    private static MultipartFormDataContent FileUpload(byte[] bytes, string contentType)
+    [Fact]
+    public async Task PostSourceDocuments_FileUpload_RecordsDisplayNameAndKeepsOriginalUnchanged()
+    {
+        var pdf = TwoPagePdf();
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var intake = (await (await client.PostAsync("/api/source-documents", FileUpload(pdf, "application/pdf", "invoice-0042.pdf")))
+            .Content.ReadFromJsonAsync<SourceDocumentResponse>())!;
+
+        Assert.Equal("invoice-0042.pdf", intake.Origin?.Upload?.OriginalFileName);
+        var record = (await client.GetFromJsonAsync<SourceDocumentResponse>($"/api/source-documents/{intake.SourceDocumentId}"))!;
+        Assert.Equal("invoice-0042.pdf", record.Origin?.Upload?.OriginalFileName);
+        var file = await client.GetAsync($"/api/source-documents/{intake.SourceDocumentId}/file");
+        Assert.Equal("application/pdf", file.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(pdf, await file.Content.ReadAsByteArrayAsync());
+        Assert.Equal(intake.SourceDocumentId, record.SourceDocumentId);
+    }
+
+    [Theory]
+    [InlineData(@"..\..\evil.pdf", "evil.pdf")]
+    [InlineData("a/b/invoice.pdf", "invoice.pdf")]
+    [InlineData(@"C:\temp\scan.png", "scan.png")]
+    public async Task PostSourceDocuments_FileUploadWithPathLikeName_RecordsFinalSegmentAndIgnoresNameForStorage(string clientName, string expected)
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var intake = (await (await client.PostAsync("/api/source-documents", FileUpload(TwoPagePdf(), "application/pdf", clientName)))
+            .Content.ReadFromJsonAsync<SourceDocumentResponse>())!;
+
+        Assert.Equal(expected, intake.Origin?.Upload?.OriginalFileName);
+        Assert.Equal("original.pdf", Assert.Single(_factory.Content.Get(intake.SourceDocumentId)!).FileName);
+        Assert.DoesNotContain(expected, intake.StorageLocation);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_FileUploadWithNoUsableName_HasNoOrigin()
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var response = await client.PostAsync("/api/source-documents", FileUpload(TwoPagePdf(), "application/pdf", "folder/"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.False((await response.Content.ReadFromJsonAsync<JsonElement>()).TryGetProperty("origin", out _));
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_CameraCapture_HasNoOriginProperty()
+    {
+        var client = AuthorizedClient(Guid.NewGuid().ToString());
+
+        var response = await client.PostAsync("/api/source-documents", CameraCapture());
+
+        Assert.False((await response.Content.ReadFromJsonAsync<JsonElement>()).TryGetProperty("origin", out _));
+    }
+
+    [Theory]
+    [InlineData("invoice.pdf", "invoice.pdf")]
+    [InlineData("  invoice.pdf  ", "invoice.pdf")]
+    [InlineData("inv\u0000oice\u0007.pdf", "invoice.pdf")]
+    [InlineData("invoice\u202Efdp.exe", "invoicefdp.exe")]
+    [InlineData("folder/", null)]
+    [InlineData("   ", null)]
+    [InlineData(null, null)]
+    public void OriginalFileNameSanitizer_RemovesPathsControlAndFormatCharacters(string? input, string? expected)
+    {
+        Assert.Equal(expected, OriginalFileNameSanitizer.Sanitize(input));
+    }
+
+    [Fact]
+    public void OriginalFileNameSanitizer_CutsLongNamesToTwoHundredFiftyFiveCharacters()
+    {
+        var result = OriginalFileNameSanitizer.Sanitize(new string('a', 300) + ".pdf");
+
+        Assert.Equal(255, result!.Length);
+    }
+
+    private static MultipartFormDataContent FileUpload(byte[] bytes, string contentType, string fileName = "invoice.pdf")
     {
         var content = new MultipartFormDataContent { { new StringContent("file-upload"), "channel" } };
         var file = new ByteArrayContent(bytes);
         file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-        content.Add(file, "file", "invoice.pdf");
+        content.Add(file, "file", fileName);
         return content;
     }
 
@@ -407,5 +749,16 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         public string? SubmittedBy { get; set; }
         public string ContentHash { get; set; } = string.Empty;
         public string StorageLocation { get; set; } = string.Empty;
+        public OriginResponse? Origin { get; set; }
+    }
+
+    private sealed class OriginResponse
+    {
+        public UploadOriginResponse? Upload { get; set; }
+    }
+
+    private sealed class UploadOriginResponse
+    {
+        public string OriginalFileName { get; set; } = string.Empty;
     }
 }
