@@ -1,11 +1,16 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Server.Features.EvidenceStorage.Repository;
+using ILP.Shared.InboxMonitoring.Abstraction;
+using ILP.Shared.InboxMonitoring.Config;
+using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.SourceDocuments;
 using ILP.Shared.SourceDocuments.Constant;
 using ILP.Shared.SourceDocuments.Dto;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using UglyToad.PdfPig;
 
 namespace ILP.Server.Features.EvidenceStorage.Endpoints;
@@ -69,7 +74,14 @@ public static class SourceDocumentsEndpoints
             })
             .RequireAuthorization("SourceDocumentIntakePolicy");
 
-        app.MapPost("/api/source-documents", async (HttpRequest request, IDocumentContentStore contentStore, ISourceDocumentRepository records, ILoggerFactory loggerFactory) =>
+        app.MapPost("/api/source-documents", async (
+            HttpRequest request,
+            IDocumentContentStore contentStore,
+            ISourceDocumentRepository records,
+            IInboxMessageSender emailSender,
+            IOptions<InboxMonitoringOptions> inboxOptions,
+            TimeProvider timeProvider,
+            ILoggerFactory loggerFactory) =>
         {
             var logger = loggerFactory.CreateLogger("SourceDocumentIntake");
             if (!request.HasFormContentType)
@@ -150,15 +162,35 @@ public static class SourceDocumentsEndpoints
 
                 try
                 {
-                    // Not cancelled with the request, so a started save either completes or rolls back.
-                    metadata.StorageLocation = await contentStore.SaveAsync(metadata.SourceDocumentId, intake.Parts, CancellationToken.None);
+                    if (inboxOptions.Value.SendSourceDocumentsToEmail)
+                    {
+                        var attachments = intake.Parts.Select(part => new EmailAttachmentDto(
+                            intake.OriginalFileName ?? part.FileName,
+                            part.Content,
+                            part.ContentType)).ToArray();
+                        var documentType = channel == SourceDocumentChannels.CameraCapture ? "Camera Capture" : "File Upload";
+                        var timestamp = timeProvider.GetUtcNow().ToString("yyMMdd-HHmmss", CultureInfo.InvariantCulture);
+                        await emailSender.SendAttachmentsAsync(
+                            inboxOptions.Value.EmailAddress,
+                            $"{documentType} {timestamp}",
+                            "Please refer to attachment",
+                            attachments,
+                            CancellationToken.None);
+                        metadata.StorageLocation = "email://sent";
+                    }
+                    else
+                    {
+                        // Not cancelled with the request, so a started save either completes or rolls back.
+                        metadata.StorageLocation = await contentStore.SaveAsync(metadata.SourceDocumentId, intake.Parts, CancellationToken.None);
+                    }
+
                     records.Save(new SourceDocumentPersistenceDto(metadata, idempotencyKey, payloadHash));
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError("Source document {SourceDocumentId} could not be stored ({ExceptionType}).", metadata.SourceDocumentId, ex.GetType().Name);
+                    logger.LogError("Source document {SourceDocumentId} could not be stored or sent ({ExceptionType}).", metadata.SourceDocumentId, ex.GetType().Name);
                     return Results.Problem(
-                        title: "Source document could not be stored.",
+                        title: "Source document could not be stored or sent.",
                         detail: "No source document was created. Retry the submission with the same Idempotency-Key.",
                         statusCode: StatusCodes.Status500InternalServerError);
                 }
