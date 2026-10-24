@@ -15,6 +15,19 @@ describe('company service', () => {
     expect(apiJson).toHaveBeenCalledWith('/api/companies?search=Acme+Ltd')
   })
 
+  it('includes pagination and sorting options in company searches', async () => {
+    await searchCompanies('Acme Ltd', {
+      page: 2,
+      pageSize: 10,
+      sortBy: 'totalOutstandingSgd',
+      sortDirection: 'desc',
+    })
+
+    expect(apiJson).toHaveBeenCalledWith(
+      '/api/companies?search=Acme+Ltd&page=2&pageSize=10&sortBy=totalOutstandingSgd&sortDirection=desc',
+    )
+  })
+
   it('retrieves company details by id', async () => {
     await getCompanyById(42)
 

@@ -7,6 +7,8 @@ using ILP.Server.Features.EvidenceStorage.Endpoints;
 using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Endpoints;
 using ILP.Shared.InboxMonitoring;
+using ILP.Server.Features.CompaniesManagement.Configuration;
+using ILP.Server.Features.CompaniesManagement.Entrypoint;
 using ILP.Server.Features.TransactionDocuments.Configuration;
 using ILP.Server.Features.TransactionDocuments.Entrypoint;
 using Microsoft.AspNetCore.Authentication;
@@ -45,6 +47,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
     });
 
+    options.AddPolicy(CompanyEndpoints.AuthorizationPolicy, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+    });
+
     options.AddPolicy(EvidenceStorageServiceCollectionExtensions.AuthorizationPolicy, policy =>
     {
         policy.RequireAuthenticatedUser();
@@ -54,6 +61,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddEvidenceStorage(builder.Configuration);
 builder.Services.AddInboxExtractionPersistence();
 builder.Services.AddTransactionDocuments(builder.Configuration);
+builder.Services.AddCompaniesManagement();
 builder.Services.AddInboxMonitoring(builder.Configuration);
 
 builder.Services.AddCors(options =>
@@ -96,6 +104,7 @@ app.MapEndpoints();
 app.MapEvidencePackagesEndpoints();
 app.MapInboxSyncEndpoints();
 app.MapTransactionDocumentEndpoints();
+app.MapCompanyEndpoints();
 
 app.Run();
 

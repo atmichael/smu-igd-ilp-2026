@@ -8,7 +8,7 @@ export interface CompanyDocumentSummary {
 
 export interface CompanySummary {
   id: number
-  uen: string
+  uen: string | null
   name: string
   totalOutstandingSgd: number
 }
@@ -22,4 +22,11 @@ export interface CompanyDetails extends CompanySummary {
 export interface CompanySearchResponse {
   items: CompanySummary[]
   totalCount: number
+}
+
+export interface CompanyListQuery {
+  page?: number
+  pageSize?: number
+  sortBy?: string
+  sortDirection?: 'asc' | 'desc'
 }
