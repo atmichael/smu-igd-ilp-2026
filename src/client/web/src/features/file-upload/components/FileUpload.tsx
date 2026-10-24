@@ -3,8 +3,8 @@ import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography, useMedi
 import {
   fetchOriginalFile,
   submitSourceDocument,
-} from '../source-documents/service/source-document-service'
-import type { SourceDocumentResponse } from '../../common/model/source-document-model'
+} from '../../source-documents/service/source-document-service'
+import type { SourceDocumentResponse } from '../../../common/model/source-document-model'
 import {
   ACCEPTED_TYPES_TEXT,
   FILE_INPUT_ACCEPT,
@@ -14,7 +14,7 @@ import {
   initialUploadState,
   selectFile,
   type UploadState,
-} from './model/file-upload-model'
+} from '../model/file-upload-model'
 
 interface FileUploadProps {
   onExit: () => void

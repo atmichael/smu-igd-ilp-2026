@@ -9,11 +9,11 @@ vi.mock('./features/login/GoogleSignInButton', () => ({
   ),
 }))
 
-vi.mock('./features/camera-capture/CameraCapture', () => ({
+vi.mock('./features/camera-capture/components/CameraCapture', () => ({
   CameraCapture: () => <h2>Camera capture route</h2>,
 }))
 
-vi.mock('./features/file-upload/FileUpload', () => ({
+vi.mock('./features/file-upload/components/FileUpload', () => ({
   FileUpload: () => <h2>File upload route</h2>,
 }))
 
@@ -62,6 +62,7 @@ describe('App authentication and navigation', () => {
 
     expect(window.location.pathname).toBe('/camera-capture')
     expect(screen.getByRole('heading', { name: /camera capture route/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /invoice intake/i })).toHaveAttribute('href', '/home')
   })
 
   it('navigates from the post-login page to file upload', () => {
@@ -71,6 +72,7 @@ describe('App authentication and navigation', () => {
 
     expect(window.location.pathname).toBe('/file-upload')
     expect(screen.getByRole('heading', { name: /file upload route/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /invoice intake/i })).toHaveAttribute('href', '/home')
   })
 
   it('navigates to the company list', () => {

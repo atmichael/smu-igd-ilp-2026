@@ -4,7 +4,7 @@ import { FileUpload } from './FileUpload'
 import {
   SourceDocumentRequestError,
   type SourceDocumentResponse,
-} from '../../common/model/source-document-model'
+} from '../../../common/model/source-document-model'
 
 type SubmitFn = NonNullable<React.ComponentProps<typeof FileUpload>['onSubmit']>
 
