@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,10 +7,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    <Compile Remove="Endpoints\**" />
+    <Content Remove="Endpoints\**" />
+    <EmbeddedResource Remove="Endpoints\**" />
+    <None Remove="Endpoints\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.13" />
     <PackageReference Include="MySqlConnector" Version="2.6.2" />
     <PackageReference Include="PdfPig" Version="0.1.16" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.12" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.13" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,8 +26,6 @@
 
   <ItemGroup>
     <Folder Include="Config\" />
-    <Folder Include="Endpoints\EvidencePackages\" />
-    <Folder Include="Endpoints\SourceDocuments\" />
   </ItemGroup>
 
 </Project>
