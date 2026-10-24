@@ -18,6 +18,10 @@ public sealed class InboxMonitoringOptions
 
     public string TokenStorePath { get; set; } = "token_store";
 
+    public string GoogleDriveFolderId { get; set; } = "";
+
+    public string GoogleDriveTokenStorePath { get; set; } = "google_drive_token_store";
+
     public string ImapHost { get; set; } = "imap.gmail.com";
 
     public int ImapPort { get; set; } = 993;

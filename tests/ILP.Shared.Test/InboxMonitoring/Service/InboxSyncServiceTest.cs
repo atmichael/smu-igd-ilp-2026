@@ -2,6 +2,7 @@ using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.InboxMonitoring.Service;
+using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -36,6 +37,42 @@ public class InboxSyncServiceTest
             }
 
             return Task.FromResult($"content:{body}:{attachmentPath}");
+        }
+    }
+
+    private sealed class FixedExtractor(string content) : IDocumentContentExtractor
+    {
+        public Task<string> ExtractAsync(string body, string attachmentPath, string traceId, IReadOnlyDictionary<string, string> inlineImages) =>
+            Task.FromResult(content);
+    }
+
+    private sealed class FakeDriveFileProvider : IGoogleDriveFileProvider
+    {
+        public List<string> UploadedFiles { get; } = [];
+        public List<DocumentDto> Documents { get; } = [];
+
+        public Task<InboxMessageAttachmentDto> UploadAsync(
+            string filePath,
+            DocumentDto document,
+            CancellationToken cancellationToken = default)
+        {
+            UploadedFiles.Add(filePath);
+            Documents.Add(document);
+            return Task.FromResult(new InboxMessageAttachmentDto(
+                Path.GetFileName(filePath),
+                "drive-file-id",
+                "https://drive.google.com/file/d/drive-file-id/view"));
+        }
+    }
+
+    private sealed class FakePersistence : IInboxExtractionPersistence
+    {
+        public List<IReadOnlyList<DocumentInboxMessageMappingDto>> Saves { get; } = [];
+
+        public Task SaveAsync(IReadOnlyList<DocumentInboxMessageMappingDto> mappings, CancellationToken cancellationToken = default)
+        {
+            Saves.Add(mappings);
+            return Task.CompletedTask;
         }
     }
 
@@ -141,5 +178,64 @@ public class InboxSyncServiceTest
 
         Assert.Equal(1, result.MessagesFailed);
         Assert.Equal(1, result.MessagesProcessed);
+    }
+
+    [Fact]
+    public async Task SyncAsync_UploadsAndPersistsExtractedDocumentWithSourceLinks()
+    {
+        string file = Path.GetTempFileName();
+        var source = new FakeSource(new InboxMessageDto
+        {
+            UniqueId = 21,
+            Subject = "Invoice",
+            From = "supplier@example.com",
+            Body = "Please find attached.",
+            AttachmentPaths = [file]
+        });
+        var drive = new FakeDriveFileProvider();
+        var persistence = new FakePersistence();
+        var sut = new InboxSyncService(
+            source,
+            new FixedExtractor("""
+                [HEADER]
+                document-number| INV-21
+                document-type| Invoice
+                company-uen| UEN-21
+                total-amount| 12.50
+                [CONFIDENCE]
+                confidence|0.91
+                """),
+            Opts(),
+            drive,
+            persistence);
+
+        var result = await sut.SyncAsync();
+
+        Assert.Equal(1, result.MessagesProcessed);
+        Assert.Equal([file], drive.UploadedFiles);
+        Assert.Equal("UEN-21", Assert.Single(drive.Documents).Company.UEN);
+        Assert.Equal("Invoice", drive.Documents[0].TypeCode);
+        Assert.Equal("INV-21", drive.Documents[0].RefNumber);
+        var mapping = Assert.Single(Assert.Single(persistence.Saves));
+        Assert.Equal("INV-21", mapping.Document.RefNumber);
+        Assert.Equal(0.91m, mapping.Document.Confidence);
+        Assert.Equal(21u, mapping.InboxMessage.UniqueId);
+        Assert.Equal("https://drive.google.com/file/d/drive-file-id/view",
+            Assert.Single(mapping.InboxMessage.GoogleDriveAttachments).WebViewLink);
+        Assert.Equal("drive-file-id", mapping.SourceAttachment?.DriveFileId);
+        Assert.False(File.Exists(file));
+    }
+
+    [Fact]
+    public void GoogleDriveFileProvider_GetFolderNames_UsesSanitizedDocumentFields()
+    {
+        var document = new DocumentDto(
+            "INV\\001",
+            "Invoice",
+            DateTime.UnixEpoch,
+            0m,
+            company: new CompanyDto("Supplier", "UEN/21"));
+
+        Assert.Equal(["UEN_21", "Invoice", "INV_001"], GoogleDriveFileProvider.GetFolderNames(document));
     }
 }

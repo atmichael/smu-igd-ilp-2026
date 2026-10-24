@@ -4,13 +4,16 @@ using System.Text.Encodings.Web;
 using ILP.Server.Config;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Server.Features.EvidenceStorage.Endpoints;
+using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Endpoints;
 using ILP.Shared.InboxMonitoring;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+InboxExtractionPersistenceConfig.Initialize(builder.Configuration, builder.Environment.ContentRootPath);
 
 if (!builder.Environment.IsDevelopment())
 {
@@ -42,6 +45,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddEvidenceStorage(builder.Configuration);
+builder.Services.AddInboxExtractionPersistence();
 builder.Services.AddInboxMonitoring(builder.Configuration);
 
 builder.Services.AddCors(options =>
@@ -61,6 +65,13 @@ OpenRouterConfig.Initialize(builder.Configuration);
 PromptConfig.Initialize(builder.Configuration);
 
 var app = builder.Build();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<InboxExtractionDbContext>>();
+    await using var dbContext = await contextFactory.CreateDbContextAsync();
+    await dbContext.Database.MigrateAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -110,4 +121,3 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }
-

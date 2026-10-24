@@ -56,6 +56,8 @@ API intake stores original images and PDFs in MySQL (table `source_document_cont
 
 To run without a database, set `$env:EvidenceStorage__ContentProvider = "File"` before starting the API; files are then kept under `src/server/ILP.Server/App_Data/source-documents/`.
 
+Inbox extraction metadata is stored in SQLite at `src/server/ILP.Server/App_Data/inbox-extraction.db` by default. EF Core applies pending schema migrations when the API starts. Override the file location with `InboxExtractionPersistence__DatabasePath`. Attachments are uploaded to Google Drive; set `InboxMonitoring__GoogleDriveFolderId` to the destination folder ID, or leave it empty to use the Drive root. The Drive provider uses the configured Gmail OAuth client secret and the separate `GoogleDriveTokenStorePath` token cache.
+
 ### 2. Start the API
 
 From the repository root, stop any API that is already running (Ctrl+C), then:

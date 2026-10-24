@@ -2,6 +2,8 @@ using ILP.Shared.Helper;
 using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
+using ILP.Shared.InfoExtraction.Parser;
+using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.Extensions.Options;
 
 namespace ILP.Shared.InboxMonitoring.Service;
@@ -10,14 +12,23 @@ public sealed class InboxSyncService : IInboxSyncService
 {
     private readonly IInboxMessageSource _source;
     private readonly IDocumentContentExtractor _extractor;
+    private readonly IGoogleDriveFileProvider? _driveFileProvider;
+    private readonly IInboxExtractionPersistence? _persistence;
     private readonly InboxMonitoringOptions _options;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public InboxSyncService(IInboxMessageSource source, IDocumentContentExtractor extractor, IOptions<InboxMonitoringOptions> options)
+    public InboxSyncService(
+        IInboxMessageSource source,
+        IDocumentContentExtractor extractor,
+        IOptions<InboxMonitoringOptions> options,
+        IGoogleDriveFileProvider? driveFileProvider = null,
+        IInboxExtractionPersistence? persistence = null)
     {
         _options = options.Value;
         _source = source;
         _extractor = extractor;
+        _driveFileProvider = driveFileProvider;
+        _persistence = persistence;
     }
 
     public async Task<InboxSyncResultDto> SyncAsync(CancellationToken cancellationToken = default)
@@ -41,14 +52,52 @@ public sealed class InboxSyncService : IInboxSyncService
                     LogHelper.Info(traceId, $"Subject: {message.Subject}");
                     LogHelper.Info(traceId, $"From: {message.From}");
 
+                    var extractedDocuments = new List<(DocumentDto Document, InboxMessageAttachmentDto? Attachment)>();
+                    var driveAttachments = new List<InboxMessageAttachmentDto>();
+
                     if (message.AttachmentPaths.Count == 0)
                     {
-                        contents.Add(await _extractor.ExtractAsync(message.Body, "", traceId, message.InlineImages));
+                        string content = await _extractor.ExtractAsync(message.Body, "", traceId, message.InlineImages);
+                        contents.Add(content);
+                        extractedDocuments.Add((ExtractedDocumentParser.Parse(content).GetDocumentInfo(), null));
                     }
 
                     foreach (var file in message.AttachmentPaths)
                     {
-                        contents.Add(await _extractor.ExtractAsync(message.Body, file, traceId, message.InlineImages));
+                        string content = await _extractor.ExtractAsync(message.Body, file, traceId, message.InlineImages);
+                        contents.Add(content);
+                        var document = ExtractedDocumentParser.Parse(content).GetDocumentInfo();
+
+                        InboxMessageAttachmentDto? uploadedAttachment = null;
+                        if (_driveFileProvider != null)
+                        {
+                            uploadedAttachment = await _driveFileProvider.UploadAsync(file, document, cancellationToken);
+                            driveAttachments.Add(uploadedAttachment);
+                        }
+
+                        extractedDocuments.Add((document, uploadedAttachment));
+                    }
+
+                    if (_persistence != null && extractedDocuments.Count > 0)
+                    {
+                        var persistedMessage = new InboxMessageDto
+                        {
+                            UniqueId = message.UniqueId,
+                            Subject = message.Subject,
+                            From = message.From,
+                            Body = message.Body,
+                            InlineImages = message.InlineImages,
+                            AttachmentPaths = message.AttachmentPaths,
+                            GoogleDriveAttachments = driveAttachments
+                        };
+
+                        var mappings = extractedDocuments
+                            .Select(extracted => new DocumentInboxMessageMappingDto(
+                                extracted.Document,
+                                persistedMessage,
+                                extracted.Attachment))
+                            .ToList();
+                        await _persistence.SaveAsync(mappings, cancellationToken);
                     }
 
                     processed++;

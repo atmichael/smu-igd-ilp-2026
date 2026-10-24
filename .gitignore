@@ -434,3 +434,5 @@ CodeCoverage/
 TestResult.xml
 nunit-*.xml
 token_store/
+
+*.db*

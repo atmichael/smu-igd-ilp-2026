@@ -14,6 +14,7 @@ public static class InboxMonitoringServiceCollectionExtensions
         services.Configure<InboxMonitoringOptions>(configuration.GetSection(InboxMonitoringOptions.SectionName));
         services.AddSingleton<IInboxMessageSource, ImapInboxMessageSource>();
         services.AddSingleton<IInboxMessageSender, GmailInboxMessageSender>();
+        services.AddSingleton<IGoogleDriveFileProvider, GoogleDriveFileProvider>();
         services.AddSingleton<IDocumentContentExtractor, EmailInfoDocumentContentExtractor>();
         services.AddSingleton<IInboxSyncService, InboxSyncService>();
         return services;
