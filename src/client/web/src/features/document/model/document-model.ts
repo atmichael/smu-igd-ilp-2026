@@ -41,3 +41,10 @@ export interface DocumentSearchResponse {
   items: DocumentRecord[]
   totalCount: number
 }
+
+export interface DocumentListQuery {
+  page?: number
+  pageSize?: number
+  sortBy?: string
+  sortDirection?: 'asc' | 'desc'
+}
