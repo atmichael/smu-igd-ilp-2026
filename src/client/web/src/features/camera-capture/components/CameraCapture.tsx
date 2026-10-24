@@ -233,9 +233,6 @@ export function CameraCapture({
           <Typography variant="h5" component="h2">
             Camera document capture
           </Typography>
-          <Button variant="outlined" onClick={cancelSession}>
-            Exit
-          </Button>
         </Stack>
 
         {session.errorMessage ? <Alert severity="error">{session.errorMessage}</Alert> : null}

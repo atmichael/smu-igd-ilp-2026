@@ -175,11 +175,6 @@ export function FileUpload({
       sx={dragActive ? { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 } : undefined}
     >
       <Stack spacing={2.5}>
-        <Box>
-          <Button variant="text" size="small" sx={{ ...buttonSx, ml: -1 }} disabled={busy} onClick={onExit}>
-            <span aria-hidden="true">←&nbsp;</span>Back to source selection
-          </Button>
-        </Box>
 
         <Typography variant="h5" component="h2">
           Upload a file
