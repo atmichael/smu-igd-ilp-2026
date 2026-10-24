@@ -7,6 +7,8 @@ using ILP.Server.Features.EvidenceStorage.Endpoints;
 using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Endpoints;
 using ILP.Shared.InboxMonitoring;
+using ILP.Server.Features.TransactionDocuments.Configuration;
+using ILP.Server.Features.TransactionDocuments.Entrypoint;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +40,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
     });
 
+    options.AddPolicy(TransactionDocumentEndpoints.AuthorizationPolicy, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+    });
+
     options.AddPolicy(EvidenceStorageServiceCollectionExtensions.AuthorizationPolicy, policy =>
     {
         policy.RequireAuthenticatedUser();
@@ -46,6 +53,7 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddEvidenceStorage(builder.Configuration);
 builder.Services.AddInboxExtractionPersistence();
+builder.Services.AddTransactionDocuments(builder.Configuration);
 builder.Services.AddInboxMonitoring(builder.Configuration);
 
 builder.Services.AddCors(options =>
@@ -87,6 +95,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapEndpoints();
 app.MapEvidencePackagesEndpoints();
 app.MapInboxSyncEndpoints();
+app.MapTransactionDocumentEndpoints();
 
 app.Run();
 
