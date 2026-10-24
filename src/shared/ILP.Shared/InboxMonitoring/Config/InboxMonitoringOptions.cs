@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Configuration;
+
 namespace ILP.Shared.InboxMonitoring.Config;
 
 public sealed class InboxMonitoringOptions
@@ -19,6 +21,15 @@ public sealed class InboxMonitoringOptions
     public string ImapHost { get; set; } = "imap.gmail.com";
 
     public int ImapPort { get; set; } = 993;
+
+    /// <summary>Raw "AutoMarkAsRead" setting; "Y" (case-insensitive) or unset means true, anything else false.</summary>
+    [ConfigurationKeyName("AutoMarkAsRead")]
+    public string? AutoMarkAsReadSetting { get; set; }
+
+    [ConfigurationKeyName("AutoMarkAsReadResolved")]
+    public bool AutoMarkAsRead =>
+        string.IsNullOrWhiteSpace(AutoMarkAsReadSetting)
+        || string.Equals(AutoMarkAsReadSetting.Trim(), "Y", StringComparison.OrdinalIgnoreCase);
 
     public TimeSpan PollInterval => TimeSpan.FromSeconds(Math.Max(1, PollIntervalSeconds));
 }

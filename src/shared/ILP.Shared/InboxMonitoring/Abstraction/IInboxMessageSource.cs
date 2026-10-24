@@ -5,4 +5,6 @@ namespace ILP.Shared.InboxMonitoring.Abstraction;
 public interface IInboxMessageSource
 {
     Task<IReadOnlyList<InboxMessageDto>> FetchUnreadAsync(string traceId, CancellationToken cancellationToken);
+
+    Task MarkAsReadAsync(IReadOnlyCollection<uint> uniqueIds, string traceId, CancellationToken cancellationToken);
 }

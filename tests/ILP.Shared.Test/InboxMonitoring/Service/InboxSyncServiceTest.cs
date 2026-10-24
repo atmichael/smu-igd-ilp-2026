@@ -1,6 +1,9 @@
 using ILP.Shared.InboxMonitoring.Abstraction;
+using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.InboxMonitoring.Service;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace ILP.Shared.Test.InboxMonitoring.Service;
 
@@ -10,6 +13,14 @@ public class InboxSyncServiceTest
     {
         public Task<IReadOnlyList<InboxMessageDto>> FetchUnreadAsync(string traceId, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<InboxMessageDto>>(messages);
+
+        public List<uint> MarkedAsRead { get; } = [];
+
+        public Task MarkAsReadAsync(IReadOnlyCollection<uint> uniqueIds, string traceId, CancellationToken cancellationToken)
+        {
+            MarkedAsRead.AddRange(uniqueIds);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeExtractor : IDocumentContentExtractor
@@ -28,10 +39,61 @@ public class InboxSyncServiceTest
         }
     }
 
+    private static IOptions<InboxMonitoringOptions> Opts(string? autoMarkAsRead = null) =>
+        Options.Create(new InboxMonitoringOptions { AutoMarkAsReadSetting = autoMarkAsRead });
+
+    [Fact]
+    public async Task SyncAsync_SuccessAndFailure_MarksOnlySuccessfulAsRead()
+    {
+        var source = new FakeSource(
+            new InboxMessageDto { UniqueId = 1, Body = "ok" },
+            new InboxMessageDto { UniqueId = 2, Body = "boom" });
+        var sut = new InboxSyncService(source, new FakeExtractor(), Opts());
+
+        await sut.SyncAsync();
+
+        Assert.Equal([1u], source.MarkedAsRead);
+    }
+
+    [Fact]
+    public async Task SyncAsync_AutoMarkAsReadDisabled_DoesNotMark()
+    {
+        var source = new FakeSource(new InboxMessageDto { UniqueId = 1, Body = "ok" });
+        var sut = new InboxSyncService(source, new FakeExtractor(), Opts("N"));
+
+        await sut.SyncAsync();
+
+        Assert.Empty(source.MarkedAsRead);
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("Y", true)]
+    [InlineData("y", true)]
+    [InlineData("N", false)]
+    [InlineData("true", false)]
+    public void AutoMarkAsRead_ParsesSetting(string? value, bool expected)
+    {
+        Assert.Equal(expected, new InboxMonitoringOptions { AutoMarkAsReadSetting = value }.AutoMarkAsRead);
+    }
+
+    [Fact]
+    public void AutoMarkAsRead_BindsFromConfiguration()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["AutoMarkAsRead"] = "n" })
+            .Build();
+
+        var options = config.Get<InboxMonitoringOptions>()!;
+
+        Assert.False(options.AutoMarkAsRead);
+        Assert.True(new ConfigurationBuilder().Build().Get<InboxMonitoringOptions>() is null);
+    }
+
     [Fact]
     public async Task SyncAsync_NoMessages_ReturnsEmptyResult()
     {
-        var sut = new InboxSyncService(new FakeSource(), new FakeExtractor());
+        var sut = new InboxSyncService(new FakeSource(), new FakeExtractor(), Opts());
 
         var result = await sut.SyncAsync();
 
@@ -43,7 +105,7 @@ public class InboxSyncServiceTest
     public async Task SyncAsync_MessageWithoutAttachment_ExtractsFromBody()
     {
         var extractor = new FakeExtractor();
-        var sut = new InboxSyncService(new FakeSource(new InboxMessageDto { Body = "hello" }), extractor);
+        var sut = new InboxSyncService(new FakeSource(new InboxMessageDto { Body = "hello" }), extractor, Opts());
 
         var result = await sut.SyncAsync();
 
@@ -58,7 +120,7 @@ public class InboxSyncServiceTest
         string file2 = Path.GetTempFileName();
         var extractor = new FakeExtractor();
         var message = new InboxMessageDto { Body = "b", AttachmentPaths = [file1, file2] };
-        var sut = new InboxSyncService(new FakeSource(message), extractor);
+        var sut = new InboxSyncService(new FakeSource(message), extractor, Opts());
 
         var result = await sut.SyncAsync();
 
@@ -73,7 +135,7 @@ public class InboxSyncServiceTest
     {
         var sut = new InboxSyncService(
             new FakeSource(new InboxMessageDto { Body = "boom" }, new InboxMessageDto { Body = "ok" }),
-            new FakeExtractor());
+            new FakeExtractor(), Opts());
 
         var result = await sut.SyncAsync();
 

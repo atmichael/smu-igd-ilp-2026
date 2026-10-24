@@ -2,6 +2,9 @@ namespace ILP.Shared.InboxMonitoring.Dto;
 
 public sealed class InboxMessageDto
 {
+    /// <summary>IMAP unique id of the message in the inbox; used to mark it as read.</summary>
+    public uint UniqueId { get; init; }
+
     public string Subject { get; init; } = "";
 
     public string From { get; init; } = "";

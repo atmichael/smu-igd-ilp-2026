@@ -43,11 +43,33 @@ public sealed class ImapInboxMessageSource : IInboxMessageSource
         foreach (var uid in uniqueIds)
         {
             var message = await inbox.GetMessageAsync(uid, cancellationToken);
-            result.Add(await ToDtoAsync(message, traceId, cancellationToken));
+            result.Add(await ToDtoAsync(message, uid.Id, traceId, cancellationToken));
         }
 
         await client.DisconnectAsync(true, cancellationToken);
         return result;
+    }
+
+    public async Task MarkAsReadAsync(IReadOnlyCollection<uint> uniqueIds, string traceId, CancellationToken cancellationToken)
+    {
+        if (uniqueIds.Count == 0)
+        {
+            return;
+        }
+
+        var credential = await AuthorizeAsync(cancellationToken);
+
+        using var client = new ImapClient();
+        await client.ConnectAsync(_options.ImapHost, _options.ImapPort, SecureSocketOptions.SslOnConnect, cancellationToken);
+        await client.AuthenticateAsync(new SaslMechanismOAuth2(_options.EmailAddress, credential.Token.AccessToken), cancellationToken);
+
+        var inbox = client.Inbox;
+        await inbox.OpenAsync(FolderAccess.ReadWrite, cancellationToken);
+
+        await inbox.AddFlagsAsync(uniqueIds.Select(id => new UniqueId(id)).ToList(), MessageFlags.Seen, true, cancellationToken);
+        LogHelper.Info(traceId, $"Marked {uniqueIds.Count} message(s) as read");
+
+        await client.DisconnectAsync(true, cancellationToken);
     }
 
     private async Task<UserCredential> AuthorizeAsync(CancellationToken cancellationToken)
@@ -71,7 +93,7 @@ public sealed class ImapInboxMessageSource : IInboxMessageSource
         return credential;
     }
 
-    private static async Task<InboxMessageDto> ToDtoAsync(MimeMessage message, string traceId, CancellationToken cancellationToken)
+    private static async Task<InboxMessageDto> ToDtoAsync(MimeMessage message, uint uniqueId, string traceId, CancellationToken cancellationToken)
     {
         string body = !string.IsNullOrWhiteSpace(message.HtmlBody) ? message.HtmlBody : message.TextBody ?? "";
         LogHelper.Trace(traceId, $"Body Excerpt: {body}");
@@ -123,6 +145,7 @@ public sealed class ImapInboxMessageSource : IInboxMessageSource
 
         return new InboxMessageDto
         {
+            UniqueId = uniqueId,
             Subject = message.Subject ?? "",
             From = message.From.ToString(),
             Body = body,
