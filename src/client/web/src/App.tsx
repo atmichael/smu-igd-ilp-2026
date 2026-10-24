@@ -1,25 +1,20 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Button, Paper, Stack, Typography } from '@mui/material'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import {
   clearGoogleIdToken,
   getGoogleIdToken,
   setGoogleIdToken,
 } from './common/service/authentication-service'
-import { CameraCapture } from './features/camera-capture/CameraCapture'
-import { FileUpload } from './features/file-upload/FileUpload'
+import { CameraCapturePage } from './features/camera-capture/CameraCapturePage'
+import { FileUploadPage } from './features/file-upload/FileUploadPage'
 import { HomePage } from './features/home/HomePage'
 import { LoginPage } from './features/login/LoginPage'
 import { CompanyListPage } from './features/company/CompanyListPage'
 import { DocumentDetailsPage } from './features/document/DocumentDetailsPage'
 import { DocumentHubPage } from './features/document/DocumentHubPage'
 import { PortalShell } from './features/layout/PortalShell'
-import { submitSourceDocument } from './features/source-documents/service/source-document-service'
 import './App.css'
 
 function App() {
-  const [submittedSourceDocument, setSubmittedSourceDocument] = useState<
-    { sourceDocumentId: string; channel: string; pageCount: number; status: string } | null
-  >()
   const [isAuthenticated, setIsAuthenticated] = useState(() => getGoogleIdToken() !== null)
   const [path, setPath] = useState(() => resolvePath(getGoogleIdToken() !== null, window.location.pathname))
 
@@ -54,7 +49,6 @@ function App() {
   const handleSignOut = () => {
     clearGoogleIdToken()
     setIsAuthenticated(false)
-    setSubmittedSourceDocument(null)
     navigate('/')
   }
 
@@ -62,78 +56,11 @@ function App() {
     return <LoginPage onCredential={handleCredential} />
   }
 
-  if (path === '/camera-capture') {
-    return (
-      <main className="app-shell">
-        <Stack spacing={3} sx={{ maxWidth: 960, mx: 'auto', py: 4, px: 2 }}>
-          {submittedSourceDocument ? (
-            <SubmissionConfirmation
-              sourceDocumentId={submittedSourceDocument.sourceDocumentId}
-              status={submittedSourceDocument.status}
-              onBack={() => {
-                setSubmittedSourceDocument(null)
-                navigate('/home')
-              }}
-            />
-          ) : (
-            <CameraCapture
-              autoStart
-              onExit={() => navigate('/home')}
-              onSubmit={async (request) => {
-                const result = await submitSourceDocument(request)
-                setSubmittedSourceDocument(result)
-                return result
-              }}
-            />
-          )}
-        </Stack>
-      </main>
-    )
-  }
-
-  if (path === '/file-upload') {
-    return (
-      <main className="app-shell">
-        <Stack spacing={3} sx={{ maxWidth: 960, mx: 'auto', py: 4, px: 2 }}>
-          {submittedSourceDocument ? (
-            <SubmissionConfirmation
-              sourceDocumentId={submittedSourceDocument.sourceDocumentId}
-              status={submittedSourceDocument.status}
-              onBack={() => {
-                setSubmittedSourceDocument(null)
-                navigate('/home')
-              }}
-            />
-          ) : (
-            <FileUpload
-              onExit={() => navigate('/home')}
-              onSubmit={async (request) => {
-                const result = await submitSourceDocument(request)
-                setSubmittedSourceDocument(result)
-                return result
-              }}
-            />
-          )}
-        </Stack>
-      </main>
-    )
-  }
-
-  const documentId = path.match(/^\/document\/(\d+)$/)?.[1]
-  const content =
-    path === '/company' ? (
-      <CompanyListPage />
-    ) : path === '/document' ? (
-      <DocumentHubPage onNavigate={navigate} />
-    ) : documentId ? (
-      <DocumentDetailsPage documentId={Number(documentId)} onBack={() => navigate('/document')} />
-    ) : (
-      <HomePage onNavigate={navigate} />
-    )
+  const content = resolveContent(path, navigate)
 
   return (
     <PortalShell
-      activePath={documentId ? '/document' : path}
+      activePath={/^\/document\/\d+$/.test(path) ? '/document' : path}
       onNavigate={navigate}
       onSignOut={handleSignOut}
     >
@@ -153,29 +80,29 @@ function resolvePath(isAuthenticated: boolean, currentPath: string): string {
     : '/home'
 }
 
-function SubmissionConfirmation({
-  sourceDocumentId,
-  status,
-  onBack,
-}: {
-  sourceDocumentId: string
-  status: string
-  onBack: () => void
-}) {
-  return (
-    <Paper elevation={0} className="app-shell__confirmation">
-      <Stack spacing={1}>
-        <Typography variant="h5" component="h2">
-          Document submitted
-        </Typography>
-        <Typography>Source document ID: {sourceDocumentId}</Typography>
-        <Typography>Status: {status}</Typography>
-        <Button variant="contained" onClick={onBack}>
-          Back to source selection
-        </Button>
-      </Stack>
-    </Paper>
-  )
+function resolveContent(path: string, navigate: (nextPath: string) => void): ReactNode {
+  if (path === '/camera-capture') {
+    return <CameraCapturePage onNavigate={navigate} />
+  }
+
+  if (path === '/file-upload') {
+    return <FileUploadPage onNavigate={navigate} />
+  }
+
+  if (path === '/company') {
+    return <CompanyListPage />
+  }
+
+  if (path === '/document') {
+    return <DocumentHubPage onNavigate={navigate} />
+  }
+
+  const documentId = path.match(/^\/document\/(\d+)$/)?.[1]
+  if (documentId) {
+    return <DocumentDetailsPage documentId={Number(documentId)} onBack={() => navigate('/document')} />
+  }
+
+  return <HomePage onNavigate={navigate} />
 }
 
 export default App

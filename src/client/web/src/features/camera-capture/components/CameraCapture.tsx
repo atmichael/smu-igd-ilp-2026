@@ -14,9 +14,9 @@ import {
   createInitialSession,
   removeAcceptedPage,
   type CameraCaptureSession,
-} from './model/camera-capture-model'
-import { submitSourceDocument } from '../source-documents/service/source-document-service'
-import type { SourceDocumentResponse } from '../../common/model/source-document-model'
+} from '../model/camera-capture-model'
+import { submitSourceDocument } from '../../source-documents/service/source-document-service'
+import type { SourceDocumentResponse } from '../../../common/model/source-document-model'
 import './CameraCapture.css'
 
 interface CameraCaptureProps {
