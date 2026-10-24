@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { clearGoogleIdToken } from './common/service/authentication-service'
 import App from './App'
 
 vi.mock('./features/login/GoogleSignInButton', () => ({
@@ -18,6 +19,7 @@ vi.mock('./features/file-upload/FileUpload', () => ({
 
 describe('App authentication and navigation', () => {
   beforeEach(() => {
+    clearGoogleIdToken()
     window.history.replaceState({}, '', '/')
   })
 

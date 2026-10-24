@@ -9,7 +9,7 @@ export function HomePage({ onNavigate, onSignOut }: HomePageProps) {
   return (
     <main className="app-shell">
       <Stack spacing={3} sx={{ maxWidth: 960, mx: 'auto', py: 4, px: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="h4" component="h1">
             Invoice Intake
           </Typography>

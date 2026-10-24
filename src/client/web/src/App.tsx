@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button, Paper, Stack, Typography } from '@mui/material'
-import { clearGoogleIdToken, setGoogleIdToken } from './common/service/authentication-service'
+import {
+  clearGoogleIdToken,
+  getGoogleIdToken,
+  setGoogleIdToken,
+} from './common/service/authentication-service'
 import { CameraCapture } from './features/camera-capture/CameraCapture'
 import { FileUpload } from './features/file-upload/FileUpload'
 import { HomePage } from './features/home/HomePage'
@@ -12,8 +16,8 @@ function App() {
   const [submittedSourceDocument, setSubmittedSourceDocument] = useState<
     { sourceDocumentId: string; channel: string; pageCount: number; status: string } | null
   >()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [path, setPath] = useState(() => window.location.pathname)
+  const [isAuthenticated, setIsAuthenticated] = useState(() => getGoogleIdToken() !== null)
+  const [path, setPath] = useState(() => resolvePath(getGoogleIdToken() !== null, window.location.pathname))
 
   const navigate = useCallback((nextPath: string) => {
     window.history.pushState({}, '', nextPath)
@@ -21,18 +25,21 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const syncPath = () => setPath(window.location.pathname)
+    const currentPath = resolvePath(getGoogleIdToken() !== null, window.location.pathname)
+    if (currentPath !== window.location.pathname) {
+      window.history.replaceState({}, '', currentPath)
+    }
+
+    const syncPath = () => {
+      const nextPath = resolvePath(getGoogleIdToken() !== null, window.location.pathname)
+      if (nextPath !== window.location.pathname) {
+        window.history.replaceState({}, '', nextPath)
+      }
+      setPath(nextPath)
+    }
     window.addEventListener('popstate', syncPath)
     return () => window.removeEventListener('popstate', syncPath)
   }, [])
-
-  useEffect(() => {
-    if (!isAuthenticated && path !== '/') {
-      navigate('/')
-    } else if (isAuthenticated && !['/home', '/camera-capture', '/file-upload'].includes(path)) {
-      navigate('/home')
-    }
-  }, [isAuthenticated, navigate, path])
 
   const handleCredential = (credential: string) => {
     setGoogleIdToken(credential)
@@ -108,9 +115,15 @@ function App() {
     )
   }
 
-  return (
-    <HomePage onNavigate={navigate} onSignOut={handleSignOut} />
-  )
+  return <HomePage onNavigate={navigate} onSignOut={handleSignOut} />
+}
+
+function resolvePath(isAuthenticated: boolean, currentPath: string): string {
+  if (!isAuthenticated) {
+    return '/'
+  }
+
+  return ['/home', '/camera-capture', '/file-upload'].includes(currentPath) ? currentPath : '/home'
 }
 
 function SubmissionConfirmation({

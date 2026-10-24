@@ -9,19 +9,20 @@ const GOOGLE_IDENTITY_SCRIPT = 'https://accounts.google.com/gsi/client'
 
 export function GoogleSignInButton({ onCredential }: GoogleSignInButtonProps) {
   const buttonRef = useRef<HTMLDivElement | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const error = clientId
+    ? loadError
+    : 'Google sign-in is not configured. Set VITE_GOOGLE_CLIENT_ID and restart the web app.'
 
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-
     if (!clientId) {
-      setError('Google sign-in is not configured. Set VITE_GOOGLE_CLIENT_ID and restart the web app.')
       return
     }
 
     const initialize = () => {
       if (!buttonRef.current || !window.google) {
-        setError('Google sign-in could not be loaded. Please refresh and try again.')
+        setLoadError('Google sign-in could not be loaded. Please refresh and try again.')
         return
       }
 
@@ -31,7 +32,7 @@ export function GoogleSignInButton({ onCredential }: GoogleSignInButtonProps) {
           if (response.credential) {
             onCredential(response.credential)
           } else {
-            setError('Google sign-in did not return a credential. Please try again.')
+            setLoadError('Google sign-in did not return a credential. Please try again.')
           }
         },
       })
@@ -52,7 +53,7 @@ export function GoogleSignInButton({ onCredential }: GoogleSignInButtonProps) {
 
     const googleScript = script ?? document.createElement('script')
     const onLoad = () => initialize()
-    const onError = () => setError('Google sign-in could not be loaded. Please refresh and try again.')
+    const onError = () => setLoadError('Google sign-in could not be loaded. Please refresh and try again.')
 
     googleScript.addEventListener('load', onLoad)
     googleScript.addEventListener('error', onError)
@@ -68,7 +69,7 @@ export function GoogleSignInButton({ onCredential }: GoogleSignInButtonProps) {
       googleScript.removeEventListener('load', onLoad)
       googleScript.removeEventListener('error', onError)
     }
-  }, [onCredential])
+  }, [clientId, onCredential])
 
   return (
     <div>
