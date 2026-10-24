@@ -1,6 +1,8 @@
 using ILP.Shared.Helper;
 using ILP.Shared.InboxMonitoring.Abstraction;
+using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
+using Microsoft.Extensions.Options;
 
 namespace ILP.Shared.InboxMonitoring.Service;
 
@@ -8,10 +10,12 @@ public sealed class InboxSyncService : IInboxSyncService
 {
     private readonly IInboxMessageSource _source;
     private readonly IDocumentContentExtractor _extractor;
+    private readonly InboxMonitoringOptions _options;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
-    public InboxSyncService(IInboxMessageSource source, IDocumentContentExtractor extractor)
+    public InboxSyncService(IInboxMessageSource source, IDocumentContentExtractor extractor, IOptions<InboxMonitoringOptions> options)
     {
+        _options = options.Value;
         _source = source;
         _extractor = extractor;
     }
@@ -28,6 +32,7 @@ public sealed class InboxSyncService : IInboxSyncService
             var contents = new List<string>();
             int processed = 0;
             int failed = 0;
+            var processedUniqueIds = new List<uint>();
 
             foreach (var message in messages)
             {
@@ -47,6 +52,7 @@ public sealed class InboxSyncService : IInboxSyncService
                     }
 
                     processed++;
+                    processedUniqueIds.Add(message.UniqueId);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -56,6 +62,18 @@ public sealed class InboxSyncService : IInboxSyncService
                 finally
                 {
                     DeleteAttachments(message);
+                }
+            }
+
+            if (_options.AutoMarkAsRead && processedUniqueIds.Count > 0)
+            {
+                try
+                {
+                    await _source.MarkAsReadAsync(processedUniqueIds, traceId, cancellationToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    LogHelper.Error(traceId, ex, "Failed to mark processed messages as read");
                 }
             }
 
