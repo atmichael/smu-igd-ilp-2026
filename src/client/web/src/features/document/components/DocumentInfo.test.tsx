@@ -36,4 +36,15 @@ describe('DocumentInfo original attachment', () => {
     render(<DocumentInfo document={{ ...base, originalFileUrl: 'javascript:alert(1)' }} />)
     expect(screen.getByText('The original attachment link is invalid.')).toBeTruthy()
   })
+
+  it('renders a Google Drive preview iframe for a Drive view URL', () => {
+    render(
+      <DocumentInfo
+        document={{ ...base, originalFileUrl: 'https://drive.google.com/file/d/1pPrdCXnnGl4LY_4QbbKXNvSr64FhJ4yi/view?usp=drivesdk' }}
+      />,
+    )
+    expect(screen.getByTitle('Original document attachment').getAttribute('src')).toBe(
+      'https://drive.google.com/file/d/1pPrdCXnnGl4LY_4QbbKXNvSr64FhJ4yi/preview',
+    )
+  })
 })

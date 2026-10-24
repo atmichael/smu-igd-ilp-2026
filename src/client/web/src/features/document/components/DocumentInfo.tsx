@@ -15,6 +15,15 @@ function formatAmount(value: number, currency = 'SGD'): string {
   return new Intl.NumberFormat('en-SG', { style: 'currency', currency }).format(value)
 }
 
+function getGoogleDrivePreviewUrl(url: URL): string | null {
+  if (url.protocol !== 'https:' || url.hostname !== 'drive.google.com') return null
+  const match = url.pathname.match(/^\/file\/d\/([\w-]+)/) ?? null
+  const id = match?.[1] ?? url.searchParams.get('id')
+  if (!id || !/^[\w-]+$/.test(id)) return null
+  if (!match && url.pathname !== '/open' && url.pathname !== '/uc') return null
+  return `https://drive.google.com/file/d/${id}/preview`
+}
+
 function getOriginalFile(document: DocumentRecord) {
   if (document.originalFileUrl) {
     let attachmentUrl: URL
@@ -31,6 +40,17 @@ function getOriginalFile(document: DocumentRecord) {
         Open original attachment
       </a>
     )
+    const drivePreviewUrl = getGoogleDrivePreviewUrl(attachmentUrl)
+    if (drivePreviewUrl) {
+      return (
+        <iframe
+          className="document-info__preview"
+          src={drivePreviewUrl}
+          title="Original document attachment"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      )
+    }
     const urlContentType = document.originalFileContentType || ''
     if (urlContentType.startsWith('image/')) {
       return <img className="document-info__image" src={attachmentUrl.href} alt="Original document attachment" />
