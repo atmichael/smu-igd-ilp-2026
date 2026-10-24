@@ -17,6 +17,18 @@ vi.mock('./features/file-upload/FileUpload', () => ({
   FileUpload: () => <h2>File upload route</h2>,
 }))
 
+vi.mock('./features/document/components/DocumentDataGrid', () => ({
+  DocumentDataGrid: () => <div>Manual rectification documents</div>,
+}))
+
+vi.mock('./features/company/CompanyListPage', () => ({
+  CompanyListPage: () => <h2>Company list route</h2>,
+}))
+
+vi.mock('./features/document/DocumentHubPage', () => ({
+  DocumentHubPage: () => <h2>Document hub route</h2>,
+}))
+
 describe('App authentication and navigation', () => {
   beforeEach(() => {
     clearGoogleIdToken()
@@ -33,6 +45,9 @@ describe('App authentication and navigation', () => {
     expect(screen.getByRole('heading', { name: /invoice intake/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /camera capture/i })).toHaveAttribute('href', '/camera-capture')
     expect(screen.getByRole('link', { name: /file upload/i })).toHaveAttribute('href', '/file-upload')
+    expect(screen.getByRole('link', { name: /company/i })).toHaveAttribute('href', '/company')
+    expect(screen.getByRole('link', { name: /document hub/i })).toHaveAttribute('href', '/document')
+    expect(screen.getByText(/manual rectification documents/i)).toBeInTheDocument()
   })
 
   it('navigates from the post-login page to camera capture', () => {
@@ -51,6 +66,24 @@ describe('App authentication and navigation', () => {
 
     expect(window.location.pathname).toBe('/file-upload')
     expect(screen.getByRole('heading', { name: /file upload route/i })).toBeInTheDocument()
+  })
+
+  it('navigates to the company list', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /sign in with google/i }))
+    fireEvent.click(screen.getByRole('link', { name: /^company$/i }))
+
+    expect(window.location.pathname).toBe('/company')
+    expect(screen.getByRole('heading', { name: /company list route/i })).toBeInTheDocument()
+  })
+
+  it('navigates to the document hub', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /sign in with google/i }))
+    fireEvent.click(screen.getByRole('link', { name: /document hub/i }))
+
+    expect(window.location.pathname).toBe('/document')
+    expect(screen.getByRole('heading', { name: /document hub route/i })).toBeInTheDocument()
   })
 
   it('redirects an unauthenticated feature route to the login page', () => {
