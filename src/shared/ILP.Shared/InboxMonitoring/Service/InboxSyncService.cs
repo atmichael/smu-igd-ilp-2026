@@ -66,15 +66,16 @@ public sealed class InboxSyncService : IInboxSyncService
                     {
                         string content = await _extractor.ExtractAsync(message.Body, file, traceId, message.InlineImages);
                         contents.Add(content);
+                        var document = ExtractedDocumentParser.Parse(content).GetDocumentInfo();
 
                         InboxMessageAttachmentDto? uploadedAttachment = null;
                         if (_driveFileProvider != null)
                         {
-                            uploadedAttachment = await _driveFileProvider.UploadAsync(file, cancellationToken);
+                            uploadedAttachment = await _driveFileProvider.UploadAsync(file, document, cancellationToken);
                             driveAttachments.Add(uploadedAttachment);
                         }
 
-                        extractedDocuments.Add((ExtractedDocumentParser.Parse(content).GetDocumentInfo(), uploadedAttachment));
+                        extractedDocuments.Add((document, uploadedAttachment));
                     }
 
                     if (_persistence != null && extractedDocuments.Count > 0)

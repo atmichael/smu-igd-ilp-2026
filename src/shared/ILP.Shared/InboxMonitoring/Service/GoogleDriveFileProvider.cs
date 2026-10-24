@@ -6,6 +6,7 @@ using Google.Apis.Util.Store;
 using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
+using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.Extensions.Options;
 
 namespace ILP.Shared.InboxMonitoring.Service;
@@ -21,7 +22,10 @@ public sealed class GoogleDriveFileProvider : IGoogleDriveFileProvider
         _options = options.Value;
     }
 
-    public async Task<InboxMessageAttachmentDto> UploadAsync(string filePath, CancellationToken cancellationToken = default)
+    public async Task<InboxMessageAttachmentDto> UploadAsync(
+        string filePath,
+        DocumentDto document,
+        CancellationToken cancellationToken = default)
     {
         var credential = await AuthorizeAsync(cancellationToken);
         using var service = new DriveService(new BaseClientService.Initializer
@@ -30,10 +34,11 @@ public sealed class GoogleDriveFileProvider : IGoogleDriveFileProvider
             ApplicationName = "SMU ILP"
         });
 
+        string folderId = await EnsureDocumentFolderAsync(service, document, cancellationToken);
         var fileMetadata = new Google.Apis.Drive.v3.Data.File
         {
             Name = Path.GetFileName(filePath),
-            Parents = string.IsNullOrWhiteSpace(_options.GoogleDriveFolderId) ? null : [_options.GoogleDriveFolderId]
+            Parents = [folderId]
         };
 
         await using var stream = System.IO.File.OpenRead(filePath);
@@ -49,6 +54,74 @@ public sealed class GoogleDriveFileProvider : IGoogleDriveFileProvider
             uploadedFile.Id ?? throw new InvalidOperationException("Google Drive did not return a file id."),
             uploadedFile.WebViewLink ?? $"https://drive.google.com/file/d/{uploadedFile.Id}/view");
     }
+
+    internal static IReadOnlyList<string> GetFolderNames(DocumentDto document) =>
+    [
+        NormalizeFolderName(document.Company.UEN, "Unknown UEN"),
+        NormalizeFolderName(document.TypeCode, "Unknown document type"),
+        NormalizeFolderName(document.RefNumber, "Unnumbered document")
+    ];
+
+    private async Task<string> EnsureDocumentFolderAsync(
+        DriveService service,
+        DocumentDto document,
+        CancellationToken cancellationToken)
+    {
+        string? parentFolderId = string.IsNullOrWhiteSpace(_options.GoogleDriveFolderId)
+            ? null
+            : _options.GoogleDriveFolderId;
+
+        foreach (string folderName in GetFolderNames(document))
+        {
+            parentFolderId = await FindOrCreateFolderAsync(service, folderName, parentFolderId, cancellationToken);
+        }
+
+        return parentFolderId;
+    }
+
+    private static async Task<string> FindOrCreateFolderAsync(
+        DriveService service,
+        string folderName,
+        string? parentFolderId,
+        CancellationToken cancellationToken)
+    {
+        string parentQuery = parentFolderId == null ? "'root' in parents" : $"'{EscapeQueryValue(parentFolderId)}' in parents";
+        var listRequest = service.Files.List();
+        listRequest.Q = $"name = '{EscapeQueryValue(folderName)}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false and {parentQuery}";
+        listRequest.Spaces = "drive";
+        listRequest.Fields = "files(id,name)";
+        listRequest.PageSize = 1;
+
+        var matches = await listRequest.ExecuteAsync(cancellationToken);
+        string? folderId = matches.Files?.FirstOrDefault()?.Id;
+        if (!string.IsNullOrWhiteSpace(folderId))
+        {
+            return folderId;
+        }
+
+        var folder = new Google.Apis.Drive.v3.Data.File
+        {
+            Name = folderName,
+            MimeType = "application/vnd.google-apps.folder",
+            Parents = parentFolderId == null ? null : [parentFolderId]
+        };
+        var createRequest = service.Files.Create(folder);
+        createRequest.Fields = "id";
+        var createdFolder = await createRequest.ExecuteAsync(cancellationToken);
+        return createdFolder.Id
+            ?? throw new InvalidOperationException($"Google Drive did not return an id for folder '{folderName}'.");
+    }
+
+    private static string NormalizeFolderName(string? name, string fallback)
+    {
+        string value = string.IsNullOrWhiteSpace(name) ? fallback : name.Trim();
+        return string.Concat(value.Select(character =>
+            character is '/' or '\\' || char.IsControl(character) ? '_' : character));
+    }
+
+    private static string EscapeQueryValue(string value) =>
+        value.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("'", "\\'", StringComparison.Ordinal);
 
     private async Task<UserCredential> AuthorizeAsync(CancellationToken cancellationToken)
     {

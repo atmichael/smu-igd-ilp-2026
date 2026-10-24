@@ -49,10 +49,15 @@ public class InboxSyncServiceTest
     private sealed class FakeDriveFileProvider : IGoogleDriveFileProvider
     {
         public List<string> UploadedFiles { get; } = [];
+        public List<DocumentDto> Documents { get; } = [];
 
-        public Task<InboxMessageAttachmentDto> UploadAsync(string filePath, CancellationToken cancellationToken = default)
+        public Task<InboxMessageAttachmentDto> UploadAsync(
+            string filePath,
+            DocumentDto document,
+            CancellationToken cancellationToken = default)
         {
             UploadedFiles.Add(filePath);
+            Documents.Add(document);
             return Task.FromResult(new InboxMessageAttachmentDto(
                 Path.GetFileName(filePath),
                 "drive-file-id",
@@ -195,6 +200,7 @@ public class InboxSyncServiceTest
                 [HEADER]
                 document-number| INV-21
                 document-type| Invoice
+                company-uen| UEN-21
                 total-amount| 12.50
                 [CONFIDENCE]
                 confidence|0.91
@@ -207,6 +213,9 @@ public class InboxSyncServiceTest
 
         Assert.Equal(1, result.MessagesProcessed);
         Assert.Equal([file], drive.UploadedFiles);
+        Assert.Equal("UEN-21", Assert.Single(drive.Documents).Company.UEN);
+        Assert.Equal("Invoice", drive.Documents[0].TypeCode);
+        Assert.Equal("INV-21", drive.Documents[0].RefNumber);
         var mapping = Assert.Single(Assert.Single(persistence.Saves));
         Assert.Equal("INV-21", mapping.Document.RefNumber);
         Assert.Equal(0.91m, mapping.Document.Confidence);
@@ -215,5 +224,18 @@ public class InboxSyncServiceTest
             Assert.Single(mapping.InboxMessage.GoogleDriveAttachments).WebViewLink);
         Assert.Equal("drive-file-id", mapping.SourceAttachment?.DriveFileId);
         Assert.False(File.Exists(file));
+    }
+
+    [Fact]
+    public void GoogleDriveFileProvider_GetFolderNames_UsesSanitizedDocumentFields()
+    {
+        var document = new DocumentDto(
+            "INV\\001",
+            "Invoice",
+            DateTime.UnixEpoch,
+            0m,
+            company: new CompanyDto("Supplier", "UEN/21"));
+
+        Assert.Equal(["UEN_21", "Invoice", "INV_001"], GoogleDriveFileProvider.GetFolderNames(document));
     }
 }
