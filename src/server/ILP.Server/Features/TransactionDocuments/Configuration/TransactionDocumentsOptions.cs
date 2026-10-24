@@ -4,5 +4,5 @@ public sealed class TransactionDocumentsOptions
 {
     public const string SectionName = "TransactionDocuments";
 
-    public decimal ConfidenceThreshold { get; set; } = 0.8m;
+    public decimal ConfidenceThreshold { get; set; } = 0.95m;
 }
