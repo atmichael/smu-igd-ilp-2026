@@ -3,6 +3,7 @@ using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.InfoExtraction.Parser;
+using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.Extensions.Options;
 
 namespace ILP.Shared.InboxMonitoring.Service;
@@ -51,7 +52,7 @@ public sealed class InboxSyncService : IInboxSyncService
                     LogHelper.Info(traceId, $"Subject: {message.Subject}");
                     LogHelper.Info(traceId, $"From: {message.From}");
 
-                    var extractedDocuments = new List<(ILP.Shared.TransactionDocument.Dto.DocumentDto Document, InboxMessageAttachmentDto? Attachment)>();
+                    var extractedDocuments = new List<(DocumentDto Document, InboxMessageAttachmentDto? Attachment)>();
                     var driveAttachments = new List<InboxMessageAttachmentDto>();
 
                     if (message.AttachmentPaths.Count == 0)

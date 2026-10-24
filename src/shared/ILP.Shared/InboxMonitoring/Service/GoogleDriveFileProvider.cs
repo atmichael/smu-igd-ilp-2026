@@ -38,7 +38,7 @@ public sealed class GoogleDriveFileProvider : IGoogleDriveFileProvider
 
         await using var stream = System.IO.File.OpenRead(filePath);
         var request = service.Files.Create(fileMetadata, stream, GetContentType(filePath));
-        request.Fields = "id,webViewLink";
+        request.Fields = "id,name,webViewLink";
         await request.UploadAsync(cancellationToken);
 
         var uploadedFile = request.ResponseBody
