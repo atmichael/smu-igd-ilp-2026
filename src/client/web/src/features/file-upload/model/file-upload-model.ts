@@ -1,4 +1,4 @@
-import { SourceDocumentRequestError, type SourceDocumentResponse } from '../source-documents/source-document-api'
+import { SourceDocumentRequestError, type SourceDocumentResponse } from '../../../common/model/source-document-model'
 
 /** Mirrors `SourceDocumentLimits.FileUploadMaxBytes` on the server (20 MB, file-upload only). */
 export const FILE_UPLOAD_MAX_BYTES = 20 * 1024 * 1024

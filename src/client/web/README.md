@@ -1,4 +1,12 @@
-# React + TypeScript + Vite
+# Invoice Intake web client
+
+## Google sign-in configuration
+
+Copy `.env.example` to `.env.local` and set `VITE_GOOGLE_CLIENT_ID` to the OAuth 2.0 client ID configured for the web app. Restart Vite after changing the value.
+
+The web client uses Google Identity Services to receive an ID token. A client secret is not used in this browser-based flow and must never be placed in a `VITE_` variable or bundled into the client; any confidential secret belongs only in a server-side OAuth flow.
+
+Run the app and checks from this directory with `npm run dev`, `npm test`, `npm run lint`, and `npm run build`.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

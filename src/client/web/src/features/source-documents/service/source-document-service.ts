@@ -1,36 +1,9 @@
-export type SourceDocumentChannel = 'camera-capture' | 'file-upload'
-
-export interface SourceDocumentResponse {
-  sourceDocumentId: string
-  channel: SourceDocumentChannel
-  pageCount: number
-  status: 'received'
-  mediaType?: string
-  origin?: { upload?: { originalFileName: string } }
-}
-
-export type SubmitSourceDocumentRequest =
-  | { channel: 'camera-capture'; pages: Blob[]; idempotencyKey?: string }
-  | { channel: 'file-upload'; file: File; idempotencyKey?: string }
-
-/** A rejected submission; `detail` is the server's user-safe explanation when it sent one. */
-export class SourceDocumentRequestError extends Error {
-  readonly status: number
-  readonly title: string
-  readonly detail?: string
-
-  constructor(status: number, title: string, detail?: string) {
-    super(title)
-    this.name = 'SourceDocumentRequestError'
-    this.status = status
-    this.title = title
-    this.detail = detail
-  }
-}
-
-function authorizationHeaders(): Record<string, string> {
-  return import.meta.env.DEV ? { Authorization: 'Test camera-capture' } : {}
-}
+import { apiFetch } from '../../../common/service/api-client'
+import {
+  SourceDocumentRequestError,
+  type SourceDocumentResponse,
+  type SubmitSourceDocumentRequest,
+} from '../../../common/model/source-document-model'
 
 async function readProblem(response: Response): Promise<{ title?: string; detail?: string }> {
   const problem = await response.json().catch(() => ({}))
@@ -63,11 +36,10 @@ export async function submitSourceDocument(
 
   const idempotencyKey = request.idempotencyKey ?? crypto.randomUUID()
 
-  const response = await fetch('/api/source-documents', {
+  const response = await apiFetch('/api/source-documents', {
     method: 'POST',
     headers: {
       'Idempotency-Key': idempotencyKey,
-      ...authorizationHeaders(),
     },
     body: formData,
   })
@@ -89,9 +61,7 @@ export async function submitSourceDocument(
 
 /** Fetches the original with the same credentials as intake so a view or download link works once sign-in is enforced. */
 export async function fetchOriginalFile(sourceDocumentId: string): Promise<Blob> {
-  const response = await fetch(`/api/source-documents/${encodeURIComponent(sourceDocumentId)}/file`, {
-    headers: authorizationHeaders(),
-  })
+  const response = await apiFetch(`/api/source-documents/${encodeURIComponent(sourceDocumentId)}/file`)
 
   if (!response.ok) {
     throw new SourceDocumentRequestError(response.status, 'The original file could not be retrieved.')
