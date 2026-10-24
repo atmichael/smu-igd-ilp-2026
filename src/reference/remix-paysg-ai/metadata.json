@@ -1,0 +1,8 @@
+{
+  "name": "Remix PaySG AI - Singapore SME AP Automation",
+  "description": "AI-powered Accounts Payable automation for Singapore SMEs with Gmail inbox ingestion, 9% GST validation, 3-way matching, and Xero sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

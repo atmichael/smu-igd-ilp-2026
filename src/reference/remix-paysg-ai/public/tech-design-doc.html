@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaySG AI — Technical Design Document (Online View)</title>
+  <meta name="description" content="Technical Design Document for PaySG AI Accounts Payable Automation Platform for Singapore SMEs.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      scroll-behavior: smooth;
+    }
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-full-width { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+      body { background: white !important; color: black !important; }
+      nav { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- Sticky Top Navigation Bar -->
+  <header class="sticky top-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="/" class="flex items-center space-x-2 text-emerald-400 hover:text-emerald-300 font-bold transition">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+            🇸🇬
+          </div>
+          <span class="text-base tracking-tight text-white">PaySG AI</span>
+        </a>
+        <span class="text-slate-500 font-light">/</span>
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+          Technical Design Document (TDD)
+        </span>
+      </div>
+
+      <div class="flex items-center space-x-3 text-xs">
+        <button onclick="window.print()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 flex items-center space-x-1.5 transition">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+          <span>Print / Save PDF</span>
+        </button>
+
+        <a href="/api/download-tdd-word" download="PaySG_AI_Technical_Design_Document.docx" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 flex items-center space-x-1.5 transition">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          <span>Download Word (.docx)</span>
+        </a>
+
+        <a href="/" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition shadow-xs flex items-center space-x-1">
+          <span>Return to App</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Document Layout Container -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex gap-8">
+    
+    <!-- Left Sticky Sidebar Table of Contents -->
+    <aside class="w-64 shrink-0 hidden lg:block no-print">
+      <div class="sticky top-24 bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-3">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Table of Contents</h4>
+        <nav class="space-y-1 text-xs">
+          <a href="#summary" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">1. Executive Summary</a>
+          <a href="#architecture" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">2. System Architecture</a>
+          <a href="#tech-stack" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">3. Technology Stack</a>
+          <a href="#ai-engine" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">4. AI Engineering & Gemini</a>
+          <a href="#three-way-match" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">5. 3-Way Match & PO Rules</a>
+          <a href="#security" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">6. Security & OAuth 2.0</a>
+          <a href="#singapore-rules" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">7. IRAS 9% GST & PayNow</a>
+          <a href="#testing-guide" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">8. Testing & Demo Guide</a>
+          <a href="#roadmap" class="block py-1.5 px-2.5 rounded-lg text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium transition">9. Production Roadmap</a>
+        </nav>
+
+        <div class="pt-3 border-t border-slate-100 space-y-2">
+          <div class="text-[11px] text-slate-500 font-medium">Quick Presets:</div>
+          <a href="/?tab=matching" class="block text-[11px] text-emerald-700 hover:underline">
+            ⚡ Open 3-Way Match Studio
+          </a>
+          <a href="/?tab=documents" class="block text-[11px] text-emerald-700 hover:underline">
+            📄 Browse 28 Ingested Documents
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-4xl bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-xs print-full-width space-y-10">
+
+      <!-- Title & Document Header -->
+      <section class="border-b border-slate-100 pb-8 space-y-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+            🇸🇬 Singapore SME Edition
+          </span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+            Google Gemini 3.8 Flash
+          </span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+            IRAS 9% GST Compliant
+          </span>
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+            Xero ACCPAY Ready
+          </span>
+        </div>
+
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          PaySG AI — Accounts Payable (AP) Automation Platform
+        </h1>
+        <p class="text-sm sm:text-base text-slate-600 leading-relaxed font-normal">
+          Technical Design Document: Architecture, Ingestion Pipelines, Multimodal AI Classification, 3-Way Matching Engine, and Singapore Accounting Localizations.
+        </p>
+
+        <!-- Document Control Table -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs">
+          <div>
+            <span class="text-slate-400 block text-[10px] font-semibold uppercase">Version</span>
+            <span class="font-bold text-slate-800">1.0.0 (Prototype)</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px] font-semibold uppercase">Date</span>
+            <span class="font-bold text-slate-800">September 2026</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px] font-semibold uppercase">Author</span>
+            <span class="font-bold text-slate-800">Engineering Team / Aaron Ho</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block text-[10px] font-semibold uppercase">Status</span>
+            <span class="font-bold text-emerald-700">Ready for Testing</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 1: EXECUTIVE SUMMARY -->
+      <section id="summary" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">1</span>
+          <h2 class="text-lg font-bold text-slate-900">Executive Summary & Problem Statement</h2>
+        </div>
+
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          Small and Medium Enterprises (SMEs) represent over 99% of all enterprises in Singapore. Due to lean operating structures, SMEs typically have <strong>1 or 2 Accounts Payable (AP) personnel</strong> (and frequently the business owner or office manager handles bookkeeping directly).
+        </p>
+
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          AP team members are inundated daily by vendor correspondence arriving via Gmail inboxes and physical delivery slips. These documents span varied formats: Tax Invoices, Statements of Account (SOA), Delivery Orders (DO), Goods Receipts (GRN), and Credit Notes.
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 text-xs">
+          <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-xl space-y-1">
+            <div class="font-bold text-rose-950 flex items-center space-x-1.5">
+              <span>⚠️ Critical Pain Points</span>
+            </div>
+            <ul class="list-disc list-inside text-rose-900/80 space-y-1 text-[11px] leading-relaxed">
+              <li>Manual entry fatigue re-typing vendor UEN, invoice numbers, line items, and bank details into Xero.</li>
+              <li>IRAS 9% GST compliance risk (claiming input tax from non-registered suppliers or SOAs).</li>
+              <li>Procurement overcharges (paying invoices without cross-checking PO rates or signed delivery orders).</li>
+              <li>Manual payment execution through corporate banking portals risking typographical errors.</li>
+            </ul>
+          </div>
+
+          <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-1">
+            <div class="font-bold text-emerald-950 flex items-center space-x-1.5">
+              <span>💡 PaySG AI Solution</span>
+            </div>
+            <ul class="list-disc list-inside text-emerald-900/80 space-y-1 text-[11px] leading-relaxed">
+              <li>Dual ingestion: Connects to AP Gmail inbox via OAuth 2.0 + Drag-and-drop manual portal.</li>
+              <li>Multimodal Gemini 3.8 Flash OCR extracts UEN, GST, and line items in &lt;1.5 seconds.</li>
+              <li>Automated 3-Way Match reconciles PO, DO, and Invoice before money leaves the bank.</li>
+              <li>1-click sync to Xero Accounting (ACCPAY bills) and SGQR PayNow instant transfer.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: ARCHITECTURE -->
+      <section id="architecture" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">2</span>
+          <h2 class="text-lg font-bold text-slate-900">System Architecture & Ingestion Flow</h2>
+        </div>
+
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          The system implements a decoupled client-server architecture with an Express API proxy mediating communication between the React frontend, Google Workspace Gmail API, Google Gemini Foundation Models, and Xero ERP.
+        </p>
+
+        <!-- ASCII Architecture Diagram -->
+        <div class="p-4 bg-slate-900 text-slate-200 rounded-2xl font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800 shadow-inner">
+<pre>
+┌────────────────────────────────────────────────────────────────────────┐
+│                   AP VENDOR INGESTION CHANNELS                         │
+│   [Gmail Inbox API (OAuth 2.0)]    [Drag & Drop Portal (PDF / Img)]    │
+└───────────────────┬────────────────────────────────┬───────────────────┘
+                    │                                │
+                    ▼                                ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND CLIENT (REACT 19)                      │
+│   • Inbox Scanner Panel            • 3-Way Match Verification Studio   │
+│   • Document Detail Inspector      • Xero ACCPAY Batch Dispatcher      │
+│   • jsPDF Client-side Generator    • Singapore Cashflow & GST Tracker  │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ HTTP JSON / Multipart Base64
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                     BACKEND API SERVER (EXPRESS)                       │
+│   • POST /api/ai/classify-and-extract   • POST /api/ai/three-way-match │
+│   • GET  /api/gmail/messages            • POST /api/xero/post-bill     │
+│   • GET  /api/download-tdd-word         • Static Vite Middleware Mount │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                    COGNITIVE FOUNDATION LAYER                          │
+│   • Google Gemini 3.8 Flash (Multimodal OCR + Strict JSON Schema)      │
+│   • IRAS 9% GST Validator & Mathematical Integrity Checker            │
+└────────────────────────────────────────────────────────────────────────┘
+</pre>
+        </div>
+      </section>
+
+      <!-- SECTION 3: TECH STACK TABLE -->
+      <section id="tech-stack" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">3</span>
+          <h2 class="text-lg font-bold text-slate-900">Technology Stack & Specifications</h2>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="min-w-full text-xs text-left">
+            <thead class="bg-slate-900 text-white text-[11px] uppercase tracking-wider">
+              <tr>
+                <th class="py-2.5 px-4">Component</th>
+                <th class="py-2.5 px-4">Technology</th>
+                <th class="py-2.5 px-4">Version</th>
+                <th class="py-2.5 px-4">Architectural Role</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white text-slate-700">
+              <tr>
+                <td class="py-2 px-4 font-bold text-slate-900">Frontend Core</td>
+                <td class="py-2 px-4">React + TypeScript</td>
+                <td class="py-2 px-4 font-mono text-[10px]">19.0.1 / 7.0.2</td>
+                <td class="py-2 px-4">Zero-reload reactive Single Page Application (SPA).</td>
+              </tr>
+              <tr class="bg-slate-50/50">
+                <td class="py-2 px-4 font-bold text-slate-900">Styling</td>
+                <td class="py-2 px-4">Tailwind CSS</td>
+                <td class="py-2 px-4 font-mono text-[10px]">4.3.3</td>
+                <td class="py-2 px-4">Executive Singapore financial theme with responsive layouts.</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 font-bold text-slate-900">Client PDF Engine</td>
+                <td class="py-2 px-4">jsPDF</td>
+                <td class="py-2 px-4 font-mono text-[10px]">4.2.1</td>
+                <td class="py-2 px-4">Generates authentic IRAS-compliant Tax Invoice & DO PDF files in-browser.</td>
+              </tr>
+              <tr class="bg-slate-50/50">
+                <td class="py-2 px-4 font-bold text-slate-900">Server Backend</td>
+                <td class="py-2 px-4">Node.js + Express</td>
+                <td class="py-2 px-4 font-mono text-[10px]">4.21.2 (tsx)</td>
+                <td class="py-2 px-4">High-throughput REST API with Base64 payload streaming.</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 font-bold text-slate-900">AI Foundation Model</td>
+                <td class="py-2 px-4">Google Gemini 3.8 Flash</td>
+                <td class="py-2 px-4 font-mono text-[10px]">SDK 2.4.0</td>
+                <td class="py-2 px-4">Multimodal vision OCR, table reasoning, and JSON extraction.</td>
+              </tr>
+              <tr class="bg-slate-50/50">
+                <td class="py-2 px-4 font-bold text-slate-900">Identity & OAuth</td>
+                <td class="py-2 px-4">Firebase Auth (Google)</td>
+                <td class="py-2 px-4 font-mono text-[10px]">11.x</td>
+                <td class="py-2 px-4">Google sign-in requesting read-only Gmail access (<code class="bg-slate-100 px-1">gmail.readonly</code>).</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-4 font-bold text-slate-900">Word Document Gen</td>
+                <td class="py-2 px-4">docx</td>
+                <td class="py-2 px-4 font-mono text-[10px]">9.2.0</td>
+                <td class="py-2 px-4">Generates compliant OpenXML Microsoft Word (.docx) technical design docs.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 4: AI ENGINEERING -->
+      <section id="ai-engine" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">4</span>
+          <h2 class="text-lg font-bold text-slate-900">AI Engineering & Gemini 3.8 Flash Implementation</h2>
+        </div>
+
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          The prototype bypasses traditional two-step OCR (e.g., rasterizing image to noisy text then passing to an LLM). Instead, <strong>Gemini 3.8 Flash natively reads PDF and image bytes</strong> directly through multimodal tensors, preserving bounding boxes, spatial alignment, and tabular hierarchies.
+        </p>
+
+        <div class="p-4 bg-slate-900 text-slate-100 rounded-2xl text-xs space-y-2 border border-slate-800">
+          <div class="text-emerald-400 font-semibold text-[11px] uppercase tracking-wider">Multimodal Prompt Architecture</div>
+          <p class="text-slate-300 font-mono text-[11px] leading-relaxed">
+            POST /api/ai/classify-and-extract<br>
+            Payload: { textContent?: string, base64Data: string, mimeType: "application/pdf", fileName: string }
+          </p>
+          <div class="text-slate-400 text-[11px]">
+            The model receives the binary buffer paired with strict schema enforcement:
+            <ul class="list-disc list-inside text-slate-300 mt-1 space-y-0.5">
+              <li>Classifies into 9 discrete document types (Tax Invoice, Proforma, SOA, DO, GRN, etc.)</li>
+              <li>Extracts Singapore UEN, IRAS GST Number, and PayNow Corporate UEN proxy</li>
+              <li>Performs mathematical verification: <code class="text-amber-300">Subtotal + 9% GST == Total Amount (±$0.02)</code></li>
+              <li>Suggests accounting GL code: <code class="text-emerald-300">400 (COGS), 429 (General), 445 (IT), 493 (Logistics)</code></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 5: 3-WAY MATCHING & PO RULES -->
+      <section id="three-way-match" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">5</span>
+          <h2 class="text-lg font-bold text-slate-900">The 3-Way Match Engine: Rules & PO/GR Requirements</h2>
+        </div>
+
+        <div class="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-2 text-xs">
+          <h3 class="font-bold text-blue-950 text-sm flex items-center space-x-1.5">
+            <span>❓ Do SME Owners Have to Upload PO or GRN?</span>
+          </h3>
+          <p class="text-blue-900 leading-relaxed">
+            <strong>NO. Uploading PO and Delivery Orders is completely flexible and NOT required for every invoice:</strong>
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 text-[11px]">
+            <div class="p-2.5 bg-white rounded-xl border border-blue-200 space-y-1">
+              <span class="font-bold text-slate-900">1. Recurring / Non-PO</span>
+              <p class="text-slate-600">Telco (Singtel), Utilities (SP Group), and AWS subscriptions are tagged as <em>"Exempt / Non-PO"</em>. Post directly to Xero with 1 click.</p>
+            </div>
+            <div class="p-2.5 bg-white rounded-xl border border-blue-200 space-y-1">
+              <span class="font-bold text-slate-900">2. Auto-Match Invoices</span>
+              <p class="text-slate-600">If the supplier prints your PO# (e.g. PO-2026-089) on the bill, Gemini automatically matches it against existing orders.</p>
+            </div>
+            <div class="p-2.5 bg-white rounded-xl border border-blue-200 space-y-1">
+              <span class="font-bold text-slate-900">3. Active Procurement</span>
+              <p class="text-slate-600">When PO/DO are provided, AI checks line-by-line item counts, catching price inflation and undelivered items before payment.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200 text-xs">
+          <table class="min-w-full text-left">
+            <thead class="bg-slate-100 text-slate-700 font-bold">
+              <tr>
+                <th class="py-2 px-3">Document</th>
+                <th class="py-2 px-3">Primary Question Answered</th>
+                <th class="py-2 px-3">Protection Provided to SME</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white text-slate-600 text-[11px]">
+              <tr>
+                <td class="py-2 px-3 font-semibold text-purple-900">1. Purchase Order (PO)</td>
+                <td class="py-2 px-3">"What was approved to buy and at what contracted unit price?"</td>
+                <td class="py-2 px-3">Prevents unauthorized procurement & supplier price markups.</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-3 font-semibold text-blue-900">2. Delivery Order (DO/GRN)</td>
+                <td class="py-2 px-3">"What was physically signed and received by our warehouse/office?"</td>
+                <td class="py-2 px-3">Prevents paying for missing, damaged, or short-delivered goods.</td>
+              </tr>
+              <tr>
+                <td class="py-2 px-3 font-semibold text-emerald-900">3. Vendor Tax Invoice</td>
+                <td class="py-2 px-3">"What is the supplier billing us for (inclusive of 9% GST)?"</td>
+                <td class="py-2 px-3">Validates math, checks IRAS compliance, and generates PayNow QR.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SECTION 6: SECURITY & OAUTH -->
+      <section id="security" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">6</span>
+          <h2 class="text-lg font-bold text-slate-900">Security, Data Privacy & OAuth 2.0 Boundaries</h2>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+            <span class="font-bold text-slate-900 flex items-center space-x-1.5">
+              <span>🔒 Least-Privilege Gmail Access</span>
+            </span>
+            <p class="text-slate-600 leading-relaxed text-[11px]">
+              The OAuth flow strictly requests <code class="text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded font-mono">https://www.googleapis.com/auth/gmail.readonly</code>. The app has zero permission to send, delete, or modify user emails.
+            </p>
+          </div>
+
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+            <span class="font-bold text-slate-900 flex items-center space-x-1.5">
+              <span>🛡️ Zero Persistent Credential Storage</span>
+            </span>
+            <p class="text-slate-600 leading-relaxed text-[11px]">
+              OAuth tokens are held in volatile client memory (<code class="font-mono text-slate-700">cachedAccessToken</code>) and transmitted via HTTPS Bearer headers. No email tokens or user passwords are saved on unencrypted server disks.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 7: SINGAPORE REGULATORY RULES -->
+      <section id="singapore-rules" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">7</span>
+          <h2 class="text-lg font-bold text-slate-900">Singapore Accounting Localizations (IRAS & PayNow)</h2>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+            <span class="font-bold text-slate-900">IRAS Form 5 Box 7 (Input Tax Claims)</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              Under IRAS regulations, input tax can only be claimed if a valid Tax Invoice is issued by a GST-registered business. PaySG AI automatically differentiates claimable invoices from non-claimable documents (e.g. Statements of Account, which are legally barred from GST claims).
+            </p>
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+            <span class="font-bold text-slate-900">SGQR PayNow Corporate Disbursal</span>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+              Gemini extracts the vendor's 9 or 10-digit Singapore Unique Entity Number (UEN). The app generates a real-time SGQR PayNow preview containing the exact invoice balance, eliminating manual typing errors on bank portals.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 8: STEP-BY-STEP TESTING GUIDE -->
+      <section id="testing-guide" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">8</span>
+          <h2 class="text-lg font-bold text-slate-900">Live Demonstration & Testing Guide</h2>
+        </div>
+
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+          The application comes pre-loaded with 4 live demo scenarios in the <strong>3-Way Match Studio</strong> that can be executed in under 2 minutes:
+        </p>
+
+        <div class="space-y-2.5 text-xs">
+          <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-emerald-800">Scenario 1: 100% 3-Way Match (OfficeWorks SG)</span>
+              <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">Full Match</span>
+            </div>
+            <p class="text-slate-600 text-[11px]">
+              PO-2026-089 (10 monitors, 5 chairs) matches signed DO-88219 and Invoice INV-SG-44120 perfectly ($4,578.00). AI displays green approval and enables 1-click sync to Xero.
+            </p>
+          </div>
+
+          <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-rose-800">Scenario 2: Price Discrepancy Detection (OfficeWorks Desks)</span>
+              <span class="text-[10px] bg-rose-100 text-rose-800 font-bold px-1.5 py-0.5 rounded">Price Variance</span>
+            </div>
+            <p class="text-slate-600 text-[11px]">
+              PO contracted at $660.00/unit, but supplier billed at $700.00/unit. AI flags a +$218.00 variance and holds automated payment until manager sign-off.
+            </p>
+          </div>
+
+          <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-amber-800">Scenario 3: Short Delivery & Credit Note Rebate (Sheng Siong)</span>
+              <span class="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">Shortage</span>
+            </div>
+            <p class="text-slate-600 text-[11px]">
+              Invoice billed 5 coffee packs, but warehouse signed for 3. AI flags the missing 2 cartons (-$130.80) and pairs with Credit Note SS-CN-088 to balance the ledger.
+            </p>
+          </div>
+
+          <div class="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-blue-800">Scenario 4: Non-PO Recurring Telco (Singtel Fibre)</span>
+              <span class="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">Exempt Non-PO</span>
+            </div>
+            <p class="text-slate-600 text-[11px]">
+              Recurring utility bill ($926.50). AI validates GST M2-0000000-8, verifies math, flags PO matching as Exempt, and enables instant Xero posting.
+            </p>
+          </div>
+        </div>
+
+        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
+          <span class="font-bold text-emerald-950">How to Test With Real Fake PDFs:</span>
+          <p class="text-emerald-900 text-[11px]">
+            Click the <strong>"Download PDF"</strong> button on any row in the document table to save a real Singapore Tax Invoice PDF to your desktop. Then click <strong>"Upload Document"</strong>, drag the file into the upload zone, and watch Gemini 3.8 Flash extract the fields in real time!
+          </p>
+        </div>
+      </section>
+
+      <!-- SECTION 9: ROADMAP -->
+      <section id="roadmap" class="space-y-4">
+        <div class="flex items-center space-x-2 text-emerald-800">
+          <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">9</span>
+          <h2 class="text-lg font-bold text-slate-900">Production Roadmap & Future Horizons</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            <span class="font-bold text-slate-900">1. InvoiceNow (Peppol)</span>
+            <p class="text-slate-600 text-[11px]">Integration with IMDA Peppol network for automated nationwide e-invoicing without paper/PDFs.</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            <span class="font-bold text-slate-900">2. Live Xero OAuth PKCE</span>
+            <p class="text-slate-600 text-[11px]">Direct multi-tenant production authentication to Xero with tracking categories and live status sync.</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            <span class="font-bold text-slate-900">3. Gmail Webhook Pub/Sub</span>
+            <p class="text-slate-600 text-[11px]">Instantaneous ingestion triggered via Google Cloud Pub/Sub push notifications upon email arrival.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Document Sign-off Footer -->
+      <footer class="pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
+        <p>PaySG AI — Technical Design Document (Confidential) &bull; Singapore SME Edition &bull; 2026</p>
+      </footer>
+
+    </main>
+  </div>
+
+</body>
+</html>
