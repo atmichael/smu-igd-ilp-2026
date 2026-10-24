@@ -60,7 +60,8 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
                 subtotal: ParseDecimal(GetHeaderField(ExtractedDocFieldNames.Subtotal)) ?? 0m,
                 subtotalTaxRate: ParseDecimal(GetHeaderField(ExtractedDocFieldNames.SubtotalTaxRate)) ?? 0m,
                 subtotalTaxAmount: ParseDecimal(GetHeaderField(ExtractedDocFieldNames.SubtotalTaxAmount)) ?? 0m,
-                company: GetCompany());
+                company: GetCompany(),
+                confidence: Confidence);
         }
 
         internal void SetHeaderField(string key, string? value) =>

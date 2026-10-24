@@ -4,6 +4,7 @@ using System.Text.Encodings.Web;
 using ILP.Server.Config;
 using ILP.Server.Features.EvidenceStorage;
 using ILP.Server.Features.EvidenceStorage.Endpoints;
+using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Endpoints;
 using ILP.Shared.InboxMonitoring;
 using Microsoft.AspNetCore.Authentication;
@@ -42,6 +43,7 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddEvidenceStorage(builder.Configuration);
+builder.Services.AddInboxExtractionPersistence();
 builder.Services.AddInboxMonitoring(builder.Configuration);
 
 builder.Services.AddCors(options =>
@@ -110,4 +112,3 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }
-

@@ -16,4 +16,6 @@ public sealed class InboxMessageDto
 
     /// <summary>Temporary files holding attachments; deleted by the sync service once processed.</summary>
     public IReadOnlyList<string> AttachmentPaths { get; init; } = [];
+
+    public IReadOnlyList<InboxMessageAttachmentDto> GoogleDriveAttachments { get; init; } = [];
 }
