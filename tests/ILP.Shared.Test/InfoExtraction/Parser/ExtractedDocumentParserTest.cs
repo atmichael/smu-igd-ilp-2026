@@ -49,6 +49,7 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             Assert.Equal("ACME LOGISTICS PTE LTD", documentInfo.Company.Name);
             Assert.Equal("201509876K", documentInfo.Company.UEN);
             Assert.Equal("INV-2026-00422", documentInfo.RefNumber);
+            Assert.Equal(0.95m, documentInfo.Confidence);
             Assert.Equal("Invoice", documentInfo.TypeCode);
             Assert.Equal(new DateTime(2026, 10, 4), documentInfo.SentDate);
             Assert.Equal("PO-88192, DO-1002", documentInfo.RelatedDocumentNumbers);
