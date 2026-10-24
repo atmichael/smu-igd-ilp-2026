@@ -89,6 +89,35 @@ public sealed class TransactionDocumentRepositoryTests
         Assert.Null(await service.GetByIdAsync(long.MaxValue, TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task GetByIdAsync_ReturnsDriveUrlOfSourceAttachmentAsOriginalFileUrl()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var company = CreateCompany();
+        var document = CreateDocument("INV-1", 0.8m, 10m, company);
+        var withoutAttachment = CreateDocument("INV-2", 0.8m, 10m, company);
+        var message = new InboxMessageEntity { UniqueId = 1, Subject = "s", Sender = "a@b.c", Body = "b" };
+        var attachment = new InboxMessageAttachmentEntity
+        {
+            Message = message,
+            FileName = "inv.pdf",
+            DriveFileId = "drive-1",
+            WebViewLink = "https://drive.google.com/file/d/drive-1/view"
+        };
+        document.InboxMessageMapping = new DocumentInboxMessageEntity { Message = message, SourceAttachment = attachment };
+        database.Context.Documents.AddRange(document, withoutAttachment);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions()));
+
+        var result = await service.GetByIdAsync(document.Id, TestContext.Current.CancellationToken);
+        var none = await service.GetByIdAsync(withoutAttachment.Id, TestContext.Current.CancellationToken);
+
+        Assert.Equal("https://drive.google.com/file/d/drive-1/view", result!.OriginalFileUrl);
+        Assert.Null(none!.OriginalFileUrl);
+    }
+
     private static CompanyEntity CreateCompany() => new() { Uen = "UEN-1", Name = "Supplier Ltd" };
 
     private static DocumentEntity CreateDocument(

@@ -71,5 +71,8 @@ public sealed class TransactionDocumentService(
                 item.TaxRate,
                 item.SerialNumber,
                 item.Amount,
-                item.TaxAmount)).ToArray());
+                item.TaxAmount)).ToArray(),
+            string.IsNullOrWhiteSpace(document.InboxMessageMapping?.SourceAttachment?.WebViewLink)
+                ? null
+                : document.InboxMessageMapping.SourceAttachment.WebViewLink);
 }

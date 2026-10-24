@@ -54,6 +54,8 @@ public sealed class SqliteTransactionDocumentRepository(
             .Where(document => document.ActiveStatus && document.Id == id)
             .Include(document => document.Company)
             .Include(document => document.DocumentItems)
+            .Include(document => document.InboxMessageMapping)
+                .ThenInclude(mapping => mapping!.SourceAttachment)
             .SingleOrDefaultAsync(cancellationToken);
     }
 
