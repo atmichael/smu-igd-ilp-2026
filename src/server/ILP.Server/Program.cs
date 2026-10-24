@@ -9,9 +9,11 @@ using ILP.Server.Features.InboxMonitoring.Endpoints;
 using ILP.Shared.InboxMonitoring;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+InboxExtractionPersistenceConfig.Initialize(builder.Configuration, builder.Environment.ContentRootPath);
 
 if (!builder.Environment.IsDevelopment())
 {
@@ -63,6 +65,13 @@ OpenRouterConfig.Initialize(builder.Configuration);
 PromptConfig.Initialize(builder.Configuration);
 
 var app = builder.Build();
+
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<InboxExtractionDbContext>>();
+    await using var dbContext = await contextFactory.CreateDbContextAsync();
+    await dbContext.Database.MigrateAsync();
+}
 
 if (app.Environment.IsDevelopment())
 {

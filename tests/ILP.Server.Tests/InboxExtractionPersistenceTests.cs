@@ -1,7 +1,10 @@
 using ILP.Server.Features.InboxMonitoring.Persistence;
+using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
+using ILP.Server.Features.InboxMonitoring.Persistence.Repository;
 using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace ILP.Server.Tests;
@@ -9,10 +12,14 @@ namespace ILP.Server.Tests;
 public sealed class InboxExtractionPersistenceTests
 {
     [Fact]
-    public async Task SaveAsync_PersistsNormalizedRecordsAndTheirSourceLinks()
+    public async Task SaveAsync_AppliesMigrationAndPersistsNormalizedRecordsAndSourceLinks()
     {
-        string connectionString = $"Data Source={Guid.NewGuid():N};Mode=Memory;Cache=Shared";
-        using var persistence = new SqliteInboxExtractionPersistence(connectionString);
+        string databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<InboxExtractionDbContext>()
+            .UseSqlite($"Data Source={databasePath}")
+            .Options;
+        var factory = new TestContextFactory(options);
+        var persistence = new SqliteInboxExtractionRepo(factory);
         var attachment = new InboxMessageAttachmentDto(
             "invoice.pdf",
             "drive-123",
@@ -34,45 +41,77 @@ public sealed class InboxExtractionPersistenceTests
             company: new CompanyDto("Supplier", "UEN-21"),
             confidence: 0.91m);
 
-        await persistence.SaveAsync([new DocumentInboxMessageMappingDto(document, message, attachment)]);
+        try
+        {
+            await using (var context = await factory.CreateDbContextAsync())
+            {
+                await context.Database.MigrateAsync();
+            }
 
-        await using var connection = new SqliteConnection(connectionString);
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT d.RefNumber, d.Confidence, c.Uen, i.Description, m.UniqueId, a.WebViewLink,
-                   mapping.SourceAttachmentId IS NOT NULL
-            FROM Documents d
-            JOIN Companies c ON c.Id = d.CompanyId
-            JOIN DocumentItems i ON i.DocumentId = d.Id
-            JOIN DocumentInboxMessages mapping ON mapping.DocumentId = d.Id
-            JOIN InboxMessages m ON m.Id = mapping.MessageId
-            JOIN InboxMessageAttachments a ON a.Id = mapping.SourceAttachmentId
-            """;
+            var secondDocument = new DocumentDto(
+                "INV-22",
+                "Invoice",
+                new DateTime(2026, 10, 24),
+                20m,
+                company: new CompanyDto("Supplier", "UEN-21"));
+            await persistence.SaveAsync(
+            [
+                new DocumentInboxMessageMappingDto(document, message, attachment),
+                new DocumentInboxMessageMappingDto(secondDocument, message)
+            ]);
 
-        await using var reader = await command.ExecuteReaderAsync();
-        Assert.True(await reader.ReadAsync());
-        Assert.Equal("INV-21", reader.GetString(0));
-        Assert.Equal("0.91", reader.GetString(1));
-        Assert.Equal("UEN-21", reader.GetString(2));
-        Assert.Equal("Parts", reader.GetString(3));
-        Assert.Equal(21, reader.GetInt64(4));
-        Assert.Equal(attachment.WebViewLink, reader.GetString(5));
-        Assert.True(reader.GetBoolean(6));
-        Assert.False(await reader.ReadAsync());
+            await using var verifyContext = await factory.CreateDbContextAsync();
+            var mappings = await verifyContext.DocumentInboxMessages
+                .Include(item => item.Document)
+                    .ThenInclude(item => item.Company)
+                .Include(item => item.Document)
+                    .ThenInclude(item => item.DocumentItems)
+                .Include(item => item.Message)
+                    .ThenInclude(item => item.Attachments)
+                .Include(item => item.SourceAttachment)
+                .OrderBy(item => item.Document.RefNumber)
+                .ToListAsync();
+            var mapping = mappings[0];
 
-        await reader.DisposeAsync();
-        await using var auditCommand = connection.CreateCommand();
-        auditCommand.CommandText = """
-            SELECT COUNT(*) FROM (
-                SELECT Version, ActiveStatus, CreatedTime, ModifiedTime FROM Companies
-                UNION ALL SELECT Version, ActiveStatus, CreatedTime, ModifiedTime FROM Documents
-                UNION ALL SELECT Version, ActiveStatus, CreatedTime, ModifiedTime FROM DocumentItems
-                UNION ALL SELECT Version, ActiveStatus, CreatedTime, ModifiedTime FROM InboxMessages
-                UNION ALL SELECT Version, ActiveStatus, CreatedTime, ModifiedTime FROM InboxMessageAttachments
-                UNION ALL SELECT Version, ActiveStatus, CreatedTime, ModifiedTime FROM DocumentInboxMessages
-            ) WHERE Version = 1 AND ActiveStatus = 1 AND length(CreatedTime) > 0 AND length(ModifiedTime) > 0
-            """;
-        Assert.Equal(6L, (long)(await auditCommand.ExecuteScalarAsync())!);
+            Assert.Equal(2, mappings.Count);
+            Assert.Equal("INV-21", mapping.Document.RefNumber);
+            Assert.Equal(0.91m, mapping.Document.Confidence);
+            Assert.Equal("UEN-21", mapping.Document.Company.Uen);
+            Assert.Equal("Parts", Assert.Single(mapping.Document.DocumentItems).Description);
+            Assert.Equal(21u, mapping.Message.UniqueId);
+            Assert.Equal(attachment.WebViewLink, mapping.SourceAttachment?.WebViewLink);
+            Assert.Equal(mapping.Document.CompanyId, mappings[1].Document.CompanyId);
+            Assert.All(
+                new AuditedEntity[]
+                {
+                    mapping.Document,
+                    mapping.Document.Company,
+                    Assert.Single(mapping.Document.DocumentItems),
+                    mapping.Message,
+                    Assert.Single(mapping.Message.Attachments),
+                    mapping
+                },
+                entity =>
+                {
+                    Assert.Equal(1, entity.Version);
+                    Assert.True(entity.ActiveStatus);
+                    Assert.NotEqual(default, entity.CreatedTime);
+                    Assert.NotEqual(default, entity.ModifiedTime);
+                });
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            File.Delete(databasePath);
+        }
+    }
+
+    private sealed class TestContextFactory(DbContextOptions<InboxExtractionDbContext> options)
+        : IDbContextFactory<InboxExtractionDbContext>
+    {
+        public InboxExtractionDbContext CreateDbContext() => new(options);
+
+        public Task<InboxExtractionDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(CreateDbContext());
     }
 }
