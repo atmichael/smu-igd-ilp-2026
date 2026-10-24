@@ -26,10 +26,19 @@ function getOriginalFile(document: DocumentRecord) {
     if (!['http:', 'https:'].includes(attachmentUrl.protocol)) {
       return <Typography color="text.secondary">The original attachment link is invalid.</Typography>
     }
-    return (
+    const link = (
       <a href={attachmentUrl.href} target="_blank" rel="noreferrer">
         Open original attachment
       </a>
+    )
+    const urlContentType = document.originalFileContentType || ''
+    if (urlContentType.startsWith('image/')) {
+      return <img className="document-info__image" src={attachmentUrl.href} alt="Original document attachment" />
+    }
+    return (
+      <object className="document-info__preview" data={attachmentUrl.href} type={urlContentType || 'application/pdf'}>
+        {link}
+      </object>
     )
   }
 
