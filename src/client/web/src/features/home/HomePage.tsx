@@ -1,53 +1,57 @@
-import { Button, Paper, Stack, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
+import { Alert, CircularProgress, Stack, Typography } from '@mui/material'
+import { DocumentDataGrid } from '../document/components/DocumentDataGrid'
+import { getDocumentsBelowThreshold } from '../document/service/document-service'
+import type { DocumentRecord } from '../document/model/document-model'
 
 interface HomePageProps {
   onNavigate: (path: string) => void
-  onSignOut: () => void
 }
 
-export function HomePage({ onNavigate, onSignOut }: HomePageProps) {
+export function HomePage({ onNavigate }: HomePageProps) {
+  const [documents, setDocuments] = useState<DocumentRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    getDocumentsBelowThreshold()
+      .then((result) => {
+        if (active) setDocuments(result.items)
+      })
+      .catch((reason: unknown) => {
+        if (active) setError(reason instanceof Error ? reason.message : 'The rectification queue could not be loaded.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
   return (
-    <main className="app-shell">
-      <Stack spacing={3} sx={{ maxWidth: 960, mx: 'auto', py: 4, px: 2 }}>
-        <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h4" component="h1">
-            Invoice Intake
+    <Stack spacing={3}>
+      <div className="page-heading">
+        <div>
+          <Typography variant="h4" component="h1">Manual rectification</Typography>
+          <Typography color="text.secondary">
+            Review documents that need attention because their confidence level is below the configured threshold.
           </Typography>
-          <Button onClick={onSignOut}>Sign out</Button>
-        </Stack>
-        <Paper className="app-shell__confirmation" elevation={0}>
-          <Stack spacing={2}>
-            <Typography variant="h5" component="h2">
-              Choose a document source
-            </Typography>
-            <Typography>Select how you want to submit your invoice.</Typography>
-            <Button
-              component="a"
-              href="/camera-capture"
-              variant="contained"
-              sx={{ minHeight: 44 }}
-              onClick={(event) => {
-                event.preventDefault()
-                onNavigate('/camera-capture')
-              }}
-            >
-              Camera capture
-            </Button>
-            <Button
-              component="a"
-              href="/file-upload"
-              variant="outlined"
-              sx={{ minHeight: 44 }}
-              onClick={(event) => {
-                event.preventDefault()
-                onNavigate('/file-upload')
-              }}
-            >
-              File upload
-            </Button>
-          </Stack>
-        </Paper>
-      </Stack>
-    </main>
+        </div>
+      </div>
+      {loading && <CircularProgress aria-label="Loading documents for rectification" />}
+      {error && <Alert severity="error">{error}</Alert>}
+      {actionMessage && <Alert severity="info" onClose={() => setActionMessage(null)}>{actionMessage}</Alert>}
+      {!loading && !error && (
+        <DocumentDataGrid
+          rows={documents}
+          onView={(document) => onNavigate(`/document/${document.id}`)}
+          onEdit={() => setActionMessage('Document editing is not available yet.')}
+          onDelete={() => setActionMessage('Document deletion is not available yet.')}
+        />
+      )}
+    </Stack>
   )
 }

@@ -9,6 +9,10 @@ import { CameraCapture } from './features/camera-capture/CameraCapture'
 import { FileUpload } from './features/file-upload/FileUpload'
 import { HomePage } from './features/home/HomePage'
 import { LoginPage } from './features/login/LoginPage'
+import { CompanyListPage } from './features/company/CompanyListPage'
+import { DocumentDetailsPage } from './features/document/DocumentDetailsPage'
+import { DocumentHubPage } from './features/document/DocumentHubPage'
+import { PortalShell } from './features/layout/PortalShell'
 import { submitSourceDocument } from './features/source-documents/service/source-document-service'
 import './App.css'
 
@@ -115,7 +119,27 @@ function App() {
     )
   }
 
-  return <HomePage onNavigate={navigate} onSignOut={handleSignOut} />
+  const documentId = path.match(/^\/document\/(\d+)$/)?.[1]
+  const content =
+    path === '/company' ? (
+      <CompanyListPage />
+    ) : path === '/document' ? (
+      <DocumentHubPage onNavigate={navigate} />
+    ) : documentId ? (
+      <DocumentDetailsPage documentId={Number(documentId)} onBack={() => navigate('/document')} />
+    ) : (
+      <HomePage onNavigate={navigate} />
+    )
+
+  return (
+    <PortalShell
+      activePath={documentId ? '/document' : path}
+      onNavigate={navigate}
+      onSignOut={handleSignOut}
+    >
+      {content}
+    </PortalShell>
+  )
 }
 
 function resolvePath(isAuthenticated: boolean, currentPath: string): string {
@@ -123,7 +147,10 @@ function resolvePath(isAuthenticated: boolean, currentPath: string): string {
     return '/'
   }
 
-  return ['/home', '/camera-capture', '/file-upload'].includes(currentPath) ? currentPath : '/home'
+  return ['/home', '/camera-capture', '/file-upload', '/company', '/document'].includes(currentPath) ||
+    /^\/document\/\d+$/.test(currentPath)
+    ? currentPath
+    : '/home'
 }
 
 function SubmissionConfirmation({

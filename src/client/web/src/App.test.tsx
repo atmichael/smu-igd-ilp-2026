@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearGoogleIdToken } from './common/service/authentication-service'
 import App from './App'
@@ -21,6 +21,10 @@ vi.mock('./features/document/components/DocumentDataGrid', () => ({
   DocumentDataGrid: () => <div>Manual rectification documents</div>,
 }))
 
+vi.mock('./features/document/service/document-service', () => ({
+  getDocumentsBelowThreshold: async () => ({ items: [], totalCount: 0 }),
+}))
+
 vi.mock('./features/company/CompanyListPage', () => ({
   CompanyListPage: () => <h2>Company list route</h2>,
 }))
@@ -35,19 +39,20 @@ describe('App authentication and navigation', () => {
     window.history.replaceState({}, '', '/')
   })
 
-  it('shows the login page first and redirects to the post-login landing page', () => {
+  it('shows the login page first and redirects to the post-login landing page', async () => {
     render(<App />)
 
     expect(screen.getByRole('heading', { name: /sign in to invoice intake/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /sign in with google/i }))
 
     expect(window.location.pathname).toBe('/home')
-    expect(screen.getByRole('heading', { name: /invoice intake/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /invoice intake/i })).toHaveAttribute('href', '/home')
+    expect(screen.getByRole('heading', { name: /manual rectification/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /camera capture/i })).toHaveAttribute('href', '/camera-capture')
     expect(screen.getByRole('link', { name: /file upload/i })).toHaveAttribute('href', '/file-upload')
     expect(screen.getByRole('link', { name: /company/i })).toHaveAttribute('href', '/company')
     expect(screen.getByRole('link', { name: /document hub/i })).toHaveAttribute('href', '/document')
-    expect(screen.getByText(/manual rectification documents/i)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText(/manual rectification documents/i)).toBeInTheDocument())
   })
 
   it('navigates from the post-login page to camera capture', () => {
