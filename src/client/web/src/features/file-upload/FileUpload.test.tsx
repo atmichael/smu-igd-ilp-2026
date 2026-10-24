@@ -1,7 +1,10 @@
 import { act, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FileUpload } from './FileUpload'
-import { SourceDocumentRequestError, type SourceDocumentResponse } from '../source-documents/source-document-api'
+import {
+  SourceDocumentRequestError,
+  type SourceDocumentResponse,
+} from '../../common/model/source-document-model'
 
 type SubmitFn = NonNullable<React.ComponentProps<typeof FileUpload>['onSubmit']>
 
