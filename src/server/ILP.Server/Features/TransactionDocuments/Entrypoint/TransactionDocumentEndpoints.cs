@@ -86,6 +86,7 @@ public static class TransactionDocumentEndpoints
             long id,
             UpdateTransactionDocumentRequest? request,
             ITransactionDocumentService service,
+            HttpContext httpContext,
             CancellationToken cancellationToken) =>
         {
             if (id <= 0)
@@ -109,7 +110,8 @@ public static class TransactionDocumentEndpoints
                 return Results.ValidationProblem(errors, title: "Invalid document update.");
             }
 
-            var updated = await service.UpdateAsync(id, request!, cancellationToken);
+            var updated = await service.UpdateAsync(
+                id, request!, cancellationToken, httpContext.User.Identity?.Name);
             return updated is null ? DocumentNotFound() : Results.Ok(updated);
         })
         .RequireAuthorization(AuthorizationPolicy);

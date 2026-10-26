@@ -35,7 +35,8 @@ public sealed class SqliteTransactionDocumentRepository(
 
         if (confidenceThreshold.HasValue)
         {
-            documents = documents.Where(document => document.Confidence <= confidenceThreshold);
+            documents = documents.Where(document =>
+                document.Confidence <= confidenceThreshold && document.ManualOverrideFlag != true);
         }
 
         var totalCount = await documents.CountAsync(cancellationToken);
@@ -63,7 +64,8 @@ public sealed class SqliteTransactionDocumentRepository(
     public async Task<DocumentEntity?> UpdateAsync(
         long id,
         UpdateTransactionDocumentRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? overrideBy = null)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
@@ -87,6 +89,11 @@ public sealed class SqliteTransactionDocumentRepository(
         document.RelatedDocumentNumbers = string.IsNullOrWhiteSpace(request.RelatedDocumentNumbers)
             ? null
             : request.RelatedDocumentNumbers.Trim();
+        if (document.ManualOverrideFlag is null && request.ManualOverrideFlag is true)
+        {
+            document.ManualOverrideFlag = true;
+            document.ManualOverrideBy = overrideBy;
+        }
         document.Version++;
         document.ModifiedTime = now;
 

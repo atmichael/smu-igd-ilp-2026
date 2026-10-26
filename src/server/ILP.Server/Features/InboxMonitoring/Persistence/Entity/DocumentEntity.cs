@@ -24,6 +24,10 @@ public sealed class DocumentEntity : AuditedEntity
 
     public decimal? Confidence { get; set; }
 
+    public bool? ManualOverrideFlag { get; set; }
+
+    public string? ManualOverrideBy { get; set; }
+
     public ICollection<DocumentItemEntity> DocumentItems { get; set; } = new List<DocumentItemEntity>();
 
     public DocumentInboxMessageEntity? InboxMessageMapping { get; set; }

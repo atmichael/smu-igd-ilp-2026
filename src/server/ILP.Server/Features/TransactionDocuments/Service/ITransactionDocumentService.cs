@@ -24,7 +24,8 @@ public interface ITransactionDocumentService
     Task<TransactionDocumentRecord?> UpdateAsync(
         long id,
         UpdateTransactionDocumentRequest request,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? overrideBy = null);
 
     Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
 }
