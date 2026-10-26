@@ -124,6 +124,27 @@ describe('DocumentInfo edit mode', () => {
     expect(screen.queryByLabelText('Matching companies')).not.toBeInTheDocument()
   })
 
+  it('calls onCancel without submitting when Cancel is clicked', () => {
+    const onSubmit = vi.fn()
+    const onCancel = vi.fn()
+    render(<DocumentInfo document={editable} mode="edit" onSubmit={onSubmit} onCancel={onCancel} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }))
+
+    expect(onCancel).toHaveBeenCalled()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('shows the original attachment preview in edit mode', () => {
+    render(
+      <DocumentInfo
+        document={{ ...editable, originalFileUrl: 'https://example.com/a.png', originalFileContentType: 'image/png' }}
+        mode="edit"
+      />,
+    )
+    expect(screen.getByAltText('Original document attachment')).toBeInTheDocument()
+  })
+
   it('validates input before asking for confirmation', () => {
     const onSubmit = vi.fn()
     render(<DocumentInfo document={editable} mode="edit" onSubmit={onSubmit} />)

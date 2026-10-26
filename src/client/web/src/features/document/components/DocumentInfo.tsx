@@ -26,6 +26,7 @@ interface DocumentInfoProps {
   mode?: 'view' | 'edit'
   onSubmit?: (request: DocumentUpdateRequest) => Promise<void>
   onSaved?: () => void
+  onCancel?: () => void
 }
 
 interface EditableItem {
@@ -145,9 +146,10 @@ interface DocumentEditFieldsProps {
   document: DocumentRecord
   onSubmit?: (request: DocumentUpdateRequest) => Promise<void>
   onSaved?: () => void
+  onCancel?: () => void
 }
 
-function DocumentEditFields({ document, onSubmit, onSaved }: DocumentEditFieldsProps) {
+function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentEditFieldsProps) {
   const [refNumber, setRefNumber] = useState(document.refNumber)
   const [sentDate, setSentDate] = useState(document.sentDate?.slice(0, 10) ?? '')
   const [uen, setUen] = useState(document.company.uen ?? '')
@@ -407,9 +409,10 @@ function DocumentEditFields({ document, onSubmit, onSaved }: DocumentEditFieldsP
       <div>
         <Button onClick={addItem}>Add line item</Button>
       </div>
-      <div>
+      <Stack direction="row" spacing={1}>
         <Button type="submit" variant="contained">Submit</Button>
-      </div>
+        <Button type="button" onClick={onCancel}>Cancel</Button>
+      </Stack>
       <Dialog open={confirming} onClose={closeConfirmation}>
         <DialogTitle>Confirm modification</DialogTitle>
         <DialogContent>
@@ -427,7 +430,7 @@ function DocumentEditFields({ document, onSubmit, onSaved }: DocumentEditFieldsP
   )
 }
 
-export function DocumentInfo({ document, mode = 'view', onSubmit, onSaved }: DocumentInfoProps) {
+export function DocumentInfo({ document, mode = 'view', onSubmit, onSaved, onCancel }: DocumentInfoProps) {
   const editing = mode === 'edit'
   return (
     <div className="document-info">
@@ -438,7 +441,7 @@ export function DocumentInfo({ document, mode = 'view', onSubmit, onSaved }: Doc
       <Paper variant="outlined" className="document-info__column">
         <Typography variant="h6" component="h2">Extracted information</Typography>
         {editing ? (
-          <DocumentEditFields document={document} onSubmit={onSubmit} onSaved={onSaved} />
+          <DocumentEditFields document={document} onSubmit={onSubmit} onSaved={onSaved} onCancel={onCancel} />
         ) : (
           <>
             <dl className="document-info__fields">
