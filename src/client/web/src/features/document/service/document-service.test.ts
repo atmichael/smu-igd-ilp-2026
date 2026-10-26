@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiJson } from '../../../common/service/api-client'
-import { getDocumentById, getDocumentsBelowThreshold, searchDocuments } from './document-service'
+import { apiFetch, apiJson } from '../../../common/service/api-client'
+import { deleteDocument, getDocumentById, getDocumentsBelowThreshold, searchDocuments } from './document-service'
 
 vi.mock('../../../common/service/api-client', () => ({
   apiJson: vi.fn(),
+  apiFetch: vi.fn(),
 }))
 
 describe('document service', () => {
@@ -46,5 +47,16 @@ describe('document service', () => {
     await getDocumentById(17)
 
     expect(apiJson).toHaveBeenCalledWith('/api/documents/17')
+  })
+
+  it('deletes a document and surfaces API errors', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(new Response(null, { status: 204 }))
+    await deleteDocument(5)
+    expect(apiFetch).toHaveBeenCalledWith('/api/documents/5', { method: 'DELETE' })
+
+    vi.mocked(apiFetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: 'gone' }), { status: 404 }),
+    )
+    await expect(deleteDocument(5)).rejects.toThrow('gone')
   })
 })

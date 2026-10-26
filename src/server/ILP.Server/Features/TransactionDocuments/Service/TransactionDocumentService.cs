@@ -33,6 +33,9 @@ public sealed class TransactionDocumentService(
         return document is null ? null : MapDocument(document);
     }
 
+    public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default) =>
+        repository.SoftDeleteAsync(id, cancellationToken);
+
     private async Task<DocumentSearchResponse> SearchCoreAsync(
         string? search,
         decimal? confidenceThreshold,

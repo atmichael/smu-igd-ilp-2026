@@ -14,4 +14,6 @@ public interface ITransactionDocumentRepository
         CancellationToken cancellationToken = default);
 
     Task<DocumentEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+
+    Task<bool> SoftDeleteAsync(long id, CancellationToken cancellationToken = default);
 }

@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react'
 import {
+  Alert,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   MenuItem,
   Paper,
   Table,
@@ -22,7 +29,7 @@ interface DocumentDataGridProps {
   rows: DocumentRecord[]
   onView: (document: DocumentRecord) => void
   onEdit: (document: DocumentRecord) => void
-  onDelete: (document: DocumentRecord) => void
+  onDelete: (document: DocumentRecord) => void | Promise<void>
 }
 
 function confidenceMatches(value: number | null | undefined, filter: ConfidenceFilter): boolean {
@@ -51,6 +58,29 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(25)
+  const [pendingDelete, setPendingDelete] = useState<DocumentRecord | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const closeDeleteDialog = () => {
+    if (deleting) return
+    setPendingDelete(null)
+    setDeleteError(null)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await onDelete(pendingDelete)
+      setPendingDelete(null)
+    } catch (reason: unknown) {
+      setDeleteError(reason instanceof Error ? reason.message : 'The document could not be deleted.')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const visibleRows = useMemo(() => {
     const filtered = rows.filter((row) => {
@@ -172,7 +202,7 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
                   <IconAction
                     kind="delete"
                     label={`Delete ${row.refNumber}`}
-                    onClick={() => onDelete(row)}
+                    onClick={() => setPendingDelete(row)}
                   />
                 </TableCell>
               </TableRow>
@@ -200,6 +230,19 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
         rowsPerPageOptions={[25, 50, 100]}
         labelRowsPerPage="Rows per page:"
       />
+      <Dialog open={pendingDelete !== null} onClose={closeDeleteDialog}>
+        <DialogTitle>Delete document</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete document {pendingDelete?.refNumber}?
+          </DialogContentText>
+          {deleteError && <Alert severity="error">{deleteError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteDialog} disabled={deleting}>Cancel</Button>
+          <Button onClick={confirmDelete} color="error" disabled={deleting}>Confirm</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   )
 }

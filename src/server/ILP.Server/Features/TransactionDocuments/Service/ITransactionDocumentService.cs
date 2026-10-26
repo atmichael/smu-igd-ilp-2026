@@ -20,4 +20,6 @@ public interface ITransactionDocumentService
         CancellationToken cancellationToken = default);
 
     Task<TransactionDocumentRecord?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+
+    Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default);
 }

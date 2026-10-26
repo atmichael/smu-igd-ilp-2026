@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, CircularProgress, TextField, Typography } from '@mui/material'
 import { DocumentDataGrid } from './components/DocumentDataGrid'
-import { searchDocuments } from './service/document-service'
+import { deleteDocument, searchDocuments } from './service/document-service'
 import type { DocumentRecord } from './model/document-model'
 
 interface DocumentHubPageProps {
@@ -16,6 +16,7 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
     error: string | null
   } | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [reloadCount, setReloadCount] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -35,7 +36,12 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
     return () => {
       active = false
     }
-  }, [search])
+  }, [search, reloadCount])
+
+  const handleDelete = async (document: DocumentRecord) => {
+    await deleteDocument(document.id)
+    setReloadCount((count) => count + 1)
+  }
 
   const loading = result?.search !== search
   const error = loading ? null : result?.error ?? null
@@ -62,7 +68,7 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
         rows={documents}
         onView={(document) => onNavigate(`/document/${document.id}`)}
         onEdit={() => setActionMessage('Document editing is not available yet.')}
-        onDelete={() => setActionMessage('Document deletion is not available yet.')}
+        onDelete={handleDelete}
       />
     </>
   )

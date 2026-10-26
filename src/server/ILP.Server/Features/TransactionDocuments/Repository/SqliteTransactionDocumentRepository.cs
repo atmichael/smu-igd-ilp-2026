@@ -59,6 +59,42 @@ public sealed class SqliteTransactionDocumentRepository(
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<bool> SoftDeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var document = await context.Documents
+            .Where(candidate => candidate.ActiveStatus && candidate.Id == id)
+            .Include(candidate => candidate.DocumentItems)
+            .Include(candidate => candidate.InboxMessageMapping)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (document is null)
+        {
+            return false;
+        }
+
+        var now = DateTime.UtcNow;
+        Deactivate(document, now);
+        foreach (var item in document.DocumentItems.Where(item => item.ActiveStatus))
+        {
+            Deactivate(item, now);
+        }
+
+        if (document.InboxMessageMapping is { ActiveStatus: true } mapping)
+        {
+            Deactivate(mapping, now);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private static void Deactivate(AuditedEntity entity, DateTime now)
+    {
+        entity.ActiveStatus = false;
+        entity.Version++;
+        entity.ModifiedTime = now;
+    }
+
     private static IOrderedQueryable<DocumentEntity> ApplyOrdering(
         IQueryable<DocumentEntity> documents,
         string sortBy,
