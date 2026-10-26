@@ -12,22 +12,17 @@ public sealed class CompanyService(ICompanyRepository repository) : ICompanyServ
         int pageSize,
         string sortBy,
         string sortDirection,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? uen = null)
     {
         var (companies, totalCount) = await repository.SearchAsync(
-            search, page, pageSize, sortBy, sortDirection, cancellationToken);
+            search, page, pageSize, sortBy, sortDirection, cancellationToken, uen);
         return new CompanySearchResponse(companies.Select(MapSummary).ToArray(), totalCount);
     }
 
     public async Task<CompanyDetails?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         var company = await repository.GetByIdAsync(id, cancellationToken);
-        return company is null ? null : MapDetails(company);
-    }
-
-    public async Task<CompanyDetails?> GetByUenAsync(string uen, CancellationToken cancellationToken = default)
-    {
-        var company = await repository.GetByUenAsync(uen, cancellationToken);
         return company is null ? null : MapDetails(company);
     }
 

@@ -22,6 +22,7 @@ public static class CompanyEndpoints
             ICompanyService service,
             CancellationToken cancellationToken,
             string? search = null,
+            string? uen = null,
             int page = 1,
             int pageSize = DefaultPageSize,
             string? sortBy = "name",
@@ -34,7 +35,7 @@ public static class CompanyEndpoints
             }
 
             return Results.Ok(await service.SearchAsync(
-                search, page, pageSize, sortBy ?? "name", sortDirection ?? "asc", cancellationToken));
+                search, page, pageSize, sortBy ?? "name", sortDirection ?? "asc", cancellationToken, uen));
         })
         .RequireAuthorization(AuthorizationPolicy);
 
@@ -54,26 +55,6 @@ public static class CompanyEndpoints
             }
 
             var company = await service.GetByIdAsync(id, cancellationToken);
-            return company is null ? Results.NotFound() : Results.Ok(company);
-        })
-        .RequireAuthorization(AuthorizationPolicy);
-
-        app.MapGet("/api/companies/by-uen/{uen}", async (
-            string uen,
-            ICompanyService service,
-            CancellationToken cancellationToken) =>
-        {
-            if (string.IsNullOrWhiteSpace(uen))
-            {
-                return Results.BadRequest(new ProblemDetails
-                {
-                    Title = "Invalid company UEN.",
-                    Detail = "The company UEN is required.",
-                    Status = StatusCodes.Status400BadRequest
-                });
-            }
-
-            var company = await service.GetByUenAsync(uen.Trim(), cancellationToken);
             return company is null ? Results.NotFound() : Results.Ok(company);
         })
         .RequireAuthorization(AuthorizationPolicy);

@@ -17,8 +17,8 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { findCompanyByUen } from '../../company/service/company-service'
-import type { CompanyDetails } from '../../company/model/company-model'
+import { findCompaniesByUen } from '../../company/service/company-service'
+import type { CompanySummary } from '../../company/model/company-model'
 import type { DocumentRecord, DocumentUpdateRequest } from '../model/document-model'
 
 interface DocumentInfoProps {
@@ -155,7 +155,7 @@ function DocumentEditFields({ document, onSubmit, onSaved }: DocumentEditFieldsP
   const [taxAmount, setTaxAmount] = useState(String(document.subtotalTaxAmount))
   const [related, setRelated] = useState(document.relatedDocumentNumbers ?? '')
   const [items, setItems] = useState<EditableItem[]>(() => toEditableItems(document))
-  const [lookup, setLookup] = useState<{ uen: string; company: CompanyDetails | null } | null>(null)
+  const [lookup, setLookup] = useState<{ uen: string; companies: CompanySummary[] } | null>(null)
   const [showErrors, setShowErrors] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -166,19 +166,22 @@ function DocumentEditFields({ document, onSubmit, onSaved }: DocumentEditFieldsP
   useEffect(() => {
     if (!trimmedUen) return
     let active = true
-    findCompanyByUen(trimmedUen)
-      .then((company) => {
-        if (active) setLookup({ uen: trimmedUen, company })
+    findCompaniesByUen(trimmedUen)
+      .then((companies) => {
+        if (active) setLookup({ uen: trimmedUen, companies })
       })
       .catch(() => {
-        if (active) setLookup({ uen: trimmedUen, company: null })
+        if (active) setLookup({ uen: trimmedUen, companies: [] })
       })
     return () => {
       active = false
     }
   }, [trimmedUen])
 
-  const matchedCompany = trimmedUen && lookup?.uen === trimmedUen ? lookup.company : null
+  const candidates = trimmedUen && lookup?.uen === trimmedUen ? lookup.companies : []
+  const matchedCompany =
+    candidates.find((company) => company.uen?.toLowerCase() === trimmedUen.toLowerCase()) ?? null
+  const choices = matchedCompany ? [] : candidates.filter((company) => company.uen)
   const companyName = matchedCompany ? matchedCompany.name : typedCompanyName
 
   const subtotal = round2(items.reduce((sum, item) => sum + (toNumber(item.amount) || 0), 0))
@@ -304,6 +307,20 @@ function DocumentEditFields({ document, onSubmit, onSaved }: DocumentEditFieldsP
         label="Company UEN" size="small" value={uen}
         onChange={(event) => setUen(event.target.value)}
       />
+      {choices.length > 1 && (
+        <TextField
+          label="Matching companies" size="small" select value=""
+          onChange={(event) => setUen(event.target.value)}
+          slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+        >
+          <option value="">Select a company…</option>
+          {choices.map((company) => (
+            <option key={company.id} value={company.uen ?? ''}>
+              {company.name} ({company.uen})
+            </option>
+          ))}
+        </TextField>
+      )}
       <TextField
         label="Company name" size="small" value={companyName} required
         onChange={(event) => setTypedCompanyName(event.target.value)}

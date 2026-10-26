@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DocumentInfo } from './DocumentInfo'
-import { findCompanyByUen } from '../../company/service/company-service'
+import { findCompaniesByUen } from '../../company/service/company-service'
 import type { DocumentRecord } from '../model/document-model'
 
 vi.mock('../../company/service/company-service', () => ({
-  findCompanyByUen: vi.fn(),
+  findCompaniesByUen: vi.fn(),
 }))
 
 const base: DocumentRecord = {
@@ -67,7 +67,7 @@ describe('DocumentInfo edit mode', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(findCompanyByUen).mockResolvedValue(null)
+    vi.mocked(findCompaniesByUen).mockResolvedValue([])
   })
 
   const change = (label: string | RegExp, value: string) =>
@@ -92,7 +92,7 @@ describe('DocumentInfo edit mode', () => {
   })
 
   it('locks the company name to the registered company when the UEN exists', async () => {
-    vi.mocked(findCompanyByUen).mockResolvedValue({ id: 5, uen: '555E', name: 'Registered Co', totalOutstandingSgd: 0 })
+    vi.mocked(findCompaniesByUen).mockResolvedValue([{ id: 5, uen: '555E', name: 'Registered Co', totalOutstandingSgd: 0 }])
     render(<DocumentInfo document={editable} mode="edit" />)
 
     change('Company UEN', '555E')
@@ -102,6 +102,26 @@ describe('DocumentInfo edit mode', () => {
 
     change('Company UEN', '')
     expect((screen.getByLabelText(/company name/i) as HTMLInputElement).disabled).toBe(false)
+  })
+
+  it('offers a drop down of matching companies when several match the UEN', async () => {
+    vi.mocked(findCompaniesByUen).mockResolvedValue([
+      { id: 1, uen: '555E', name: 'Registered Co', totalOutstandingSgd: 0 },
+      { id: 2, uen: '555F', name: 'Other Co', totalOutstandingSgd: 0 },
+    ])
+    render(<DocumentInfo document={editable} mode="edit" />)
+
+    change('Company UEN', '555')
+    const dropdown = await screen.findByLabelText('Matching companies')
+    expect(screen.getByRole('option', { name: 'Other Co (555F)' })).toBeInTheDocument()
+    expect((screen.getByLabelText(/company name/i) as HTMLInputElement).disabled).toBe(false)
+
+    fireEvent.change(dropdown, { target: { value: '555F' } })
+    vi.mocked(findCompaniesByUen).mockResolvedValue([{ id: 2, uen: '555F', name: 'Other Co', totalOutstandingSgd: 0 }])
+
+    expect((screen.getByLabelText('Company UEN') as HTMLInputElement).value).toBe('555F')
+    await waitFor(() => expect((screen.getByLabelText(/company name/i) as HTMLInputElement).value).toBe('Other Co'))
+    expect(screen.queryByLabelText('Matching companies')).not.toBeInTheDocument()
   })
 
   it('validates input before asking for confirmation', () => {

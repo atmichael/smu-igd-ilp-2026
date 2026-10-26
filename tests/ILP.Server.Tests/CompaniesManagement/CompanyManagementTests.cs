@@ -89,25 +89,27 @@ public sealed class CompanyManagementTests
     }
 
     [Fact]
-    public async Task GetByUenAsync_ReturnsOnlyActiveCompanyWithMatchingUen()
+    public async Task SearchAsync_FiltersByUenPartialMatchOnActiveCompanies()
     {
         await using var database = await TestDatabase.CreateAsync();
-        var active = CreateCompany("Alpha", "UEN-1");
-        var inactive = CreateCompany("Beta", "UEN-2");
+        var inactive = CreateCompany("Gamma", "UEN-12");
         inactive.ActiveStatus = false;
-        database.Context.Companies.AddRange(active, inactive);
+        database.Context.Companies.AddRange(
+            CreateCompany("Alpha", "UEN-1"), CreateCompany("Beta", "UEN-10"), CreateCompany("Delta", "ZZZ-5"), inactive);
         await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
         var service = new CompanyService(new SqliteCompanyRepository(database.Factory));
 
-        var found = await service.GetByUenAsync("UEN-1", TestContext.Current.CancellationToken);
+        var multiple = await service.SearchAsync(
+            null, 1, 20, "name", "asc", TestContext.Current.CancellationToken, "uen-1");
+        var none = await service.SearchAsync(
+            null, 1, 20, "name", "asc", TestContext.Current.CancellationToken, "nomatch");
 
-        Assert.Equal("Alpha", found!.Name);
-        Assert.Null(await service.GetByUenAsync("UEN-2", TestContext.Current.CancellationToken));
-        Assert.Null(await service.GetByUenAsync("UEN-9", TestContext.Current.CancellationToken));
+        Assert.Equal(["Alpha", "Beta"], multiple.Items.Select(company => company.Name));
+        Assert.Empty(none.Items);
     }
 
     [Fact]
-    public async Task GetByUen_ReturnsOkForKnownUenAndNotFoundOtherwise()
+    public async Task Search_PassesUenQueryParameterToService()
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -117,7 +119,8 @@ public sealed class CompanyManagementTests
         {
             options.AddPolicy(CompanyEndpoints.AuthorizationPolicy, policy => policy.RequireAuthenticatedUser());
         });
-        builder.Services.AddSingleton<ICompanyService>(new MissingCompanyService());
+        var service = new MissingCompanyService();
+        builder.Services.AddSingleton<ICompanyService>(service);
 
         await using var app = builder.Build();
         app.UseAuthentication();
@@ -128,11 +131,10 @@ public sealed class CompanyManagementTests
         using var client = app.GetTestClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(TestAuthHandler.SchemeName);
 
-        var known = await client.GetAsync("/api/companies/by-uen/UEN-1", TestContext.Current.CancellationToken);
-        var unknown = await client.GetAsync("/api/companies/by-uen/UEN-9", TestContext.Current.CancellationToken);
+        var response = await client.GetAsync("/api/companies?uen=UEN-1", TestContext.Current.CancellationToken);
 
-        Assert.Equal(HttpStatusCode.OK, known.StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("UEN-1", service.Uen);
     }
 
     [Fact]
@@ -202,6 +204,7 @@ public sealed class CompanyManagementTests
     private sealed class MissingCompanyService : ICompanyService
     {
         public string? Search { get; private set; }
+        public string? Uen { get; private set; }
         public int Page { get; private set; }
         public int PageSize { get; private set; }
         public string? SortBy { get; private set; }
@@ -213,9 +216,11 @@ public sealed class CompanyManagementTests
             int pageSize,
             string sortBy,
             string sortDirection,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            string? uen = null)
         {
             Search = search;
+            Uen = uen;
             Page = page;
             PageSize = pageSize;
             SortBy = sortBy;
@@ -225,9 +230,6 @@ public sealed class CompanyManagementTests
 
         public Task<CompanyDetails?> GetByIdAsync(long id, CancellationToken cancellationToken = default) =>
             Task.FromResult<CompanyDetails?>(null);
-
-        public Task<CompanyDetails?> GetByUenAsync(string uen, CancellationToken cancellationToken = default) =>
-            Task.FromResult<CompanyDetails?>(uen == "UEN-1" ? new CompanyDetails(1, uen, "Acme", "", "", 0m, []) : null);
     }
 
     private sealed class TestDatabase : IAsyncDisposable
