@@ -89,6 +89,53 @@ public sealed class CompanyManagementTests
     }
 
     [Fact]
+    public async Task GetByUenAsync_ReturnsOnlyActiveCompanyWithMatchingUen()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var active = CreateCompany("Alpha", "UEN-1");
+        var inactive = CreateCompany("Beta", "UEN-2");
+        inactive.ActiveStatus = false;
+        database.Context.Companies.AddRange(active, inactive);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new CompanyService(new SqliteCompanyRepository(database.Factory));
+
+        var found = await service.GetByUenAsync("UEN-1", TestContext.Current.CancellationToken);
+
+        Assert.Equal("Alpha", found!.Name);
+        Assert.Null(await service.GetByUenAsync("UEN-2", TestContext.Current.CancellationToken));
+        Assert.Null(await service.GetByUenAsync("UEN-9", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task GetByUen_ReturnsOkForKnownUenAndNotFoundOtherwise()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy(CompanyEndpoints.AuthorizationPolicy, policy => policy.RequireAuthenticatedUser());
+        });
+        builder.Services.AddSingleton<ICompanyService>(new MissingCompanyService());
+
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapCompanyEndpoints();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(TestAuthHandler.SchemeName);
+
+        var known = await client.GetAsync("/api/companies/by-uen/UEN-1", TestContext.Current.CancellationToken);
+        var unknown = await client.GetAsync("/api/companies/by-uen/UEN-9", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, known.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+    }
+
+    [Fact]
     public async Task GetById_ReturnsBadRequestForInvalidIdAndNotFoundForMissingCompany()
     {
         var builder = WebApplication.CreateBuilder();
@@ -178,6 +225,9 @@ public sealed class CompanyManagementTests
 
         public Task<CompanyDetails?> GetByIdAsync(long id, CancellationToken cancellationToken = default) =>
             Task.FromResult<CompanyDetails?>(null);
+
+        public Task<CompanyDetails?> GetByUenAsync(string uen, CancellationToken cancellationToken = default) =>
+            Task.FromResult<CompanyDetails?>(uen == "UEN-1" ? new CompanyDetails(1, uen, "Acme", "", "", 0m, []) : null);
     }
 
     private sealed class TestDatabase : IAsyncDisposable

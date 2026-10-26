@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiFetch, apiJson } from '../../../common/service/api-client'
-import { deleteDocument, getDocumentById, getDocumentsBelowThreshold, searchDocuments } from './document-service'
+import { deleteDocument, getDocumentById, getDocumentsBelowThreshold, searchDocuments, updateDocument } from './document-service'
 
 vi.mock('../../../common/service/api-client', () => ({
   apiJson: vi.fn(),
@@ -58,5 +58,27 @@ describe('document service', () => {
       new Response(JSON.stringify({ detail: 'gone' }), { status: 404 }),
     )
     await expect(deleteDocument(5)).rejects.toThrow('gone')
+  })
+
+  it('patches a document with a JSON body', async () => {
+    const request = {
+      refNumber: 'INV-1',
+      sentDate: '2026-10-01',
+      companyUen: '111A',
+      companyName: 'Alpha',
+      subtotal: 10,
+      subtotalTaxAmount: 1,
+      totalAmount: 11,
+      relatedDocumentNumbers: null,
+      documentItems: [],
+    }
+
+    await updateDocument(5, request)
+
+    expect(apiJson).toHaveBeenCalledWith('/api/documents/5', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    })
   })
 })

@@ -25,6 +25,12 @@ public sealed class CompanyService(ICompanyRepository repository) : ICompanyServ
         return company is null ? null : MapDetails(company);
     }
 
+    public async Task<CompanyDetails?> GetByUenAsync(string uen, CancellationToken cancellationToken = default)
+    {
+        var company = await repository.GetByUenAsync(uen, cancellationToken);
+        return company is null ? null : MapDetails(company);
+    }
+
     private static CompanySummary MapSummary(CompanyEntity company) =>
         new(company.Id, company.Uen, company.Name, GetTotalOutstanding(company));
 

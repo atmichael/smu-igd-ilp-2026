@@ -57,6 +57,26 @@ public static class CompanyEndpoints
             return company is null ? Results.NotFound() : Results.Ok(company);
         })
         .RequireAuthorization(AuthorizationPolicy);
+
+        app.MapGet("/api/companies/by-uen/{uen}", async (
+            string uen,
+            ICompanyService service,
+            CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(uen))
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid company UEN.",
+                    Detail = "The company UEN is required.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            var company = await service.GetByUenAsync(uen.Trim(), cancellationToken);
+            return company is null ? Results.NotFound() : Results.Ok(company);
+        })
+        .RequireAuthorization(AuthorizationPolicy);
     }
 
     private static IResult? ValidateQuery(int page, int pageSize, string? sortBy, string? sortDirection)

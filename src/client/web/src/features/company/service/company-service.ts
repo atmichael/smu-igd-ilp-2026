@@ -1,4 +1,4 @@
-import { apiJson } from '../../../common/service/api-client'
+import { apiFetch, apiJson } from '../../../common/service/api-client'
 import type { CompanyDetails, CompanyListQuery, CompanySearchResponse } from '../model/company-model'
 
 export function searchCompanies(search: string, options?: CompanyListQuery): Promise<CompanySearchResponse> {
@@ -14,4 +14,11 @@ export function searchCompanies(search: string, options?: CompanyListQuery): Pro
 
 export function getCompanyById(companyId: number): Promise<CompanyDetails> {
   return apiJson<CompanyDetails>(`/api/companies/${encodeURIComponent(String(companyId))}`)
+}
+
+export async function findCompanyByUen(uen: string): Promise<CompanyDetails | null> {
+  const response = await apiFetch(`/api/companies/by-uen/${encodeURIComponent(uen)}`)
+  if (response.status === 404) return null
+  if (!response.ok) throw new Error('The company could not be looked up.')
+  return (await response.json()) as CompanyDetails
 }

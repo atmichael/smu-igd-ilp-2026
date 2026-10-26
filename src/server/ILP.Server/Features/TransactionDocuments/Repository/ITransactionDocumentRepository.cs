@@ -1,4 +1,5 @@
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
+using ILP.Server.Features.TransactionDocuments.Model;
 
 namespace ILP.Server.Features.TransactionDocuments.Repository;
 
@@ -14,6 +15,11 @@ public interface ITransactionDocumentRepository
         CancellationToken cancellationToken = default);
 
     Task<DocumentEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+
+    Task<DocumentEntity?> UpdateAsync(
+        long id,
+        UpdateTransactionDocumentRequest request,
+        CancellationToken cancellationToken = default);
 
     Task<bool> SoftDeleteAsync(long id, CancellationToken cancellationToken = default);
 }

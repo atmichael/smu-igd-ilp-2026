@@ -13,4 +13,6 @@ public interface ICompanyService
         CancellationToken cancellationToken = default);
 
     Task<CompanyDetails?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+
+    Task<CompanyDetails?> GetByUenAsync(string uen, CancellationToken cancellationToken = default);
 }

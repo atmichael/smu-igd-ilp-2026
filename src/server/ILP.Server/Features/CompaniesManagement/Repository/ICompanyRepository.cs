@@ -13,4 +13,6 @@ public interface ICompanyRepository
         CancellationToken cancellationToken = default);
 
     Task<CompanyEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
+
+    Task<CompanyEntity?> GetByUenAsync(string uen, CancellationToken cancellationToken = default);
 }

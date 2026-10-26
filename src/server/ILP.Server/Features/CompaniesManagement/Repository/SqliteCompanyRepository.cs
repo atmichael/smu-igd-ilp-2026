@@ -49,6 +49,18 @@ public sealed class SqliteCompanyRepository(
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<CompanyEntity?> GetByUenAsync(string uen, CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Companies
+            .Where(company => company.ActiveStatus && company.Uen == uen)
+            .Include(company => company.Documents
+                .Where(document => document.ActiveStatus)
+                .OrderByDescending(document => document.CreatedTime)
+                .ThenByDescending(document => document.Id))
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     private static IOrderedQueryable<CompanyEntity> ApplyOrdering(
         IQueryable<CompanyEntity> companies,
         string sortBy,

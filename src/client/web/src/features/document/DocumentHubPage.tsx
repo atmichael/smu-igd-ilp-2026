@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Alert, CircularProgress, TextField, Typography } from '@mui/material'
 import { DocumentDataGrid } from './components/DocumentDataGrid'
+import { DocumentEditDialog } from './components/DocumentEditDialog'
 import { deleteDocument, searchDocuments } from './service/document-service'
 import type { DocumentRecord } from './model/document-model'
 
@@ -15,7 +16,7 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
     documents: DocumentRecord[]
     error: string | null
   } | null>(null)
-  const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [editing, setEditing] = useState<DocumentRecord | null>(null)
   const [reloadCount, setReloadCount] = useState(0)
 
   useEffect(() => {
@@ -63,12 +64,19 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
       </section>
       {loading && <CircularProgress aria-label="Searching documents" />}
       {error && <Alert severity="error">{error}</Alert>}
-      {actionMessage && <Alert severity="info" onClose={() => setActionMessage(null)}>{actionMessage}</Alert>}
       <DocumentDataGrid
         rows={documents}
         onView={(document) => onNavigate(`/document/${document.id}`)}
-        onEdit={() => setActionMessage('Document editing is not available yet.')}
+        onEdit={setEditing}
         onDelete={handleDelete}
+      />
+      <DocumentEditDialog
+        document={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null)
+          setReloadCount((count) => count + 1)
+        }}
       />
     </>
   )

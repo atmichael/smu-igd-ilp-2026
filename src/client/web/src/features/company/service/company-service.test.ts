@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { apiJson } from '../../../common/service/api-client'
-import { getCompanyById, searchCompanies } from './company-service'
+import { apiFetch, apiJson } from '../../../common/service/api-client'
+import { findCompanyByUen, getCompanyById, searchCompanies } from './company-service'
 
 vi.mock('../../../common/service/api-client', () => ({
   apiJson: vi.fn(),
+  apiFetch: vi.fn(),
 }))
 
 describe('company service', () => {
@@ -32,5 +33,14 @@ describe('company service', () => {
     await getCompanyById(42)
 
     expect(apiJson).toHaveBeenCalledWith('/api/companies/42')
+  })
+
+  it('finds a company by UEN and returns null when it does not exist', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(new Response(JSON.stringify({ id: 1, uen: 'A/1', name: 'Acme' })))
+    expect((await findCompanyByUen('A/1'))?.name).toBe('Acme')
+    expect(apiFetch).toHaveBeenCalledWith('/api/companies/by-uen/A%2F1')
+
+    vi.mocked(apiFetch).mockResolvedValueOnce(new Response(null, { status: 404 }))
+    expect(await findCompanyByUen('X')).toBeNull()
   })
 })

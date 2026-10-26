@@ -1,8 +1,50 @@
-import { Paper, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material'
-import type { DocumentRecord } from '../model/document-model'
+import { useEffect, useState } from 'react'
+import {
+  Alert,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { findCompanyByUen } from '../../company/service/company-service'
+import type { CompanyDetails } from '../../company/model/company-model'
+import type { DocumentRecord, DocumentUpdateRequest } from '../model/document-model'
 
 interface DocumentInfoProps {
   document: DocumentRecord
+  mode?: 'view' | 'edit'
+  onSubmit?: (request: DocumentUpdateRequest) => Promise<void>
+  onSaved?: () => void
+}
+
+interface EditableItem {
+  key: number
+  id: number | null
+  description: string
+  quantity: string
+  unitPrice: string
+  amount: string
+  currencyCode: string
+  taxName: string
+  taxRate: number
+  taxAmount: number | null
+}
+
+const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
+
+function toNumber(value: string): number {
+  return value.trim() === '' ? Number.NaN : Number(value)
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -84,7 +126,292 @@ function getOriginalFile(document: DocumentRecord) {
   )
 }
 
-export function DocumentInfo({ document }: DocumentInfoProps) {
+function toEditableItems(document: DocumentRecord): EditableItem[] {
+  return document.documentItems.map((item, index) => ({
+    key: index,
+    id: item.id ?? null,
+    description: item.description,
+    quantity: String(item.quantity),
+    unitPrice: String(item.unitPrice),
+    amount: String(item.amount ?? round2(item.quantity * item.unitPrice)),
+    currencyCode: item.currencyCode,
+    taxName: item.taxName,
+    taxRate: item.taxRate,
+    taxAmount: item.taxAmount ?? null,
+  }))
+}
+
+interface DocumentEditFieldsProps {
+  document: DocumentRecord
+  onSubmit?: (request: DocumentUpdateRequest) => Promise<void>
+  onSaved?: () => void
+}
+
+function DocumentEditFields({ document, onSubmit, onSaved }: DocumentEditFieldsProps) {
+  const [refNumber, setRefNumber] = useState(document.refNumber)
+  const [sentDate, setSentDate] = useState(document.sentDate?.slice(0, 10) ?? '')
+  const [uen, setUen] = useState(document.company.uen ?? '')
+  const [typedCompanyName, setTypedCompanyName] = useState(document.company.name)
+  const [taxAmount, setTaxAmount] = useState(String(document.subtotalTaxAmount))
+  const [related, setRelated] = useState(document.relatedDocumentNumbers ?? '')
+  const [items, setItems] = useState<EditableItem[]>(() => toEditableItems(document))
+  const [lookup, setLookup] = useState<{ uen: string; company: CompanyDetails | null } | null>(null)
+  const [showErrors, setShowErrors] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const trimmedUen = uen.trim()
+
+  useEffect(() => {
+    if (!trimmedUen) return
+    let active = true
+    findCompanyByUen(trimmedUen)
+      .then((company) => {
+        if (active) setLookup({ uen: trimmedUen, company })
+      })
+      .catch(() => {
+        if (active) setLookup({ uen: trimmedUen, company: null })
+      })
+    return () => {
+      active = false
+    }
+  }, [trimmedUen])
+
+  const matchedCompany = trimmedUen && lookup?.uen === trimmedUen ? lookup.company : null
+  const companyName = matchedCompany ? matchedCompany.name : typedCompanyName
+
+  const subtotal = round2(items.reduce((sum, item) => sum + (toNumber(item.amount) || 0), 0))
+  const tax = toNumber(taxAmount)
+  const total = round2(subtotal + (Number.isFinite(tax) ? tax : 0))
+
+  const validate = () => {
+    const result: Record<string, string> = {}
+    if (!refNumber.trim()) result.refNumber = 'Document number is required.'
+    if (!sentDate) result.sentDate = 'Posting date is required.'
+    if (!companyName.trim()) result.companyName = 'Company name is required when no UEN is provided.'
+    if (!Number.isFinite(tax) || tax < 0) result.taxAmount = 'Tax amount must be zero or more.'
+    items.forEach((item) => {
+      if (!item.description.trim()) result[`description-${item.key}`] = 'Description is required.'
+      const quantity = toNumber(item.quantity)
+      if (!Number.isFinite(quantity) || quantity <= 0) result[`quantity-${item.key}`] = 'Quantity must be above zero.'
+      const price = toNumber(item.unitPrice)
+      if (!Number.isFinite(price) || price < 0) result[`unitPrice-${item.key}`] = 'Unit price must be zero or more.'
+      if (!Number.isFinite(toNumber(item.amount))) result[`amount-${item.key}`] = 'Amount must be a number.'
+    })
+    return result
+  }
+  const errors = validate()
+
+  const updateItem = (key: number, changes: Partial<EditableItem>) =>
+    setItems((current) =>
+      current.map((item) => {
+        if (item.key !== key) return item
+        const next = { ...item, ...changes }
+        if (changes.quantity !== undefined || changes.unitPrice !== undefined) {
+          const quantity = toNumber(next.quantity)
+          const price = toNumber(next.unitPrice)
+          if (Number.isFinite(quantity) && Number.isFinite(price)) next.amount = String(round2(quantity * price))
+        }
+        return next
+      }),
+    )
+
+  const addItem = () =>
+    setItems((current) => [
+      ...current,
+      {
+        key: current.reduce((max, item) => Math.max(max, item.key), -1) + 1,
+        id: null,
+        description: '',
+        quantity: '1',
+        unitPrice: '0',
+        amount: '0',
+        currencyCode: current[0]?.currencyCode ?? 'SGD',
+        taxName: current[0]?.taxName ?? 'GST',
+        taxRate: current[0]?.taxRate ?? 0,
+        taxAmount: null,
+      },
+    ])
+
+  const removeItem = (key: number) => setItems((current) => current.filter((item) => item.key !== key))
+
+  const requestSubmit = () => {
+    setShowErrors(true)
+    if (Object.keys(errors).length > 0) return
+    setSubmitError(null)
+    setConfirming(true)
+  }
+
+  const closeConfirmation = () => {
+    if (submitting) return
+    setConfirming(false)
+    setSubmitError(null)
+  }
+
+  const confirmSubmit = async () => {
+    if (!onSubmit) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await onSubmit({
+        refNumber: refNumber.trim(),
+        sentDate,
+        companyUen: trimmedUen || null,
+        companyName: companyName.trim(),
+        subtotal,
+        subtotalTaxAmount: tax,
+        totalAmount: total,
+        relatedDocumentNumbers: related.trim() || null,
+        documentItems: items.map((item, index) => ({
+          id: item.id,
+          description: item.description.trim(),
+          quantity: toNumber(item.quantity),
+          currencyCode: item.currencyCode,
+          unitPrice: toNumber(item.unitPrice),
+          taxName: item.taxName,
+          taxRate: item.taxRate,
+          serialNumber: index + 1,
+          amount: toNumber(item.amount),
+          taxAmount: item.taxAmount,
+        })),
+      })
+      setConfirming(false)
+      onSaved?.()
+    } catch (reason: unknown) {
+      setSubmitError(reason instanceof Error ? reason.message : 'The document could not be updated.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const error = (name: string) => (showErrors ? errors[name] : undefined)
+
+  return (
+    <Stack spacing={2} component="form" noValidate onSubmit={(event) => { event.preventDefault(); requestSubmit() }}>
+      <TextField
+        label="Document number" size="small" value={refNumber} required
+        onChange={(event) => setRefNumber(event.target.value)}
+        error={!!error('refNumber')} helperText={error('refNumber')}
+      />
+      <TextField
+        label="Posting date" size="small" type="date" value={sentDate} required
+        onChange={(event) => setSentDate(event.target.value)}
+        slotProps={{ inputLabel: { shrink: true } }}
+        error={!!error('sentDate')} helperText={error('sentDate')}
+      />
+      <TextField
+        label="Company UEN" size="small" value={uen}
+        onChange={(event) => setUen(event.target.value)}
+      />
+      <TextField
+        label="Company name" size="small" value={companyName} required
+        onChange={(event) => setTypedCompanyName(event.target.value)}
+        disabled={matchedCompany !== null}
+        helperText={error('companyName') ?? (matchedCompany ? 'Name follows the registered company for this UEN.' : undefined)}
+        error={!!error('companyName')}
+      />
+      <TextField
+        label="Related documents" size="small" value={related}
+        onChange={(event) => setRelated(event.target.value)}
+      />
+      <TextField
+        label="Tax amount" size="small" value={taxAmount} required
+        onChange={(event) => setTaxAmount(event.target.value)}
+        error={!!error('taxAmount')} helperText={error('taxAmount')}
+        slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+      />
+      <dl className="document-info__fields">
+        <dt>Document type</dt><dd>{document.typeCode || '—'}</dd>
+        <dt>Due date</dt><dd>{formatDate(document.dueDate)}</dd>
+        <dt>Subtotal</dt><dd>{formatAmount(subtotal)}</dd>
+        <dt>Total amount</dt><dd>{formatAmount(total)}</dd>
+        <dt>Confidence level</dt>
+        <dd>{document.confidence == null ? '—' : `${Math.round(document.confidence * 100)}%`}</dd>
+      </dl>
+      <Typography variant="subtitle1" component="h3">Line items</Typography>
+      <Table size="small" aria-label="Editable line items">
+        <TableHead>
+          <TableRow>
+            <TableCell>Description</TableCell>
+            <TableCell>Quantity</TableCell>
+            <TableCell>Unit price</TableCell>
+            <TableCell>Amount</TableCell>
+            <TableCell />
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {items.map((item, index) => (
+            <TableRow key={item.key}>
+              <TableCell>
+                <TextField
+                  size="small" value={item.description}
+                  onChange={(event) => updateItem(item.key, { description: event.target.value })}
+                  error={!!error(`description-${item.key}`)} helperText={error(`description-${item.key}`)}
+                  slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} description` } }}
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  size="small" value={item.quantity}
+                  onChange={(event) => updateItem(item.key, { quantity: event.target.value })}
+                  error={!!error(`quantity-${item.key}`)} helperText={error(`quantity-${item.key}`)}
+                  slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} quantity`, inputMode: 'decimal' } }}
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  size="small" value={item.unitPrice}
+                  onChange={(event) => updateItem(item.key, { unitPrice: event.target.value })}
+                  error={!!error(`unitPrice-${item.key}`)} helperText={error(`unitPrice-${item.key}`)}
+                  slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} unit price`, inputMode: 'decimal' } }}
+                />
+              </TableCell>
+              <TableCell>
+                <TextField
+                  size="small" value={item.amount}
+                  onChange={(event) => updateItem(item.key, { amount: event.target.value })}
+                  error={!!error(`amount-${item.key}`)} helperText={error(`amount-${item.key}`)}
+                  slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} amount`, inputMode: 'decimal' } }}
+                />
+              </TableCell>
+              <TableCell>
+                <Button size="small" color="error" onClick={() => removeItem(item.key)}>
+                  Remove line item {index + 1}
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+          {items.length === 0 && (
+            <TableRow><TableCell colSpan={5}>No line items available.</TableCell></TableRow>
+          )}
+        </TableBody>
+      </Table>
+      <div>
+        <Button onClick={addItem}>Add line item</Button>
+      </div>
+      <div>
+        <Button type="submit" variant="contained">Submit</Button>
+      </div>
+      <Dialog open={confirming} onClose={closeConfirmation}>
+        <DialogTitle>Confirm modification</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to save the changes to document {refNumber}?
+          </DialogContentText>
+          {submitError && <Alert severity="error">{submitError}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeConfirmation} disabled={submitting}>Cancel</Button>
+          <Button onClick={confirmSubmit} variant="contained" disabled={submitting}>Confirm</Button>
+        </DialogActions>
+      </Dialog>
+    </Stack>
+  )
+}
+
+export function DocumentInfo({ document, mode = 'view', onSubmit, onSaved }: DocumentInfoProps) {
+  const editing = mode === 'edit'
   return (
     <div className="document-info">
       <Paper variant="outlined" className="document-info__column">
@@ -93,39 +420,46 @@ export function DocumentInfo({ document }: DocumentInfoProps) {
       </Paper>
       <Paper variant="outlined" className="document-info__column">
         <Typography variant="h6" component="h2">Extracted information</Typography>
-        <dl className="document-info__fields">
-          <dt>Document number</dt><dd>{document.refNumber}</dd>
-          <dt>Company</dt><dd>{document.company.name} ({document.company.uen})</dd>
-          <dt>Document type</dt><dd>{document.typeCode || '—'}</dd>
-          <dt>Posting date</dt><dd>{formatDate(document.sentDate)}</dd>
-          <dt>Due date</dt><dd>{formatDate(document.dueDate)}</dd>
-          <dt>Subtotal</dt><dd>{formatAmount(document.subtotal)}</dd>
-          <dt>Tax</dt><dd>{formatAmount(document.subtotalTaxAmount)}</dd>
-          <dt>Total amount</dt><dd>{formatAmount(document.totalAmount)}</dd>
-          <dt>Confidence level</dt>
-          <dd>{document.confidence == null ? '—' : `${Math.round(document.confidence * 100)}%`}</dd>
-          <dt>Related documents</dt><dd>{document.relatedDocumentNumbers || '—'}</dd>
-        </dl>
-        <Typography variant="subtitle1" component="h3">Line items</Typography>
-        <Table size="small" aria-label="Document line items">
-          <TableHead>
-            <TableRow><TableCell>Description</TableCell><TableCell>Quantity</TableCell><TableCell align="right">Amount</TableCell></TableRow>
-          </TableHead>
-          <TableBody>
-            {document.documentItems.map((item, index) => (
-              <TableRow key={item.id ?? item.serialNumber ?? index}>
-                <TableCell>{item.description}</TableCell>
-                <TableCell>{item.quantity}</TableCell>
-                <TableCell align="right">
-                  {formatAmount(item.amount ?? item.quantity * item.unitPrice, item.currencyCode)}
-                </TableCell>
-              </TableRow>
-            ))}
-            {document.documentItems.length === 0 && (
-              <TableRow><TableCell colSpan={3}>No line items available.</TableCell></TableRow>
-            )}
-          </TableBody>
-        </Table>
+        {editing ? (
+          <DocumentEditFields document={document} onSubmit={onSubmit} onSaved={onSaved} />
+        ) : (
+          <>
+            <dl className="document-info__fields">
+              <dt>Document number</dt><dd>{document.refNumber}</dd>
+              <dt>Company UEN</dt><dd>{document.company.uen || '—'}</dd>
+              <dt>Company name</dt><dd>{document.company.name}</dd>
+              <dt>Document type</dt><dd>{document.typeCode || '—'}</dd>
+              <dt>Posting date</dt><dd>{formatDate(document.sentDate)}</dd>
+              <dt>Due date</dt><dd>{formatDate(document.dueDate)}</dd>
+              <dt>Subtotal</dt><dd>{formatAmount(document.subtotal)}</dd>
+              <dt>Tax</dt><dd>{formatAmount(document.subtotalTaxAmount)}</dd>
+              <dt>Total amount</dt><dd>{formatAmount(document.totalAmount)}</dd>
+              <dt>Confidence level</dt>
+              <dd>{document.confidence == null ? '—' : `${Math.round(document.confidence * 100)}%`}</dd>
+              <dt>Related documents</dt><dd>{document.relatedDocumentNumbers || '—'}</dd>
+            </dl>
+            <Typography variant="subtitle1" component="h3">Line items</Typography>
+            <Table size="small" aria-label="Document line items">
+              <TableHead>
+                <TableRow><TableCell>Description</TableCell><TableCell>Quantity</TableCell><TableCell align="right">Amount</TableCell></TableRow>
+              </TableHead>
+              <TableBody>
+                {document.documentItems.map((item, index) => (
+                  <TableRow key={item.id ?? item.serialNumber ?? index}>
+                    <TableCell>{item.description}</TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell align="right">
+                      {formatAmount(item.amount ?? item.quantity * item.unitPrice, item.currencyCode)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {document.documentItems.length === 0 && (
+                  <TableRow><TableCell colSpan={3}>No line items available.</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </>
+        )}
       </Paper>
     </div>
   )
