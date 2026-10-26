@@ -1,3 +1,4 @@
+using ILP.Server.Features.TransactionDocuments.Model;
 using ILP.Server.Features.TransactionDocuments.Service;
 using Microsoft.AspNetCore.Mvc;
 
@@ -81,6 +82,38 @@ public static class TransactionDocumentEndpoints
         })
         .RequireAuthorization(AuthorizationPolicy);
 
+        app.MapPatch("/api/documents/{id:long}", async (
+            long id,
+            UpdateTransactionDocumentRequest? request,
+            ITransactionDocumentService service,
+            CancellationToken cancellationToken) =>
+        {
+            if (id <= 0)
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid document ID.",
+                    Detail = "The document ID must be a positive integer.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            if (await service.GetByIdAsync(id, cancellationToken) is null)
+            {
+                return DocumentNotFound();
+            }
+
+            var errors = TransactionDocumentUpdateValidator.Validate(request);
+            if (errors.Count > 0)
+            {
+                return Results.ValidationProblem(errors, title: "Invalid document update.");
+            }
+
+            var updated = await service.UpdateAsync(id, request!, cancellationToken);
+            return updated is null ? DocumentNotFound() : Results.Ok(updated);
+        })
+        .RequireAuthorization(AuthorizationPolicy);
+
         app.MapDelete("/api/documents/{id:long}", async (
             long id,
             ITransactionDocumentService service,
@@ -98,15 +131,18 @@ public static class TransactionDocumentEndpoints
 
             return await service.DeleteAsync(id, cancellationToken)
                 ? Results.NoContent()
-                : Results.NotFound(new ProblemDetails
-                {
-                    Title = "Document not found.",
-                    Detail = "The document does not exist or has already been deleted.",
-                    Status = StatusCodes.Status404NotFound
-                });
+                : DocumentNotFound();
         })
         .RequireAuthorization(AuthorizationPolicy);
     }
+
+    private static IResult DocumentNotFound() =>
+        Results.NotFound(new ProblemDetails
+        {
+            Title = "Document not found.",
+            Detail = "The document does not exist or has already been deleted.",
+            Status = StatusCodes.Status404NotFound
+        });
 
     private static IResult? ValidateQuery(int page, int pageSize, string? sortBy, string? sortDirection)
     {

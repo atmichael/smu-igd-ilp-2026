@@ -13,7 +13,8 @@ public sealed class SqliteCompanyRepository(
         int pageSize,
         string sortBy,
         string sortDirection,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? uen = null)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         IQueryable<CompanyEntity> companies = context.Companies
@@ -25,6 +26,12 @@ public sealed class SqliteCompanyRepository(
             companies = companies.Where(company =>
                 company.Name.ToLower().Contains(searchTerm)
                 || (company.Uen != null && company.Uen.ToLower().Contains(searchTerm)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(uen))
+        {
+            var uenTerm = uen.Trim().ToLowerInvariant();
+            companies = companies.Where(company => company.Uen != null && company.Uen.ToLower().Contains(uenTerm));
         }
 
         var totalCount = await companies.CountAsync(cancellationToken);

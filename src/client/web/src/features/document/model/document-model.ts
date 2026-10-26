@@ -1,6 +1,6 @@
 export interface DocumentCompany {
   id: number
-  uen: string
+  uen: string | null
   name: string
 }
 
@@ -35,6 +35,31 @@ export interface DocumentRecord {
   originalFileUrl?: string | null
   originalFileBase64?: string | null
   originalFileContentType?: string | null
+}
+
+export interface DocumentUpdateItem {
+  id?: number | null
+  description: string
+  quantity: number
+  currencyCode: string
+  unitPrice: number
+  taxName: string
+  taxRate: number
+  serialNumber?: number | null
+  amount?: number | null
+  taxAmount?: number | null
+}
+
+export interface DocumentUpdateRequest {
+  refNumber: string
+  sentDate: string
+  companyUen: string | null
+  companyName: string
+  subtotal: number
+  subtotalTaxAmount: number
+  totalAmount: number
+  relatedDocumentNumbers: string | null
+  documentItems: DocumentUpdateItem[]
 }
 
 export interface DocumentSearchResponse {

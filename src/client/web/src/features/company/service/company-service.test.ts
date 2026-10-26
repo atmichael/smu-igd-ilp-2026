@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { apiJson } from '../../../common/service/api-client'
-import { getCompanyById, searchCompanies } from './company-service'
+import { findCompaniesByUen, getCompanyById, searchCompanies } from './company-service'
 
 vi.mock('../../../common/service/api-client', () => ({
   apiJson: vi.fn(),
@@ -32,5 +32,14 @@ describe('company service', () => {
     await getCompanyById(42)
 
     expect(apiJson).toHaveBeenCalledWith('/api/companies/42')
+  })
+
+  it('searches companies by UEN using the uen query parameter', async () => {
+    vi.mocked(apiJson).mockResolvedValueOnce({ items: [{ id: 1, uen: 'A/1', name: 'Acme', totalOutstandingSgd: 0 }], totalCount: 1 })
+
+    const result = await findCompaniesByUen(' A/1 ')
+
+    expect(apiJson).toHaveBeenCalledWith('/api/companies?uen=A%2F1')
+    expect(result.map((company) => company.name)).toEqual(['Acme'])
   })
 })

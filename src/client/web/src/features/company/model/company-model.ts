@@ -25,6 +25,7 @@ export interface CompanySearchResponse {
 }
 
 export interface CompanyListQuery {
+  uen?: string
   page?: number
   pageSize?: number
   sortBy?: string

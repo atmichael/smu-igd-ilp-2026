@@ -12,10 +12,11 @@ public sealed class CompanyService(ICompanyRepository repository) : ICompanyServ
         int pageSize,
         string sortBy,
         string sortDirection,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? uen = null)
     {
         var (companies, totalCount) = await repository.SearchAsync(
-            search, page, pageSize, sortBy, sortDirection, cancellationToken);
+            search, page, pageSize, sortBy, sortDirection, cancellationToken, uen);
         return new CompanySearchResponse(companies.Select(MapSummary).ToArray(), totalCount);
     }
 

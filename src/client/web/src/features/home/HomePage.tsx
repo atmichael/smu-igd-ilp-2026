@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Alert, CircularProgress, Stack, Typography } from '@mui/material'
 import { DocumentDataGrid } from '../document/components/DocumentDataGrid'
+import { DocumentEditDialog } from '../document/components/DocumentEditDialog'
 import { deleteDocument, getDocumentsBelowThreshold } from '../document/service/document-service'
 import type { DocumentRecord } from '../document/model/document-model'
 
@@ -12,7 +13,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
   const [documents, setDocuments] = useState<DocumentRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [editing, setEditing] = useState<DocumentRecord | null>(null)
 
   const [reloadCount, setReloadCount] = useState(0)
 
@@ -53,15 +54,22 @@ export function HomePage({ onNavigate }: HomePageProps) {
       </div>
       {loading && <CircularProgress aria-label="Loading documents for rectification" />}
       {error && <Alert severity="error">{error}</Alert>}
-      {actionMessage && <Alert severity="info" onClose={() => setActionMessage(null)}>{actionMessage}</Alert>}
       {!loading && !error && (
         <DocumentDataGrid
           rows={documents}
           onView={(document) => onNavigate(`/document/${document.id}`)}
-          onEdit={() => setActionMessage('Document editing is not available yet.')}
+          onEdit={setEditing}
           onDelete={handleDelete}
         />
       )}
+      <DocumentEditDialog
+        document={editing}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null)
+          setReloadCount((count) => count + 1)
+        }}
+      />
     </Stack>
   )
 }

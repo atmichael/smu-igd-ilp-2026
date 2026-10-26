@@ -1,6 +1,7 @@
 using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
 using ILP.Server.Features.TransactionDocuments.Configuration;
+using ILP.Server.Features.TransactionDocuments.Model;
 using ILP.Server.Features.TransactionDocuments.Repository;
 using ILP.Server.Features.TransactionDocuments.Service;
 using Microsoft.Data.Sqlite;
@@ -154,6 +155,96 @@ public sealed class TransactionDocumentRepositoryTests
         var search = await service.SearchAsync(null, 1, 10, "refNumber", "asc", TestContext.Current.CancellationToken);
         Assert.Equal(["INV-2"], search.Items.Select(d => d.RefNumber));
     }
+
+    [Fact]
+    public async Task UpdateAsync_PersistsChanges_ReusesExistingCompanyByUen_AndUpsertsLineItems()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var other = new CompanyEntity { Uen = "UEN-2", Name = "Existing Co", CreatedTime = new DateTime(2026, 10, 1), ModifiedTime = new DateTime(2026, 10, 1) };
+        var document = CreateDocument("INV-1", 0.8m, 10m);
+        var kept = NewItem("Kept", 1m, 5m);
+        var removed = NewItem("Removed", 1m, 5m);
+        document.DocumentItems.Add(kept);
+        document.DocumentItems.Add(removed);
+        database.Context.Companies.Add(other);
+        database.Context.Documents.Add(document);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions()));
+
+        var result = await service.UpdateAsync(
+            document.Id,
+            new UpdateTransactionDocumentRequest(
+                "INV-1A", new DateTime(2026, 11, 2), "UEN-2", "Ignored Name", 30m, 3m, 33m, "PO-1",
+                [
+                    new UpdateTransactionDocumentItem(kept.Id, "Kept edited", 2m, "SGD", 10m, "GST", 9m, 1, 20m, null),
+                    new UpdateTransactionDocumentItem(null, "Added", 1m, "SGD", 10m, "GST", 9m, 2, 10m, null)
+                ]),
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(result);
+        Assert.Equal("INV-1A", result.RefNumber);
+        Assert.Equal(other.Id, result.Company.Id);
+        Assert.Equal("Existing Co", result.Company.Name);
+        Assert.Equal(["Added", "Kept edited"], result.DocumentItems.Select(item => item.Description).Order());
+        await using var verify = await database.Factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var saved = await verify.Documents.SingleAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(33m, saved.TotalAmount);
+        Assert.Equal(3m, saved.SubtotalTaxAmount);
+        Assert.Equal("PO-1", saved.RelatedDocumentNumbers);
+        Assert.Equal(new DateTime(2026, 11, 2), saved.SentDate);
+        Assert.False((await verify.DocumentItems.SingleAsync(i => i.Id == removed.Id, TestContext.Current.CancellationToken)).ActiveStatus);
+        Assert.Equal(2, await verify.DocumentItems.CountAsync(i => i.DocumentId == document.Id && i.ActiveStatus, TestContext.Current.CancellationToken));
+        Assert.Equal(2, await verify.Companies.CountAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_CreatesCompanyWhenUenDoesNotExist_AndReturnsNullForMissingOrInactiveDocument()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var company = CreateCompany();
+        var document = CreateDocument("INV-1", 0.8m, 10m, company);
+        var inactive = CreateDocument("INV-2", 0.8m, 10m, company);
+        inactive.ActiveStatus = false;
+        database.Context.Documents.AddRange(document, inactive);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions()));
+        var request = new UpdateTransactionDocumentRequest(
+            "INV-1", new DateTime(2026, 10, 1), "NEW-UEN", "New Co", 0m, 0m, 0m, null, []);
+
+        var result = await service.UpdateAsync(document.Id, request, TestContext.Current.CancellationToken);
+
+        Assert.Equal("NEW-UEN", result!.Company.Uen);
+        Assert.Equal("New Co", result.Company.Name);
+        Assert.Null(await service.UpdateAsync(inactive.Id, request, TestContext.Current.CancellationToken));
+        Assert.Null(await service.UpdateAsync(long.MaxValue, request, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public void Validate_RequiresTallyingSubtotalAndTotal_AndRequiredFields()
+    {
+        var item = new UpdateTransactionDocumentItem(null, "Item", 2m, "SGD", 5m, "GST", 9m, 1, null, null);
+        var valid = new UpdateTransactionDocumentRequest("INV-1", new DateTime(2026, 10, 1), "UEN", null, 10m, 1m, 11m, null, [item]);
+
+        Assert.Empty(TransactionDocumentUpdateValidator.Validate(valid));
+        Assert.Contains("subtotal", TransactionDocumentUpdateValidator.Validate(valid with { Subtotal = 9m }).Keys);
+        Assert.Contains("totalAmount", TransactionDocumentUpdateValidator.Validate(valid with { TotalAmount = 12m }).Keys);
+        Assert.Contains("refNumber", TransactionDocumentUpdateValidator.Validate(valid with { RefNumber = " " }).Keys);
+        Assert.Contains("companyName", TransactionDocumentUpdateValidator.Validate(valid with { CompanyUen = null }).Keys);
+        Assert.NotEmpty(TransactionDocumentUpdateValidator.Validate(null));
+    }
+
+    private static DocumentItemEntity NewItem(string description, decimal quantity, decimal unitPrice) => new()
+    {
+        Description = description,
+        Quantity = quantity,
+        UnitPrice = unitPrice,
+        CreatedTime = new DateTime(2026, 10, 2),
+        ModifiedTime = new DateTime(2026, 10, 2)
+    };
 
     private static CompanyEntity CreateCompany() => new() { Uen = "UEN-1", Name = "Supplier Ltd" };
 

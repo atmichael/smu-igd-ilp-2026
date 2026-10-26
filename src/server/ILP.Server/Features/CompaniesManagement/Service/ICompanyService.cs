@@ -10,7 +10,8 @@ public interface ICompanyService
         int pageSize,
         string sortBy,
         string sortDirection,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        string? uen = null);
 
     Task<CompanyDetails?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 }

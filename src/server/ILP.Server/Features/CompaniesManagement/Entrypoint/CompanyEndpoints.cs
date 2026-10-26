@@ -22,6 +22,7 @@ public static class CompanyEndpoints
             ICompanyService service,
             CancellationToken cancellationToken,
             string? search = null,
+            string? uen = null,
             int page = 1,
             int pageSize = DefaultPageSize,
             string? sortBy = "name",
@@ -34,7 +35,7 @@ public static class CompanyEndpoints
             }
 
             return Results.Ok(await service.SearchAsync(
-                search, page, pageSize, sortBy ?? "name", sortDirection ?? "asc", cancellationToken));
+                search, page, pageSize, sortBy ?? "name", sortDirection ?? "asc", cancellationToken, uen));
         })
         .RequireAuthorization(AuthorizationPolicy);
 

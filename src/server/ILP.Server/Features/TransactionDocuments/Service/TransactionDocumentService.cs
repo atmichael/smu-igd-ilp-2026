@@ -33,6 +33,15 @@ public sealed class TransactionDocumentService(
         return document is null ? null : MapDocument(document);
     }
 
+    public async Task<TransactionDocumentRecord?> UpdateAsync(
+        long id,
+        UpdateTransactionDocumentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var updated = await repository.UpdateAsync(id, request, cancellationToken);
+        return updated is null ? null : await GetByIdAsync(id, cancellationToken);
+    }
+
     public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default) =>
         repository.SoftDeleteAsync(id, cancellationToken);
 
@@ -64,7 +73,7 @@ public sealed class TransactionDocumentService(
             document.SubtotalTaxRate,
             document.SubtotalTaxAmount,
             document.CreatedTime,
-            document.DocumentItems.Select(item => new TransactionDocumentItem(
+            document.DocumentItems.Where(item => item.ActiveStatus).Select(item => new TransactionDocumentItem(
                 item.Id,
                 item.Description,
                 item.Quantity,

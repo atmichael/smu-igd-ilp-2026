@@ -1,5 +1,6 @@
 using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
+using ILP.Server.Features.TransactionDocuments.Model;
 using Microsoft.EntityFrameworkCore;
 
 namespace ILP.Server.Features.TransactionDocuments.Repository;
@@ -57,6 +58,116 @@ public sealed class SqliteTransactionDocumentRepository(
             .Include(document => document.InboxMessageMapping)
                 .ThenInclude(mapping => mapping!.SourceAttachment)
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<DocumentEntity?> UpdateAsync(
+        long id,
+        UpdateTransactionDocumentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var document = await context.Documents
+            .Where(candidate => candidate.ActiveStatus && candidate.Id == id)
+            .Include(candidate => candidate.DocumentItems)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (document is null)
+        {
+            return null;
+        }
+
+        var now = DateTime.UtcNow;
+        var company = await FindOrCreateCompanyAsync(context, request, now, cancellationToken);
+        document.Company = company;
+        document.RefNumber = request.RefNumber!.Trim();
+        document.SentDate = request.SentDate;
+        document.Subtotal = request.Subtotal;
+        document.SubtotalTaxAmount = request.SubtotalTaxAmount;
+        document.TotalAmount = request.TotalAmount;
+        document.RelatedDocumentNumbers = string.IsNullOrWhiteSpace(request.RelatedDocumentNumbers)
+            ? null
+            : request.RelatedDocumentNumbers.Trim();
+        document.Version++;
+        document.ModifiedTime = now;
+
+        var requestedItems = request.DocumentItems ?? [];
+        var existingItems = document.DocumentItems
+            .Where(item => item.ActiveStatus)
+            .ToDictionary(item => item.Id);
+        var keptItemIds = new HashSet<long>();
+        foreach (var requested in requestedItems)
+        {
+            if (requested.Id is { } itemId && existingItems.TryGetValue(itemId, out var existing) && keptItemIds.Add(itemId))
+            {
+                ApplyItem(existing, requested);
+                existing.Version++;
+                existing.ModifiedTime = now;
+            }
+            else
+            {
+                var created = new DocumentItemEntity { CreatedTime = now, ModifiedTime = now };
+                ApplyItem(created, requested);
+                document.DocumentItems.Add(created);
+            }
+        }
+
+        foreach (var removed in existingItems.Values.Where(item => !keptItemIds.Contains(item.Id)))
+        {
+            Deactivate(removed, now);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return document;
+    }
+
+    private static async Task<CompanyEntity> FindOrCreateCompanyAsync(
+        InboxExtractionDbContext context,
+        UpdateTransactionDocumentRequest request,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var uen = string.IsNullOrWhiteSpace(request.CompanyUen) ? null : request.CompanyUen.Trim();
+        var name = request.CompanyName?.Trim() ?? "";
+        CompanyEntity? company;
+        if (uen is not null)
+        {
+            company = await context.Companies.SingleOrDefaultAsync(candidate => candidate.Uen == uen, cancellationToken);
+        }
+        else
+        {
+            var lowerName = name.ToLower();
+            company = await context.Companies.FirstOrDefaultAsync(
+                candidate => candidate.ActiveStatus && candidate.Uen == null && candidate.Name.ToLower() == lowerName,
+                cancellationToken);
+        }
+
+        if (company is null)
+        {
+            company = new CompanyEntity { Uen = uen, Name = name, CreatedTime = now, ModifiedTime = now };
+            context.Companies.Add(company);
+        }
+        else if (!company.ActiveStatus)
+        {
+            company.ActiveStatus = true;
+            company.Version++;
+            company.ModifiedTime = now;
+        }
+
+        return company;
+    }
+
+    private static void ApplyItem(DocumentItemEntity entity, UpdateTransactionDocumentItem item)
+    {
+        entity.Description = item.Description!.Trim();
+        entity.Quantity = item.Quantity;
+        entity.CurrencyCode = string.IsNullOrWhiteSpace(item.CurrencyCode) ? "SGD" : item.CurrencyCode.Trim();
+        entity.UnitPrice = item.UnitPrice;
+        entity.TaxName = string.IsNullOrWhiteSpace(item.TaxName) ? "GST" : item.TaxName.Trim();
+        entity.TaxRate = item.TaxRate;
+        entity.SerialNumber = item.SerialNumber;
+        entity.Amount = item.Amount;
+        entity.TaxAmount = item.TaxAmount;
     }
 
     public async Task<bool> SoftDeleteAsync(long id, CancellationToken cancellationToken = default)

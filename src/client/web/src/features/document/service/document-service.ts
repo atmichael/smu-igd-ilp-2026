@@ -1,5 +1,10 @@
 import { apiFetch, apiJson } from '../../../common/service/api-client'
-import type { DocumentListQuery, DocumentRecord, DocumentSearchResponse } from '../model/document-model'
+import type {
+  DocumentListQuery,
+  DocumentRecord,
+  DocumentSearchResponse,
+  DocumentUpdateRequest,
+} from '../model/document-model'
 
 export function searchDocuments(search: string, options?: DocumentListQuery): Promise<DocumentSearchResponse> {
   const query = new URLSearchParams()
@@ -18,6 +23,14 @@ export function getDocumentsBelowThreshold(options?: DocumentListQuery): Promise
 
 export function getDocumentById(documentId: number): Promise<DocumentRecord> {
   return apiJson<DocumentRecord>(`/api/documents/${encodeURIComponent(String(documentId))}`)
+}
+
+export function updateDocument(documentId: number, request: DocumentUpdateRequest): Promise<DocumentRecord> {
+  return apiJson<DocumentRecord>(`/api/documents/${encodeURIComponent(String(documentId))}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
 }
 
 export async function deleteDocument(documentId: number): Promise<void> {
