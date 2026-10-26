@@ -1,4 +1,4 @@
-import { apiJson } from '../../../common/service/api-client'
+import { apiFetch, apiJson } from '../../../common/service/api-client'
 import type { DocumentListQuery, DocumentRecord, DocumentSearchResponse } from '../model/document-model'
 
 export function searchDocuments(search: string, options?: DocumentListQuery): Promise<DocumentSearchResponse> {
@@ -18,6 +18,17 @@ export function getDocumentsBelowThreshold(options?: DocumentListQuery): Promise
 
 export function getDocumentById(documentId: number): Promise<DocumentRecord> {
   return apiJson<DocumentRecord>(`/api/documents/${encodeURIComponent(String(documentId))}`)
+}
+
+export async function deleteDocument(documentId: number): Promise<void> {
+  const response = await apiFetch(`/api/documents/${encodeURIComponent(String(documentId))}`, { method: 'DELETE' })
+  if (response.ok) return
+  const problem = (await response.json().catch(() => undefined)) as { detail?: unknown; title?: unknown } | undefined
+  throw new Error(
+    (typeof problem?.detail === 'string' && problem.detail) ||
+      (typeof problem?.title === 'string' && problem.title) ||
+      'The document could not be deleted.',
+  )
 }
 
 function addListOptions(query: URLSearchParams, options?: DocumentListQuery): void {

@@ -118,6 +118,43 @@ public sealed class TransactionDocumentRepositoryTests
         Assert.Null(none!.OriginalFileUrl);
     }
 
+    [Fact]
+    public async Task DeleteAsync_SoftDeletesDocumentAndRelatedRecords_AndHidesThemFromQueries()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var document = CreateDocument("INV-1", 0.8m, 10m);
+        var other = CreateDocument("INV-2", 0.8m, 10m);
+        document.DocumentItems.Add(new DocumentItemEntity
+        {
+            Description = "Item",
+            CreatedTime = new DateTime(2026, 10, 2),
+            ModifiedTime = new DateTime(2026, 10, 2)
+        });
+        var message = new InboxMessageEntity { UniqueId = 1, Subject = "s", Sender = "a@b.c", Body = "b" };
+        document.InboxMessageMapping = new DocumentInboxMessageEntity { Message = message };
+        database.Context.Documents.AddRange(document, other);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions()));
+
+        var first = await service.DeleteAsync(document.Id, TestContext.Current.CancellationToken);
+        var second = await service.DeleteAsync(document.Id, TestContext.Current.CancellationToken);
+        var missing = await service.DeleteAsync(long.MaxValue, TestContext.Current.CancellationToken);
+
+        Assert.True(first);
+        Assert.False(second);
+        Assert.False(missing);
+        await using var verify = await database.Factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        Assert.False((await verify.Documents.SingleAsync(d => d.Id == document.Id, TestContext.Current.CancellationToken)).ActiveStatus);
+        Assert.All(verify.DocumentItems.Where(i => i.DocumentId == document.Id), i => Assert.False(i.ActiveStatus));
+        Assert.All(verify.Set<DocumentInboxMessageEntity>().Where(m => m.DocumentId == document.Id), m => Assert.False(m.ActiveStatus));
+        Assert.True((await verify.Documents.SingleAsync(d => d.Id == other.Id, TestContext.Current.CancellationToken)).ActiveStatus);
+        Assert.Null(await service.GetByIdAsync(document.Id, TestContext.Current.CancellationToken));
+        var search = await service.SearchAsync(null, 1, 10, "refNumber", "asc", TestContext.Current.CancellationToken);
+        Assert.Equal(["INV-2"], search.Items.Select(d => d.RefNumber));
+    }
+
     private static CompanyEntity CreateCompany() => new() { Uen = "UEN-1", Name = "Supplier Ltd" };
 
     private static DocumentEntity CreateDocument(

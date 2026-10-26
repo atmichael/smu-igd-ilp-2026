@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DocumentDataGrid } from './DocumentDataGrid'
 import type { DocumentRecord } from '../model/document-model'
@@ -49,5 +49,29 @@ describe('DocumentDataGrid', () => {
     expect(screen.getByRole('button', { name: /view inv-002/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /edit inv-002/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /delete inv-002/i })).toBeInTheDocument()
+  })
+
+  it('only deletes after confirmation and closes the dialog on success', async () => {
+    const onDelete = vi.fn().mockResolvedValue(undefined)
+    render(<DocumentDataGrid rows={documents} onView={vi.fn()} onEdit={vi.fn()} onDelete={onDelete} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /delete inv-001/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(onDelete).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByText(/are you sure/i)).not.toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /delete inv-001/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith(documents[0]))
+    await waitFor(() => expect(screen.queryByText(/are you sure/i)).not.toBeInTheDocument())
+  })
+
+  it('keeps the dialog open and shows the error when deletion fails', async () => {
+    const onDelete = vi.fn().mockRejectedValue(new Error('boom'))
+    render(<DocumentDataGrid rows={documents} onView={vi.fn()} onEdit={vi.fn()} onDelete={onDelete} />)
+
+    fireEvent.click(screen.getByRole('button', { name: /delete inv-001/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+    expect(await screen.findByText('boom')).toBeInTheDocument()
   })
 })

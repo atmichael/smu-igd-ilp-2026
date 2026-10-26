@@ -80,6 +80,32 @@ public static class TransactionDocumentEndpoints
             return document is null ? Results.NotFound() : Results.Ok(document);
         })
         .RequireAuthorization(AuthorizationPolicy);
+
+        app.MapDelete("/api/documents/{id:long}", async (
+            long id,
+            ITransactionDocumentService service,
+            CancellationToken cancellationToken) =>
+        {
+            if (id <= 0)
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid document ID.",
+                    Detail = "The document ID must be a positive integer.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            return await service.DeleteAsync(id, cancellationToken)
+                ? Results.NoContent()
+                : Results.NotFound(new ProblemDetails
+                {
+                    Title = "Document not found.",
+                    Detail = "The document does not exist or has already been deleted.",
+                    Status = StatusCodes.Status404NotFound
+                });
+        })
+        .RequireAuthorization(AuthorizationPolicy);
     }
 
     private static IResult? ValidateQuery(int page, int pageSize, string? sortBy, string? sortDirection)

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Alert, CircularProgress, Stack, Typography } from '@mui/material'
 import { DocumentDataGrid } from '../document/components/DocumentDataGrid'
-import { getDocumentsBelowThreshold } from '../document/service/document-service'
+import { deleteDocument, getDocumentsBelowThreshold } from '../document/service/document-service'
 import type { DocumentRecord } from '../document/model/document-model'
 
 interface HomePageProps {
@@ -14,11 +14,16 @@ export function HomePage({ onNavigate }: HomePageProps) {
   const [error, setError] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
 
+  const [reloadCount, setReloadCount] = useState(0)
+
   useEffect(() => {
     let active = true
     getDocumentsBelowThreshold()
       .then((result) => {
-        if (active) setDocuments(result.items)
+        if (active) {
+          setDocuments(result.items)
+          setError(null)
+        }
       })
       .catch((reason: unknown) => {
         if (active) setError(reason instanceof Error ? reason.message : 'The rectification queue could not be loaded.')
@@ -29,6 +34,11 @@ export function HomePage({ onNavigate }: HomePageProps) {
     return () => {
       active = false
     }
+  }, [reloadCount])
+
+  const handleDelete = useCallback(async (document: DocumentRecord) => {
+    await deleteDocument(document.id)
+    setReloadCount((count) => count + 1)
   }, [])
 
   return (
@@ -49,7 +59,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
           rows={documents}
           onView={(document) => onNavigate(`/document/${document.id}`)}
           onEdit={() => setActionMessage('Document editing is not available yet.')}
-          onDelete={() => setActionMessage('Document deletion is not available yet.')}
+          onDelete={handleDelete}
         />
       )}
     </Stack>
