@@ -9,7 +9,8 @@ public sealed record UpdateTransactionDocumentRequest(
     decimal SubtotalTaxAmount,
     decimal TotalAmount,
     string? RelatedDocumentNumbers,
-    IReadOnlyList<UpdateTransactionDocumentItem>? DocumentItems);
+    IReadOnlyList<UpdateTransactionDocumentItem>? DocumentItems,
+    bool? ManualOverrideFlag = null);
 
 public sealed record UpdateTransactionDocumentItem(
     long? Id,

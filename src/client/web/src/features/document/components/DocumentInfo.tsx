@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import {
   Alert,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
+  FormControlLabel,
   Paper,
   Stack,
   Table,
@@ -156,6 +158,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
   const [typedCompanyName, setTypedCompanyName] = useState(document.company.name)
   const [taxAmount, setTaxAmount] = useState(String(document.subtotalTaxAmount))
   const [related, setRelated] = useState(document.relatedDocumentNumbers ?? '')
+  const [manualOverrideFlag, setManualOverrideFlag] = useState(document.manualOverrideFlag ?? false)
   const [items, setItems] = useState<EditableItem[]>(() => toEditableItems(document))
   const [lookup, setLookup] = useState<{ uen: string; companies: CompanySummary[] } | null>(null)
   const [showErrors, setShowErrors] = useState(false)
@@ -268,6 +271,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         subtotalTaxAmount: tax,
         totalAmount: total,
         relatedDocumentNumbers: related.trim() || null,
+        manualOverrideFlag: document.manualOverrideFlag == null && manualOverrideFlag ? true : null,
         documentItems: items.map((item, index) => ({
           id: item.id,
           description: item.description.trim(),
@@ -345,6 +349,20 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         <dt>Due date</dt><dd>{formatDate(document.dueDate)}</dd>
         <dt>Subtotal</dt><dd>{formatAmount(subtotal)}</dd>
         <dt>Total amount</dt><dd>{formatAmount(total)}</dd>
+        <dt>Manual override</dt>
+        <dd>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={manualOverrideFlag}
+                disabled={document.manualOverrideFlag != null}
+                onChange={(event) => setManualOverrideFlag(event.target.checked)}
+              />
+            }
+            label="Manual override"
+          />
+        </dd>
+        <dt>Manual override by</dt><dd>{document.manualOverrideBy ?? '-'}</dd>
         <dt>Confidence level</dt>
         <dd>{document.confidence == null ? '—' : `${Math.round(document.confidence * 100)}%`}</dd>
       </dl>
@@ -456,6 +474,19 @@ export function DocumentInfo({ document, mode = 'view', onSubmit, onSaved, onCan
               <dt>Total amount</dt><dd>{formatAmount(document.totalAmount)}</dd>
               <dt>Confidence level</dt>
               <dd>{document.confidence == null ? '—' : `${Math.round(document.confidence * 100)}%`}</dd>
+              <dt>Manual override</dt>
+              <dd>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={document.manualOverrideFlag ?? false}
+                      disabled
+                    />
+                  }
+                  label="Manual override"
+                />
+              </dd>
+              <dt>Manual override by</dt><dd>{document.manualOverrideBy ?? '-'}</dd>
               <dt>Related documents</dt><dd>{document.relatedDocumentNumbers || '—'}</dd>
             </dl>
             <Typography variant="subtitle1" component="h3">Line items</Typography>

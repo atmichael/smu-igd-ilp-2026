@@ -18,7 +18,9 @@ public sealed record TransactionDocumentRecord(
     decimal SubtotalTaxAmount,
     DateTime CreatedAt,
     IReadOnlyList<TransactionDocumentItem> DocumentItems,
-    string? OriginalFileUrl = null);
+    string? OriginalFileUrl = null,
+    bool? ManualOverrideFlag = null,
+    string? ManualOverrideBy = null);
 
 public sealed record TransactionDocumentCompany(long Id, string? Uen, string Name);
 

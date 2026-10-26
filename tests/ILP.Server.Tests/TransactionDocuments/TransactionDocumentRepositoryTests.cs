@@ -18,10 +18,14 @@ public sealed class TransactionDocumentRepositoryTests
     {
         await using var database = await TestDatabase.CreateAsync();
         var company = CreateCompany();
+        var manuallyVerified = CreateDocument("INV-VERIFIED", 0.2m, 5m, company);
+        manuallyVerified.ManualOverrideFlag = true;
+        manuallyVerified.ManualOverrideBy = "reviewer";
         database.Context.Documents.AddRange(
             CreateDocument("INV-1", 0.4m, 30m, company),
             CreateDocument("INV-2", 0.5m, 20m, company),
-            CreateDocument("INV-3", 0.6m, 10m, company));
+            CreateDocument("INV-3", 0.6m, 10m, company),
+            manuallyVerified);
         await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var repository = new SqliteTransactionDocumentRepository(database.Factory);
@@ -43,6 +47,35 @@ public sealed class TransactionDocumentRepositoryTests
         Assert.Equal(2, belowThreshold.TotalCount);
         Assert.Equal(2, totalCount);
         Assert.Equal("INV-2", Assert.Single(documents).RefNumber);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_StoresManualOverrideOnceAndRetainsConfidence()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var document = CreateDocument("INV-1", 0.42m, 10m);
+        database.Context.Documents.Add(document);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions { ConfidenceThreshold = 0.5m }));
+        var request = new UpdateTransactionDocumentRequest(
+            "INV-1", document.SentDate, document.Company.Uen, document.Company.Name, 0m, 0m, 10m, null, [],
+            ManualOverrideFlag: true);
+
+        var updated = await service.UpdateAsync(
+            document.Id, request, TestContext.Current.CancellationToken, "reviewer");
+        var repeated = await service.UpdateAsync(
+            document.Id, request, TestContext.Current.CancellationToken, "another-reviewer");
+        var belowThreshold = await service.GetBelowThresholdAsync(
+            1, 10, "sentDate", "desc", TestContext.Current.CancellationToken);
+
+        Assert.True(updated!.ManualOverrideFlag);
+        Assert.Equal("reviewer", updated.ManualOverrideBy);
+        Assert.Equal(0.42m, updated.Confidence);
+        Assert.True(repeated!.ManualOverrideFlag);
+        Assert.Equal("reviewer", repeated.ManualOverrideBy);
+        Assert.Empty(belowThreshold.Items);
     }
 
     [Fact]

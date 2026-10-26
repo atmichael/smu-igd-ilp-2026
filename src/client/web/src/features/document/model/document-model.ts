@@ -26,6 +26,8 @@ export interface DocumentRecord {
   dueDate?: string | null
   totalAmount: number
   confidence?: number | null
+  manualOverrideFlag?: boolean | null
+  manualOverrideBy?: string | null
   relatedDocumentNumbers?: string | null
   subtotal: number
   subtotalTaxRate: number
@@ -60,6 +62,7 @@ export interface DocumentUpdateRequest {
   totalAmount: number
   relatedDocumentNumbers: string | null
   documentItems: DocumentUpdateItem[]
+  manualOverrideFlag?: boolean | null
 }
 
 export interface DocumentSearchResponse {

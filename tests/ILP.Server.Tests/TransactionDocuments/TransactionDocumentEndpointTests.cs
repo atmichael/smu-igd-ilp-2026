@@ -89,7 +89,8 @@ public sealed class TransactionDocumentEndpointTests
             options.AddPolicy(TransactionDocumentEndpoints.AuthorizationPolicy, policy =>
                 policy.RequireAuthenticatedUser());
         });
-        builder.Services.AddSingleton<ITransactionDocumentService, MissingDocumentService>();
+        var service = new MissingDocumentService();
+        builder.Services.AddSingleton<ITransactionDocumentService>(service);
 
         await using var app = builder.Build();
         app.UseAuthentication();
@@ -108,6 +109,7 @@ public sealed class TransactionDocumentEndpointTests
             subtotal = 10,
             subtotalTaxAmount = 1,
             totalAmount = 11,
+            manualOverrideFlag = true,
             documentItems = new[] { new { description = "Item", quantity = 1, unitPrice = 10, amount = 10 } }
         });
         var mismatched = JsonContent.Create(new
@@ -130,10 +132,19 @@ public sealed class TransactionDocumentEndpointTests
         Assert.Equal(HttpStatusCode.NotFound, missingId.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, invalidBody.StatusCode);
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        Assert.Equal("camera-capture-test-user", service.OverrideBy);
+        Assert.True(service.ManualOverrideFlag);
+        var updatedRecord = await updated.Content.ReadFromJsonAsync<TransactionDocumentRecord>(
+            TestContext.Current.CancellationToken);
+        Assert.True(updatedRecord!.ManualOverrideFlag);
+        Assert.Equal("camera-capture-test-user", updatedRecord.ManualOverrideBy);
     }
 
     private sealed class MissingDocumentService : ITransactionDocumentService
     {
+        public string? OverrideBy { get; private set; }
+        public bool? ManualOverrideFlag { get; private set; }
+
         public Task<DocumentSearchResponse> SearchAsync(
             string? search,
             int page,
@@ -157,12 +168,18 @@ public sealed class TransactionDocumentEndpointTests
         public Task<TransactionDocumentRecord?> UpdateAsync(
             long id,
             UpdateTransactionDocumentRequest request,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<TransactionDocumentRecord?>(id == 7 ? Record(id) : null);
+            CancellationToken cancellationToken = default,
+            string? overrideBy = null)
+        {
+            OverrideBy = overrideBy;
+            ManualOverrideFlag = request.ManualOverrideFlag;
+            return Task.FromResult<TransactionDocumentRecord?>(id == 7 ? Record(id) : null);
+        }
 
         private static TransactionDocumentRecord Record(long id) =>
             new(id, "INV-1", "INV", new TransactionDocumentCompany(1, "UEN-1", "Supplier"),
-                new DateTime(2026, 10, 1), 11m, null, null, 10m, 0m, 1m, new DateTime(2026, 10, 2), []);
+                new DateTime(2026, 10, 1), 11m, null, null, 10m, 0m, 1m, new DateTime(2026, 10, 2), [],
+                ManualOverrideFlag: true, ManualOverrideBy: "camera-capture-test-user");
 
         public Task<bool> DeleteAsync(long id, CancellationToken cancellationToken = default) =>
             Task.FromResult(id == 7);

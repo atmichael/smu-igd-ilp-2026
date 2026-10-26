@@ -17,6 +17,8 @@ const base: DocumentRecord = {
   dueDate: '2026-10-31',
   totalAmount: 100,
   confidence: 0.42,
+  manualOverrideFlag: null,
+  manualOverrideBy: null,
   subtotal: 100,
   subtotalTaxRate: 0,
   subtotalTaxAmount: 0,
@@ -89,6 +91,37 @@ describe('DocumentInfo edit mode', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /remove line item 2/i }))
     expect(screen.getByText('Subtotal').nextElementSibling?.textContent).toContain('30.00')
+  })
+
+  it('allows marking a document verified and submits the override flag', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(<DocumentInfo document={editable} mode="edit" onSubmit={onSubmit} />)
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Manual override' }) as HTMLInputElement
+    expect(checkbox.checked).toBe(false)
+    expect(checkbox.disabled).toBe(false)
+    expect(screen.getByText('-', { selector: 'dd' })).toBeInTheDocument()
+    fireEvent.click(checkbox)
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ manualOverrideFlag: true }),
+    ))
+  })
+
+  it('shows and locks existing manual verification details', () => {
+    render(
+      <DocumentInfo
+        document={{ ...editable, manualOverrideFlag: true, manualOverrideBy: 'reviewer@example.com' }}
+        mode="edit"
+      />,
+    )
+
+    const checkbox = screen.getByRole('checkbox', { name: 'Manual override' }) as HTMLInputElement
+    expect(checkbox.checked).toBe(true)
+    expect(checkbox.disabled).toBe(true)
+    expect(screen.getByText('reviewer@example.com')).toBeInTheDocument()
   })
 
   it('locks the company name to the registered company when the UEN exists', async () => {

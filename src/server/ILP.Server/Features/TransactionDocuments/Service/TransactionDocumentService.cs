@@ -36,9 +36,10 @@ public sealed class TransactionDocumentService(
     public async Task<TransactionDocumentRecord?> UpdateAsync(
         long id,
         UpdateTransactionDocumentRequest request,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? overrideBy = null)
     {
-        var updated = await repository.UpdateAsync(id, request, cancellationToken);
+        var updated = await repository.UpdateAsync(id, request, cancellationToken, overrideBy);
         return updated is null ? null : await GetByIdAsync(id, cancellationToken);
     }
 
@@ -86,5 +87,7 @@ public sealed class TransactionDocumentService(
                 item.TaxAmount)).ToArray(),
             string.IsNullOrWhiteSpace(document.InboxMessageMapping?.SourceAttachment?.WebViewLink)
                 ? null
-                : document.InboxMessageMapping.SourceAttachment.WebViewLink);
+                : document.InboxMessageMapping.SourceAttachment.WebViewLink,
+            document.ManualOverrideFlag,
+            document.ManualOverrideBy);
 }

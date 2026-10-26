@@ -50,6 +50,7 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Version")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(1);
@@ -86,6 +87,12 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ManualOverrideBy")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("ManualOverrideFlag")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("ModifiedTime")
                         .HasColumnType("TEXT");
 
@@ -116,6 +123,7 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Version")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(1);
@@ -157,6 +165,7 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Version")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(1);
@@ -227,6 +236,7 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Version")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(1);
@@ -270,6 +280,7 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Version")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(1);
@@ -322,6 +333,7 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Version")
+                        .IsConcurrencyToken()
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(1);
