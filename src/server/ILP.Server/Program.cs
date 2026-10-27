@@ -1,22 +1,24 @@
+using ILP.Server.Config;
+using ILP.Server.Features.CompaniesManagement.Configuration;
+using ILP.Server.Features.CompaniesManagement.Entrypoint;
+using ILP.Server.Features.EvidenceStorage;
+using ILP.Server.Features.EvidenceStorage.Endpoints;
+using ILP.Server.Features.InboxMonitoring.Endpoints;
+using ILP.Server.Features.InboxMonitoring.Persistence;
+using ILP.Server.Features.TransactionDocuments.Configuration;
+using ILP.Server.Features.TransactionDocuments.Entrypoint;
+using ILP.Shared.InboxMonitoring;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using ILP.Server.Config;
-using ILP.Server.Features.EvidenceStorage;
-using ILP.Server.Features.EvidenceStorage.Endpoints;
-using ILP.Server.Features.InboxMonitoring.Persistence;
-using ILP.Server.Features.InboxMonitoring.Endpoints;
-using ILP.Shared.InboxMonitoring;
-using ILP.Server.Features.CompaniesManagement.Configuration;
-using ILP.Server.Features.CompaniesManagement.Entrypoint;
-using ILP.Server.Features.TransactionDocuments.Configuration;
-using ILP.Server.Features.TransactionDocuments.Entrypoint;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+
 InboxExtractionPersistenceConfig.Initialize(builder.Configuration, builder.Environment.ContentRootPath);
 
 if (!builder.Environment.IsDevelopment())
@@ -26,6 +28,7 @@ if (!builder.Environment.IsDevelopment())
         "No production authentication is configured (Feature 17). Run with ASPNETCORE_ENVIRONMENT=Development.");
 }
 
+builder.AddServiceDefaults();
 builder.Services.AddOpenApi();
 builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
     .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
@@ -67,20 +70,39 @@ builder.Services.AddInboxMonitoring(builder.Configuration);
 builder.Services.AddCors(options =>
 {
     var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ??
-        ["https://localhost:5173"];
+        ["https://localhost:5173",
+        "http://localhost:5173",
+        "https://ilpteam5.ngrok.dev",
+        "http://ilpteam5.ngrok.dev"];
 
     options.AddPolicy("ClientApp", policy =>
     {
         policy.WithOrigins(allowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
+
 });
 
 OpenRouterConfig.Initialize(builder.Configuration);
 PromptConfig.Initialize(builder.Configuration);
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                             | ForwardedHeaders.XForwardedProto
+                             | ForwardedHeaders.XForwardedHost;
+
+    // Clear existing trusted proxies & networks to accept headers from ngrok
+    options.KnownProxies.Clear();
+
+    // NET 10 replacement for KnownNetworks:
+    options.KnownIPNetworks.Clear();
+});
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
@@ -124,11 +146,11 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!AuthenticationHeaderValue.TryParse(Request.Headers.Authorization, out var header)
-            || !string.Equals(header.Scheme, SchemeName, StringComparison.OrdinalIgnoreCase))
-        {
-            return Task.FromResult(AuthenticateResult.NoResult());
-        }
+        //if (!AuthenticationHeaderValue.TryParse(Request.Headers.Authorization, out var header)
+        //    || !string.Equals(header.Scheme, SchemeName, StringComparison.OrdinalIgnoreCase))
+        //{
+        //    return Task.FromResult(AuthenticateResult.NoResult());
+        //}
 
         var identity = new ClaimsIdentity(
             [new Claim(ClaimTypes.Name, "camera-capture-test-user")],

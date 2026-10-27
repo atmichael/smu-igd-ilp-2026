@@ -8,6 +8,8 @@
     <Project Path="tests/ILP.Server.Tests/ILP.Server.Tests.csproj" />
   </Folder>
   <Folder Name="/shared/">
+    <Project Path="src/shared/ILP.AppHost/ILP.AppHost.csproj" />
+    <Project Path="src/shared/ILP.ServiceDefaults/ILP.ServiceDefaults.csproj" />
     <Project Path="src/shared/ILP.Shared/ILP.Shared.csproj" />
     <Project Path="tests/ILP.Shared.Test/ILP.Shared.Test.csproj" />
   </Folder>
