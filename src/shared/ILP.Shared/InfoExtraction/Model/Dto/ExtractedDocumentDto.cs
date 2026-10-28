@@ -17,6 +17,7 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
             ExtractedDocFieldNames.DocumentNumber,
             ExtractedDocFieldNames.DocumentType,
             ExtractedDocFieldNames.DocumentDate,
+            ExtractedDocFieldNames.DueDate,
             ExtractedDocFieldNames.RelatedDocumentNumbers,
             ExtractedDocFieldNames.Subtotal,
             ExtractedDocFieldNames.SubtotalTaxRate,
@@ -50,6 +51,15 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
                 DateTimeStyles.None,
                 out var sentDate);
 
+            DateTime? dueDate = DateTime.TryParseExact(
+                GetHeaderField(ExtractedDocFieldNames.DueDate),
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var parsedDueDate)
+                ? parsedDueDate
+                : null;
+
             return new DocumentDto(
                 GetHeaderField(ExtractedDocFieldNames.DocumentNumber) ?? string.Empty,
                 GetHeaderField(ExtractedDocFieldNames.DocumentType) ?? string.Empty,
@@ -61,7 +71,8 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
                 subtotalTaxRate: ParseDecimal(GetHeaderField(ExtractedDocFieldNames.SubtotalTaxRate)) ?? 0m,
                 subtotalTaxAmount: ParseDecimal(GetHeaderField(ExtractedDocFieldNames.SubtotalTaxAmount)) ?? 0m,
                 company: GetCompany(),
-                confidence: Confidence);
+                confidence: Confidence,
+                dueDate: dueDate);
         }
 
         internal void SetHeaderField(string key, string? value) =>

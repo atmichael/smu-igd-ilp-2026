@@ -12,6 +12,7 @@ namespace ILP.Shared.TransactionDocument.Dto
         public CompanyDto Company { get; private set; } = new(string.Empty, string.Empty);
         public DateTime SentDate { get; private set; }
         public decimal TotalAmount { get; private set; }
+        public DateTime? DueDate { get; private set; }
         public decimal? Confidence { get; private set; }
         public string? RelatedDocumentNumbers { get; private set; }
         public decimal Subtotal { get; private set; }
@@ -37,13 +38,15 @@ namespace ILP.Shared.TransactionDocument.Dto
             decimal subtotalTaxRate = 0m,
             decimal subtotalTaxAmount = 0m,
             CompanyDto? company = null,
-            decimal? confidence = null)
+            decimal? confidence = null,
+            DateTime? dueDate = null)
         {
             Id = id;
             RefNumber = refNumber;
             TypeCode = typeCode;
             Company = company ?? new CompanyDto(string.Empty, string.Empty);
             SentDate = sentDate;
+            DueDate = dueDate;
             TotalAmount = totalAmount;
             Confidence = confidence;
             RelatedDocumentNumbers = relatedDocumentNumbers;

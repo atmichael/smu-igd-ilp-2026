@@ -20,7 +20,8 @@ public sealed record TransactionDocumentRecord(
     IReadOnlyList<TransactionDocumentItem> DocumentItems,
     string? OriginalFileUrl = null,
     bool? ManualOverrideFlag = null,
-    string? ManualOverrideBy = null);
+    string? ManualOverrideBy = null,
+    DateTime? DueDate = null);
 
 public sealed record TransactionDocumentCompany(long Id, string? Uen, string Name);
 

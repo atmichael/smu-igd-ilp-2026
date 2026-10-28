@@ -17,6 +17,7 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             document-number| INV-2026-00422
             document-type| Invoice
             document-date| 2026-10-04
+            due-date| 2026-11-03
             related-document-numbers| PO-88192, DO-1002
             subtotal| 1200.00
             subtotal-tax-rate| 0.09
@@ -30,6 +31,14 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             [CONFIDENCE]
             confidence|0.95
             """;
+
+        [Fact]
+        public void Parse_MissingOrInvalidDueDate_YieldsNullDueDate()
+        {
+            Assert.Null(ExtractedDocumentParser.Parse("[HEADER]\ndue-date| null").GetDocumentInfo().DueDate);
+            Assert.Null(ExtractedDocumentParser.Parse("[HEADER]\ndue-date| soon").GetDocumentInfo().DueDate);
+            Assert.Null(ExtractedDocumentParser.Parse("[HEADER]\ndocument-number| X").GetDocumentInfo().DueDate);
+        }
 
         [Fact]
         public void Parse_ReadsKnownKeysAndTreatsNullAsMissing()
@@ -52,6 +61,7 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             Assert.Equal(0.95m, documentInfo.Confidence);
             Assert.Equal("Invoice", documentInfo.TypeCode);
             Assert.Equal(new DateTime(2026, 10, 4), documentInfo.SentDate);
+            Assert.Equal(new DateTime(2026, 11, 3), documentInfo.DueDate);
             Assert.Equal("PO-88192, DO-1002", documentInfo.RelatedDocumentNumbers);
             Assert.Equal(1200.00m, documentInfo.Subtotal);
             Assert.Equal(0.09m, documentInfo.SubtotalTaxRate);

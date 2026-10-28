@@ -56,6 +56,13 @@ function formatDate(value: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('en-SG')
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function formatDdMmmYyyy(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  return match ? `${match[3]}-${MONTHS[Number(match[2]) - 1] ?? match[2]}-${match[1]}` : ''
+}
+
 function formatAmount(value: number, currency = 'SGD'): string {
   return new Intl.NumberFormat('en-SG', { style: 'currency', currency }).format(value)
 }
@@ -154,6 +161,7 @@ interface DocumentEditFieldsProps {
 function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentEditFieldsProps) {
   const [refNumber, setRefNumber] = useState(document.refNumber)
   const [sentDate, setSentDate] = useState(document.sentDate?.slice(0, 10) ?? '')
+  const [dueDate, setDueDate] = useState(document.dueDate?.slice(0, 10) ?? '')
   const [uen, setUen] = useState(document.company.uen ?? '')
   const [typedCompanyName, setTypedCompanyName] = useState(document.company.name)
   const [taxAmount, setTaxAmount] = useState(String(document.subtotalTaxAmount))
@@ -265,6 +273,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
       await onSubmit({
         refNumber: refNumber.trim(),
         sentDate,
+        dueDate: dueDate || null,
         companyUen: trimmedUen || null,
         companyName: companyName.trim(),
         subtotal,
@@ -310,6 +319,12 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         error={!!error('sentDate')} helperText={error('sentDate')}
       />
       <TextField
+        label="Due date" size="small" type="date" value={dueDate}
+        onChange={(event) => setDueDate(event.target.value)}
+        slotProps={{ inputLabel: { shrink: true } }}
+        helperText={formatDdMmmYyyy(dueDate) || undefined}
+      />
+      <TextField
         label="Company UEN" size="small" value={uen}
         onChange={(event) => setUen(event.target.value)}
       />
@@ -346,7 +361,6 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
       />
       <dl className="document-info__fields">
         <dt>Document type</dt><dd>{document.typeCode || '—'}</dd>
-        <dt>Due date</dt><dd>{formatDate(document.dueDate)}</dd>
         <dt>Subtotal</dt><dd>{formatAmount(subtotal)}</dd>
         <dt>Total amount</dt><dd>{formatAmount(total)}</dd>
         <dt>Manual override</dt>

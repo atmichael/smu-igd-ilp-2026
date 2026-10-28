@@ -213,7 +213,8 @@ public sealed class TransactionDocumentRepositoryTests
                 [
                     new UpdateTransactionDocumentItem(kept.Id, "Kept edited", 2m, "SGD", 10m, "GST", 9m, 1, 20m, null),
                     new UpdateTransactionDocumentItem(null, "Added", 1m, "SGD", 10m, "GST", 9m, 2, 10m, null)
-                ]),
+                ],
+                DueDate: new DateTime(2026, 12, 1)),
             TestContext.Current.CancellationToken);
 
         Assert.NotNull(result);
@@ -227,6 +228,8 @@ public sealed class TransactionDocumentRepositoryTests
         Assert.Equal(3m, saved.SubtotalTaxAmount);
         Assert.Equal("PO-1", saved.RelatedDocumentNumbers);
         Assert.Equal(new DateTime(2026, 11, 2), saved.SentDate);
+        Assert.Equal(new DateTime(2026, 12, 1), saved.DueDate);
+        Assert.Equal(new DateTime(2026, 12, 1), result.DueDate);
         Assert.False((await verify.DocumentItems.SingleAsync(i => i.Id == removed.Id, TestContext.Current.CancellationToken)).ActiveStatus);
         Assert.Equal(2, await verify.DocumentItems.CountAsync(i => i.DocumentId == document.Id && i.ActiveStatus, TestContext.Current.CancellationToken));
         Assert.Equal(2, await verify.Companies.CountAsync(TestContext.Current.CancellationToken));

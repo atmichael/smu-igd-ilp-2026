@@ -93,6 +93,22 @@ describe('DocumentInfo edit mode', () => {
     expect(screen.getByText('Subtotal').nextElementSibling?.textContent).toContain('30.00')
   })
 
+  it('makes the due date editable and submits the new value', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(<DocumentInfo document={editable} mode="edit" onSubmit={onSubmit} />)
+
+    expect((screen.getByLabelText('Due date') as HTMLInputElement).value).toBe('2026-10-31')
+    expect(screen.getByText('31-Oct-2026')).toBeInTheDocument()
+    change('Due date', '2026-12-05')
+    expect(screen.getByText('05-Dec-2026')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ dueDate: '2026-12-05' }),
+    ))
+  })
+
   it('allows marking a document verified and submits the override flag', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     render(<DocumentInfo document={editable} mode="edit" onSubmit={onSubmit} />)

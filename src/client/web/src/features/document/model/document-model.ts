@@ -55,6 +55,7 @@ export interface DocumentUpdateItem {
 export interface DocumentUpdateRequest {
   refNumber: string
   sentDate: string
+  dueDate?: string | null
   companyUen: string | null
   companyName: string
   subtotal: number
