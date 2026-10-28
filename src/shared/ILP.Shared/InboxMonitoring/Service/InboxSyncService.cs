@@ -55,11 +55,17 @@ public sealed class InboxSyncService : IInboxSyncService
                     var extractedDocuments = new List<(DocumentDto Document, InboxMessageAttachmentDto? Attachment)>();
                     var driveAttachments = new List<InboxMessageAttachmentDto>();
 
+                    var seenKeys = new HashSet<(string, string, string)>();
+
                     if (message.AttachmentPaths.Count == 0)
                     {
                         string content = await _extractor.ExtractAsync(message.Body, "", traceId, message.InlineImages);
                         contents.Add(content);
-                        extractedDocuments.Add((ExtractedDocumentParser.Parse(content).GetDocumentInfo(), null));
+                        var document = ExtractedDocumentParser.Parse(content).GetDocumentInfo();
+                        if (!await IsDuplicateAsync(document, message, seenKeys, traceId, cancellationToken))
+                        {
+                            extractedDocuments.Add((document, null));
+                        }
                     }
 
                     foreach (var file in message.AttachmentPaths)
@@ -67,6 +73,11 @@ public sealed class InboxSyncService : IInboxSyncService
                         string content = await _extractor.ExtractAsync(message.Body, file, traceId, message.InlineImages);
                         contents.Add(content);
                         var document = ExtractedDocumentParser.Parse(content).GetDocumentInfo();
+
+                        if (await IsDuplicateAsync(document, message, seenKeys, traceId, cancellationToken))
+                        {
+                            continue;
+                        }
 
                         InboxMessageAttachmentDto? uploadedAttachment = null;
                         if (_driveFileProvider != null)
@@ -138,6 +149,31 @@ public sealed class InboxSyncService : IInboxSyncService
         {
             _gate.Release();
         }
+    }
+
+    private async Task<bool> IsDuplicateAsync(
+        DocumentDto document,
+        InboxMessageDto message,
+        HashSet<(string, string, string)> seenKeys,
+        string traceId,
+        CancellationToken cancellationToken)
+    {
+        if (_persistence == null)
+        {
+            return false;
+        }
+
+        string uen = document.Company.UEN ?? "";
+        bool duplicate = !string.IsNullOrWhiteSpace(uen)
+            && (!seenKeys.Add((uen, document.TypeCode, document.RefNumber))
+                || await _persistence.ExistsAsync(document, cancellationToken));
+        if (duplicate)
+        {
+            LogHelper.Info(traceId,
+                $"Email {message.UniqueId} contains duplicate document type for {uen} , {document.TypeCode} , {document.RefNumber}");
+        }
+
+        return duplicate;
     }
 
     private static void DeleteAttachments(InboxMessageDto message)

@@ -69,6 +69,11 @@ public class InboxSyncServiceTest
     {
         public List<IReadOnlyList<DocumentInboxMessageMappingDto>> Saves { get; } = [];
 
+        public HashSet<(string Uen, string Type, string Ref)> Existing { get; } = [];
+
+        public Task<bool> ExistsAsync(DocumentDto document, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Existing.Contains((document.Company.UEN ?? "", document.TypeCode, document.RefNumber)));
+
         public Task SaveAsync(IReadOnlyList<DocumentInboxMessageMappingDto> mappings, CancellationToken cancellationToken = default)
         {
             Saves.Add(mappings);
@@ -224,6 +229,42 @@ public class InboxSyncServiceTest
             Assert.Single(mapping.InboxMessage.GoogleDriveAttachments).WebViewLink);
         Assert.Equal("drive-file-id", mapping.SourceAttachment?.DriveFileId);
         Assert.False(File.Exists(file));
+    }
+
+    private const string InvoiceContent = """
+        [HEADER]
+        document-number| INV-1
+        document-type| Invoice
+        company-uen| UEN-1
+        total-amount| 5
+        """;
+
+    [Fact]
+    public async Task SyncAsync_DuplicateComposite_DoesNotInsertAndMarksAsRead()
+    {
+        var source = new FakeSource(new InboxMessageDto { UniqueId = 5, Body = "b" });
+        var persistence = new FakePersistence();
+        persistence.Existing.Add(("UEN-1", "Invoice", "INV-1"));
+        var sut = new InboxSyncService(source, new FixedExtractor(InvoiceContent), Opts(), null, persistence);
+
+        var result = await sut.SyncAsync();
+
+        Assert.Empty(persistence.Saves);
+        Assert.Equal(1, result.MessagesProcessed);
+        Assert.Equal([5u], source.MarkedAsRead);
+    }
+
+    [Fact]
+    public async Task SyncAsync_NewComposite_InsertsRow()
+    {
+        var source = new FakeSource(new InboxMessageDto { UniqueId = 6, Body = "b" });
+        var persistence = new FakePersistence();
+        var sut = new InboxSyncService(source, new FixedExtractor(InvoiceContent), Opts(), null, persistence);
+
+        await sut.SyncAsync();
+
+        Assert.Single(Assert.Single(persistence.Saves));
+        Assert.Equal([6u], source.MarkedAsRead);
     }
 
     [Fact]

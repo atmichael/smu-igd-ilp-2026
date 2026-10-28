@@ -9,6 +9,22 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Repository;
 public sealed class SqliteInboxExtractionRepo(IDbContextFactory<InboxExtractionDbContext> contextFactory)
     : IInboxExtractionPersistence
 {
+    public async Task<bool> ExistsAsync(DocumentDto document, CancellationToken cancellationToken = default)
+    {
+        string? uen = document.Company.UEN;
+        if (string.IsNullOrWhiteSpace(uen))
+        {
+            return false;
+        }
+
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Documents.AnyAsync(
+            existing => existing.Company.Uen == uen
+                && existing.TypeCode == document.TypeCode
+                && existing.RefNumber == document.RefNumber,
+            cancellationToken);
+    }
+
     public async Task SaveAsync(
         IReadOnlyList<DocumentInboxMessageMappingDto> mappings,
         CancellationToken cancellationToken = default)
