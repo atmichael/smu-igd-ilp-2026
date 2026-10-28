@@ -36,6 +36,7 @@ public sealed class InboxExtractionDbContext(DbContextOptions<InboxExtractionDbC
                 .WithMany(company => company.Documents)
                 .HasForeignKey(document => document.CompanyId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(document => new { document.CompanyId, document.TypeCode, document.RefNumber }).IsUnique();
             entity.Property(document => document.Confidence).HasPrecision(5, 4);
             ConfigureAuditFields(entity);
         });

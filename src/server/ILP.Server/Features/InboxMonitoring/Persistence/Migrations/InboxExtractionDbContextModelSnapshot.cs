@@ -130,7 +130,8 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CompanyId");
+                    b.HasIndex("CompanyId", "TypeCode", "RefNumber")
+                        .IsUnique();
 
                     b.ToTable("Documents", null, t =>
                         {
