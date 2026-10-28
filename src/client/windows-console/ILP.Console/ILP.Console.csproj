@@ -27,12 +27,12 @@
 
   <ItemGroup>
     <PackageReference Include="LLamaSharp" Version="0.30.0" />
-    <PackageReference Include="LM-Kit.NET" Version="2026.10.7" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageReference Include="LM-Kit.NET" Version="2026.10.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
     <PackageReference Include="PdfPig" Version="0.1.16" />
     <PackageReference Include="PdfPig.Rendering.Skia" Version="0.1.16.7" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.13" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.14" />
   </ItemGroup>
 
 </Project>
