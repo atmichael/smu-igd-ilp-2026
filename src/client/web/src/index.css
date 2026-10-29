@@ -1,7 +1,7 @@
 :root {
   color: #0f172a;
-  background: #ffffff;
-  font-family: Inter, system-ui, 'Segoe UI', sans-serif;
+  background: #f1f5f9;
+  font-family: Inter, ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -19,7 +19,7 @@ html, body, #root {
   margin: 0;
   min-height: 100%;
   min-height: 100vh;
-  background: #f8fafc;
+  background: #f1f5f9;
   color: #0f172a;
 }
 
@@ -36,4 +36,8 @@ h6,
 p {
   margin: 0;
   color: #0f172a;
+}
+
+button {
+  font-family: inherit;
 }
