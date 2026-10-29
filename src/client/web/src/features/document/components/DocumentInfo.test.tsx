@@ -126,6 +126,20 @@ describe('DocumentInfo edit mode', () => {
     ])
   })
 
+  it('uses a delete icon for removing rows and an Add button for adding rows', () => {
+    render(<DocumentInfo document={editable} mode="edit" />)
+
+    const removeButton = screen.getByRole('button', { name: 'Remove line item 1' })
+    expect(removeButton.querySelector('svg')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add line item' })).toHaveTextContent('Add')
+  })
+
+  it('uses a multiline description field', () => {
+    render(<DocumentInfo document={editable} mode="edit" />)
+
+    expect(screen.getByLabelText('Line item 1 description').tagName).toBe('TEXTAREA')
+  })
+
   it('makes the due date editable and submits the new value', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined)
     render(<DocumentInfo document={editable} mode="edit" onSubmit={onSubmit} />)
