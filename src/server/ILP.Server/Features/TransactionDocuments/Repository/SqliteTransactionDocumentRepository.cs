@@ -83,6 +83,7 @@ public sealed class SqliteTransactionDocumentRepository(
         document.Company = company;
         document.RefNumber = request.RefNumber!.Trim();
         document.SentDate = request.SentDate;
+        document.DueDate = request.DueDate;
         document.Subtotal = request.Subtotal;
         document.SubtotalTaxAmount = request.SubtotalTaxAmount;
         document.TotalAmount = request.TotalAmount;

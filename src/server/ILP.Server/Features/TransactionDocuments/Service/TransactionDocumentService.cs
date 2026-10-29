@@ -89,5 +89,6 @@ public sealed class TransactionDocumentService(
                 ? null
                 : document.InboxMessageMapping.SourceAttachment.WebViewLink,
             document.ManualOverrideFlag,
-            document.ManualOverrideBy);
+            document.ManualOverrideBy,
+            document.DueDate);
 }

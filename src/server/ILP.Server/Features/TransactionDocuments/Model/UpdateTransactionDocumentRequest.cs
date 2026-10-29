@@ -10,7 +10,8 @@ public sealed record UpdateTransactionDocumentRequest(
     decimal TotalAmount,
     string? RelatedDocumentNumbers,
     IReadOnlyList<UpdateTransactionDocumentItem>? DocumentItems,
-    bool? ManualOverrideFlag = null);
+    bool? ManualOverrideFlag = null,
+    DateTime? DueDate = null);
 
 public sealed record UpdateTransactionDocumentItem(
     long? Id,

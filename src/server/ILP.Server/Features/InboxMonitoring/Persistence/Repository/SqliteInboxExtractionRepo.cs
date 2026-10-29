@@ -172,6 +172,7 @@ public sealed class SqliteInboxExtractionRepo(IDbContextFactory<InboxExtractionD
             TypeCode = document.TypeCode,
             Company = company,
             SentDate = document.SentDate,
+            DueDate = document.DueDate,
             TotalAmount = document.TotalAmount,
             RelatedDocumentNumbers = document.RelatedDocumentNumbers,
             Subtotal = document.Subtotal,

@@ -12,6 +12,8 @@ public sealed class DocumentEntity : AuditedEntity
 
     public DateTime SentDate { get; set; }
 
+    public DateTime? DueDate { get; set; }
+
     public decimal TotalAmount { get; set; }
 
     public string? RelatedDocumentNumbers { get; set; }

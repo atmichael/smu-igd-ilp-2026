@@ -87,6 +87,9 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ManualOverrideBy")
                         .HasColumnType("TEXT");
 

@@ -8,6 +8,7 @@ namespace ILP.Shared.TransactionDocument.Constant
         public const string DocumentNumber = "document-number";
         public const string DocumentType = "document-type";
         public const string DocumentDate = "document-date";
+        public const string DueDate = "due-date";
         public const string RelatedDocumentNumbers = "related-document-numbers";
         public const string Subtotal = "subtotal";
         public const string SubtotalTaxRate = "subtotal-tax-rate";
