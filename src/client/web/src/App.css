@@ -360,6 +360,11 @@
     width: 100%;
   }
 
+  .document-info__items .MuiTableBody-root .MuiTableCell-root {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
   .document-grid .MuiTablePagination-toolbar {
     flex-wrap: wrap;
     justify-content: center;

@@ -21,6 +21,7 @@ import {
 } from '@mui/material'
 import { findCompaniesByUen } from '../../company/service/company-service'
 import type { CompanySummary } from '../../company/model/company-model'
+import { IconAction } from '../../../common/components/IconAction'
 import type { DocumentRecord, DocumentUpdateRequest } from '../model/document-model'
 
 interface DocumentInfoProps {
@@ -396,7 +397,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
             <TableRow key={item.key}>
               <TableCell data-label="Description">
                 <TextField
-                  size="small" value={item.description}
+                  size="small" value={item.description} multiline minRows={2}
                   onChange={(event) => updateItem(item.key, { description: event.target.value })}
                   error={!!error(`description-${item.key}`)} helperText={error(`description-${item.key}`)}
                   slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} description` } }}
@@ -427,9 +428,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
                 />
               </TableCell>
               <TableCell data-label="Actions">
-                <Button size="small" color="error" onClick={() => removeItem(item.key)}>
-                  Remove line item {index + 1}
-                </Button>
+                <IconAction kind="delete" label={`Remove line item ${index + 1}`} onClick={() => removeItem(item.key)} />
               </TableCell>
             </TableRow>
           ))}
@@ -439,7 +438,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         </TableBody>
       </Table>
       <div>
-        <Button onClick={addItem}>Add line item</Button>
+        <Button onClick={addItem} aria-label="Add line item">Add</Button>
       </div>
       <Stack direction="row" spacing={1}>
         <Button type="submit" variant="contained">Submit</Button>
