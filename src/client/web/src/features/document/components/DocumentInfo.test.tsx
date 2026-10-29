@@ -54,6 +54,26 @@ describe('DocumentInfo original attachment', () => {
       'https://drive.google.com/file/d/1pPrdCXnnGl4LY_4QbbKXNvSr64FhJ4yi/preview',
     )
   })
+
+  it('labels document line items for the mobile card layout', () => {
+    render(
+      <DocumentInfo
+        document={{
+          ...base,
+          documentItems: [
+            { id: 1, description: 'Widget', quantity: 2, currencyCode: 'SGD', unitPrice: 10, taxName: 'GST', taxRate: 9, amount: 20 },
+          ],
+        }}
+      />,
+    )
+
+    const table = screen.getByRole('table', { name: 'Document line items' })
+    expect(Array.from(table.querySelectorAll('tbody [data-label]')).map((cell) => cell.getAttribute('data-label'))).toEqual([
+      'Description',
+      'Quantity',
+      'Amount',
+    ])
+  })
 })
 
 describe('DocumentInfo edit mode', () => {
@@ -91,6 +111,19 @@ describe('DocumentInfo edit mode', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /remove line item 2/i }))
     expect(screen.getByText('Subtotal').nextElementSibling?.textContent).toContain('30.00')
+  })
+
+  it('labels editable line item fields for the mobile card layout', () => {
+    render(<DocumentInfo document={editable} mode="edit" />)
+
+    const table = screen.getByRole('table', { name: 'Editable line items' })
+    expect(Array.from(table.querySelectorAll('tbody [data-label]')).map((cell) => cell.getAttribute('data-label'))).toEqual([
+      'Description',
+      'Quantity',
+      'Unit price',
+      'Amount',
+      'Actions',
+    ])
   })
 
   it('makes the due date editable and submits the new value', async () => {
