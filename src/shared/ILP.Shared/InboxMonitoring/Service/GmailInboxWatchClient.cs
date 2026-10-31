@@ -5,6 +5,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Util.Store;
 using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace ILP.Shared.InboxMonitoring.Service;
@@ -15,10 +16,12 @@ public sealed class GmailInboxWatchClient : IInboxWatchClient
     private static readonly HttpClient Http = new();
 
     private readonly InboxMonitoringOptions _options;
+    private readonly ILogger<GmailInboxWatchClient> _logger;
 
-    public GmailInboxWatchClient(IOptions<InboxMonitoringOptions> options)
+    public GmailInboxWatchClient(IOptions<InboxMonitoringOptions> options, ILogger<GmailInboxWatchClient> logger)
     {
         _options = options.Value;
+        _logger = logger;
     }
 
     public async Task WatchAsync(string topicName, CancellationToken cancellationToken = default)
@@ -41,6 +44,7 @@ public sealed class GmailInboxWatchClient : IInboxWatchClient
 
         using var response = await Http.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
+        _logger.LogInformation("Gmail watch activated successfully for topic {TopicName}", topicName);
     }
 
     private async Task<UserCredential> AuthorizeAsync(CancellationToken cancellationToken)

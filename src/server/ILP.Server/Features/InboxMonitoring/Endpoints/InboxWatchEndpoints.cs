@@ -10,8 +10,9 @@ public static class InboxWatchEndpoints
     public static void MapInboxWatchEndpoints(this IEndpointRouteBuilder app)
     {
         // Called by Google Pub/Sub push; the body is intentionally ignored and any 2xx response is an ACK.
-        app.MapPost("/api/webhook/inbox-watch", (InboxSyncSignal signal) =>
+        app.MapPost("/api/webhook/inbox-watch", (InboxSyncSignal signal, ILogger<InboxSyncSignal> logger) =>
         {
+            logger.LogDebug("Received Pub/Sub webhook call on inbox-watch endpoint");
             signal.Signal();
             return Results.NoContent();
         }).AllowAnonymous();
