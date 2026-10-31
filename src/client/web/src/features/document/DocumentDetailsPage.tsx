@@ -95,7 +95,9 @@ export function DocumentDetailsPage({ documentId, onBack, onDeleted }: DocumentD
         <DocumentInfo
           document={document}
           mode={editing ? 'edit' : 'view'}
-          onSubmit={(request) => updateDocument(document.id, request)}
+          onSubmit={async (request) => {
+            await updateDocument(document.id, request)
+          }}
           onSaved={() => {
             setEditing(false)
             setReloadCount((count) => count + 1)
