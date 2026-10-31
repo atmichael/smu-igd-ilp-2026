@@ -22,7 +22,7 @@ function App() {
 
   const navigate = useCallback((nextPath: string) => {
     window.history.pushState({}, '', nextPath)
-    setPath(nextPath)
+    setPath(new URL(nextPath, window.location.href).pathname)
   }, [])
 
   useEffect(() => {
@@ -58,7 +58,7 @@ function App() {
     return <LoginPage onCredential={handleCredential} />
   }
 
-  const content = resolveContent(path, navigate)
+  const content = resolveContent(path, navigate, resolveDetailsReturnPath())
 
   return (
     <PortalShell
@@ -83,7 +83,11 @@ function resolvePath(isAuthenticated: boolean, currentPath: string): string {
     : '/home'
 }
 
-function resolveContent(path: string, navigate: (nextPath: string) => void): ReactNode {
+function resolveContent(
+  path: string,
+  navigate: (nextPath: string) => void,
+  detailsReturnPath: '/home' | '/document',
+): ReactNode {
   if (path === '/camera-capture') {
     return <CameraCapturePage onNavigate={navigate} />
   }
@@ -106,10 +110,21 @@ function resolveContent(path: string, navigate: (nextPath: string) => void): Rea
 
   const documentId = path.match(/^\/document\/(\d+)$/)?.[1]
   if (documentId) {
-    return <DocumentDetailsPage documentId={Number(documentId)} onBack={() => navigate('/document')} />
+    return (
+      <DocumentDetailsPage
+        documentId={Number(documentId)}
+        onBack={() => navigate(detailsReturnPath)}
+        onDeleted={() => navigate(detailsReturnPath)}
+      />
+    )
   }
 
   return <HomePage onNavigate={navigate} />
+}
+
+function resolveDetailsReturnPath(): '/home' | '/document' {
+  const returnTo = new URLSearchParams(window.location.search).get('returnTo')
+  return returnTo === '/home' ? '/home' : '/document'
 }
 
 export default App

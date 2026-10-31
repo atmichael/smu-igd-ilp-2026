@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearGoogleIdToken } from './common/service/authentication-service'
+import { clearGoogleIdToken, setGoogleIdToken } from './common/service/authentication-service'
 import App from './App'
 
 vi.mock('./features/login/GoogleSignInButton', () => ({
@@ -31,6 +31,22 @@ vi.mock('./features/company/CompanyListPage', () => ({
 
 vi.mock('./features/document/DocumentHubPage', () => ({
   DocumentHubPage: () => <h2>Document hub route</h2>,
+}))
+
+vi.mock('./features/document/DocumentDetailsPage', () => ({
+  DocumentDetailsPage: ({
+    onBack,
+    onDeleted,
+  }: {
+    onBack: () => void
+    onDeleted: () => void
+  }) => (
+    <div>
+      <h2>Document details route</h2>
+      <button onClick={onBack}>Back to source</button>
+      <button onClick={onDeleted}>Delete and return</button>
+    </div>
+  ),
 }))
 
 vi.mock('./features/export/DocumentExportPage', () => ({
@@ -92,6 +108,31 @@ describe('App authentication and navigation', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /sign in with google/i }))
     fireEvent.click(screen.getByRole('link', { name: /document hub/i }))
+
+    expect(window.location.pathname).toBe('/document')
+    expect(screen.getByRole('heading', { name: /document hub route/i })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['/home', 'Manual rectification'],
+    ['/document', 'Document hub route'],
+  ] as const)('returns to %s from document details', (source, heading) => {
+    setGoogleIdToken('authenticated-test-token')
+    window.history.replaceState({}, '', `/document/42?returnTo=${encodeURIComponent(source)}`)
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /back to source/i }))
+
+    expect(window.location.pathname).toBe(source)
+    expect(screen.getByRole('heading', { name: heading })).toBeInTheDocument()
+  })
+
+  it('uses the Document Hub as the fallback source for direct details links', () => {
+    setGoogleIdToken('authenticated-test-token')
+    window.history.replaceState({}, '', '/document/42')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: /delete and return/i }))
 
     expect(window.location.pathname).toBe('/document')
     expect(screen.getByRole('heading', { name: /document hub route/i })).toBeInTheDocument()

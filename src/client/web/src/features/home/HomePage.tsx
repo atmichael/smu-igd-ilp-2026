@@ -57,7 +57,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
       {!loading && !error && (
         <DocumentDataGrid
           rows={documents}
-          onView={(document) => onNavigate(`/document/${document.id}`)}
+          onView={(document) => onNavigate(`/document/${document.id}?returnTo=%2Fhome`)}
           onEdit={setEditing}
           onDelete={handleDelete}
         />

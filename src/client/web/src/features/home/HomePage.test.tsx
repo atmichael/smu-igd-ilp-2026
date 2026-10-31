@@ -16,14 +16,17 @@ vi.mock('../document/components/DocumentDataGrid', () => ({
   DocumentDataGrid: ({
     rows,
     onEdit,
+    onView,
   }: {
     rows: DocumentRecord[]
     onEdit: (document: DocumentRecord) => void
+    onView: (document: DocumentRecord) => void
   }) => (
     <div>
       {rows.map((document) => (
         <div key={document.id}>
           <span>{document.refNumber}</span>
+          <button onClick={() => onView(document)}>View {document.refNumber}</button>
           <button onClick={() => onEdit(document)}>Edit {document.refNumber}</button>
         </div>
       ))}
@@ -77,5 +80,16 @@ describe('HomePage document editing', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(onNavigate).not.toHaveBeenCalled()
     await waitFor(() => expect(pageMocks.getDocumentsBelowThreshold).toHaveBeenCalledTimes(2))
+  })
+
+  it('marks the landing page as the source when opening document details', async () => {
+    pageMocks.getDocumentsBelowThreshold.mockResolvedValueOnce({ items: [documentRow('INV-001')], totalCount: 1 })
+    const onNavigate = vi.fn()
+
+    render(<HomePage onNavigate={onNavigate} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'View INV-001' }))
+
+    expect(onNavigate).toHaveBeenCalledWith('/document/1?returnTo=%2Fhome')
   })
 })

@@ -66,7 +66,7 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
       {error && <Alert severity="error">{error}</Alert>}
       <DocumentDataGrid
         rows={documents}
-        onView={(document) => onNavigate(`/document/${document.id}`)}
+        onView={(document) => onNavigate(`/document/${document.id}?returnTo=%2Fdocument`)}
         onEdit={setEditing}
         onDelete={handleDelete}
       />
