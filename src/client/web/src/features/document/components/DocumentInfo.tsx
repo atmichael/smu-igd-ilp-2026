@@ -21,6 +21,7 @@ import {
 } from '@mui/material'
 import { findCompaniesByUen } from '../../company/service/company-service'
 import type { CompanySummary } from '../../company/model/company-model'
+import { IconAction } from '../../../common/components/IconAction'
 import type { DocumentRecord, DocumentUpdateRequest } from '../model/document-model'
 
 interface DocumentInfoProps {
@@ -381,7 +382,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         <dd>{document.confidence == null ? '—' : `${Math.round(document.confidence * 100)}%`}</dd>
       </dl>
       <Typography variant="subtitle1" component="h3">Line items</Typography>
-      <Table size="small" aria-label="Editable line items">
+      <Table size="small" aria-label="Editable line items" className="document-info__items">
         <TableHead>
           <TableRow>
             <TableCell>Description</TableCell>
@@ -394,15 +395,15 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         <TableBody>
           {items.map((item, index) => (
             <TableRow key={item.key}>
-              <TableCell>
+              <TableCell data-label="Description">
                 <TextField
-                  size="small" value={item.description}
+                  size="small" value={item.description} multiline minRows={2}
                   onChange={(event) => updateItem(item.key, { description: event.target.value })}
                   error={!!error(`description-${item.key}`)} helperText={error(`description-${item.key}`)}
                   slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} description` } }}
                 />
               </TableCell>
-              <TableCell>
+              <TableCell data-label="Quantity">
                 <TextField
                   size="small" value={item.quantity}
                   onChange={(event) => updateItem(item.key, { quantity: event.target.value })}
@@ -410,7 +411,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
                   slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} quantity`, inputMode: 'decimal' } }}
                 />
               </TableCell>
-              <TableCell>
+              <TableCell data-label="Unit price">
                 <TextField
                   size="small" value={item.unitPrice}
                   onChange={(event) => updateItem(item.key, { unitPrice: event.target.value })}
@@ -418,7 +419,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
                   slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} unit price`, inputMode: 'decimal' } }}
                 />
               </TableCell>
-              <TableCell>
+              <TableCell data-label="Amount">
                 <TextField
                   size="small" value={item.amount}
                   onChange={(event) => updateItem(item.key, { amount: event.target.value })}
@@ -426,10 +427,8 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
                   slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} amount`, inputMode: 'decimal' } }}
                 />
               </TableCell>
-              <TableCell>
-                <Button size="small" color="error" onClick={() => removeItem(item.key)}>
-                  Remove line item {index + 1}
-                </Button>
+              <TableCell data-label="Actions">
+                <IconAction kind="delete" label={`Remove line item ${index + 1}`} onClick={() => removeItem(item.key)} />
               </TableCell>
             </TableRow>
           ))}
@@ -439,7 +438,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         </TableBody>
       </Table>
       <div>
-        <Button onClick={addItem}>Add line item</Button>
+        <Button onClick={addItem} aria-label="Add line item">Add</Button>
       </div>
       <Stack direction="row" spacing={1}>
         <Button type="submit" variant="contained">Submit</Button>
@@ -504,16 +503,16 @@ export function DocumentInfo({ document, mode = 'view', onSubmit, onSaved, onCan
               <dt>Related documents</dt><dd>{document.relatedDocumentNumbers || '—'}</dd>
             </dl>
             <Typography variant="subtitle1" component="h3">Line items</Typography>
-            <Table size="small" aria-label="Document line items">
+            <Table size="small" aria-label="Document line items" className="document-info__items">
               <TableHead>
                 <TableRow><TableCell>Description</TableCell><TableCell>Quantity</TableCell><TableCell align="right">Amount</TableCell></TableRow>
               </TableHead>
               <TableBody>
                 {document.documentItems.map((item, index) => (
                   <TableRow key={item.id ?? item.serialNumber ?? index}>
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell>{item.quantity}</TableCell>
-                    <TableCell align="right">
+                    <TableCell data-label="Description">{item.description}</TableCell>
+                    <TableCell data-label="Quantity">{item.quantity}</TableCell>
+                    <TableCell align="right" data-label="Amount">
                       {formatAmount(item.amount ?? item.quantity * item.unitPrice, item.currencyCode)}
                     </TableCell>
                   </TableRow>

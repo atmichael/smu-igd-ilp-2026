@@ -51,6 +51,21 @@ describe('DocumentDataGrid', () => {
     expect(screen.getByRole('button', { name: /delete inv-002/i })).toBeInTheDocument()
   })
 
+  it('labels every document field for the mobile card layout', () => {
+    render(<DocumentDataGrid rows={documents} onView={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />)
+
+    const row = screen.getByText('INV-001').closest('tr')
+    expect(Array.from(row?.querySelectorAll('[data-label]') ?? []).map((cell) => cell.getAttribute('data-label'))).toEqual([
+      'Document Number',
+      'Company UEN & Name',
+      'Posting Date',
+      'Due Date',
+      'Total Amount',
+      'Confidence Level',
+      'Actions',
+    ])
+  })
+
   it('only deletes after confirmation and closes the dialog on success', async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined)
     render(<DocumentDataGrid rows={documents} onView={vi.fn()} onEdit={vi.fn()} onDelete={onDelete} />)

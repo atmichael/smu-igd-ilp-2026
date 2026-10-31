@@ -285,4 +285,89 @@
     grid-template-columns: 1fr;
     gap: 0.25rem;
   }
+
+  .document-grid .MuiTable-root,
+  .document-info__items.MuiTable-root {
+    display: block;
+    width: 100%;
+  }
+
+  .document-grid .MuiTableHead-root,
+  .document-info__items .MuiTableHead-root {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .document-grid .MuiTableBody-root,
+  .document-info__items .MuiTableBody-root {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .document-grid .MuiTableBody-root .MuiTableRow-root,
+  .document-info__items .MuiTableBody-root .MuiTableRow-root {
+    display: grid;
+    min-width: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    overflow: hidden;
+  }
+
+  .document-grid .MuiTableBody-root .MuiTableCell-root,
+  .document-info__items .MuiTableBody-root .MuiTableCell-root {
+    display: grid;
+    grid-template-columns: minmax(6rem, 0.4fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    text-align: left;
+    overflow-wrap: anywhere;
+  }
+
+  .document-grid .MuiTableBody-root .MuiTableCell-root::before,
+  .document-info__items .MuiTableBody-root .MuiTableCell-root::before {
+    content: attr(data-label);
+    color: #475569;
+    font-weight: 600;
+  }
+
+  .document-grid .MuiTableBody-root .MuiTableCell-root[colspan],
+  .document-info__items .MuiTableBody-root .MuiTableCell-root[colspan] {
+    display: block;
+    text-align: center;
+  }
+
+  .document-grid .MuiTableBody-root .MuiTableCell-root[colspan]::before,
+  .document-info__items .MuiTableBody-root .MuiTableCell-root[colspan]::before {
+    content: none;
+  }
+
+  .document-grid__actions {
+    white-space: normal;
+  }
+
+  .document-info__items .MuiTableBody-root .MuiTextField-root {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .document-info__items .MuiTableBody-root .MuiTableCell-root {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .document-grid .MuiTablePagination-toolbar {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.5rem;
+  }
 }

@@ -184,19 +184,19 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
           <TableBody>
             {visibleRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => (
               <TableRow key={row.id} hover>
-                <TableCell>{row.refNumber}</TableCell>
-                <TableCell>
+                <TableCell data-label="Document Number">{row.refNumber}</TableCell>
+                <TableCell data-label="Company UEN & Name">
                   <strong>{row.company?.uen ?? '—'}</strong>
                   <br />
                   {row.company?.name ?? '—'}
                 </TableCell>
-                <TableCell>{displayDate(row.sentDate)}</TableCell>
-                <TableCell>{displayDate(row.dueDate)}</TableCell>
-                <TableCell align="right">{displayAmount(row.totalAmount)}</TableCell>
-                <TableCell>
+                <TableCell data-label="Posting Date">{displayDate(row.sentDate)}</TableCell>
+                <TableCell data-label="Due Date">{displayDate(row.dueDate)}</TableCell>
+                <TableCell align="right" data-label="Total Amount">{displayAmount(row.totalAmount)}</TableCell>
+                <TableCell data-label="Confidence Level">
                   {row.confidence == null ? '—' : `${Math.round(row.confidence * 100)}%`}
                 </TableCell>
-                <TableCell align="right" className="document-grid__actions">
+                <TableCell align="right" className="document-grid__actions" data-label="Actions">
                   <IconAction kind="view" label={`View ${row.refNumber}`} onClick={() => onView(row)} />
                   <IconAction kind="edit" label={`Edit ${row.refNumber}`} onClick={() => onEdit(row)} />
                   <IconAction
