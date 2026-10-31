@@ -71,11 +71,22 @@
   min-height: 36px;
   display: inline-flex;
   align-items: center;
+  gap: 0.5rem;
   text-decoration: none;
   white-space: nowrap;
   border-radius: 0.5rem;
   padding: 0.375rem 0.75rem;
   transition: color 150ms ease, background-color 150ms ease;
+}
+
+.portal__nav-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+
+.portal__nav-label {
+  line-height: 1.2;
 }
 
 .portal__navigation a:hover,
@@ -254,6 +265,25 @@
 
   .portal__navigation {
     gap: 0.25rem;
+  }
+
+  .portal__navigation a {
+    min-width: 4.5rem;
+    min-height: 4.5rem;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.125rem;
+    padding: 0.25rem 0.375rem;
+    text-align: center;
+  }
+
+  .portal__nav-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .portal__nav-label {
+    font-size: 0.675rem;
   }
 
   .portal__capture-group {

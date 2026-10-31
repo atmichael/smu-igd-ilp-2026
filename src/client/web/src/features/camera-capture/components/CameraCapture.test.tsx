@@ -23,6 +23,28 @@ describe('CameraCapture', () => {
     expect(screen.queryByRole('button', { name: /capture page/i })).not.toBeInTheDocument()
   })
 
+  it('lets the user return to source selection before capturing', () => {
+    const onExit = vi.fn()
+    render(
+      <CameraCapture
+        onExit={onExit}
+        onSubmit={() =>
+          Promise.resolve({
+            sourceDocumentId: 'doc-1',
+            channel: 'camera-capture',
+            pageCount: 1,
+            status: 'received',
+          })
+        }
+        startCamera={async () => ({ getTracks: () => [] } as unknown as MediaStream)}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /back to source selection/i }))
+
+    expect(onExit).toHaveBeenCalledTimes(1)
+  })
+
   it('requests camera access only after explicit user action', async () => {
     const startCapture = vi.fn()
     render(
@@ -92,7 +114,7 @@ describe('CameraCapture', () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn(() => ({
       drawImage: vi.fn(),
-    } as any)) as typeof HTMLCanvasElement.prototype.getContext
+    } as unknown as CanvasRenderingContext2D)) as unknown as typeof HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.toBlob = vi.fn((callback) => callback?.(mockBlob)) as typeof HTMLCanvasElement.prototype.toBlob
 
     render(

@@ -26,6 +26,8 @@ interface FileUploadProps {
   onFetchOriginal?: (sourceDocumentId: string) => Promise<Blob>
 }
 
+type SelectedUploadState = Extract<UploadState, { file: File }>
+
 // WCAG 2.2 target size; MUI's default medium button is shorter.
 const buttonSx = { minHeight: 44, minWidth: 44 }
 const fullWidthOnPhone = { ...buttonSx, width: { xs: '100%', sm: 'auto' } }
@@ -160,10 +162,142 @@ export function FileUpload({
     }
   }
 
-  const selectedFile = 'file' in state ? state.file : null
-  const busy = state.status === 'submitting'
-  // After a rejection the only way forward is a new file, so that action becomes the primary one.
-  const needsNewFile = state.status === 'blocked' || state.status === 'rejected'
+  const renderReceivedState = (document: SourceDocumentResponse) => (
+    <Stack spacing={2.5}>
+      <Alert severity="success" role="status">
+        <Typography
+          variant="subtitle1"
+          component="h3"
+          tabIndex={-1}
+          ref={headingRef}
+          sx={{ outline: 'none' }}
+        >
+          Document received
+        </Typography>
+        <Typography>Source document ID: {document.sourceDocumentId}</Typography>
+        {document.origin?.upload?.originalFileName ? (
+          <Typography>File: {document.origin.upload.originalFileName}</Typography>
+        ) : null}
+      </Alert>
+      {originalError ? <Alert severity="error">{originalError}</Alert> : null}
+      <Stack sx={actionRowSx}>
+        <Stack sx={groupSx}>
+          <Button variant="outlined" sx={fullWidthOnPhone} onClick={() => void openOriginal(document, 'view')}>
+            View original
+          </Button>
+          <Button variant="outlined" sx={fullWidthOnPhone} onClick={() => void openOriginal(document, 'download')}>
+            Download original
+          </Button>
+        </Stack>
+        <Button variant="contained" sx={fullWidthOnPhone} onClick={uploadAnother}>
+          Upload another
+        </Button>
+      </Stack>
+    </Stack>
+  )
+
+  const renderSelectedState = (selectedState: SelectedUploadState) => {
+    const busy = selectedState.status === 'submitting'
+    // After a rejection the only way forward is a new file, so that action becomes the primary one.
+    const needsNewFile = selectedState.status === 'blocked' || selectedState.status === 'rejected'
+
+    return (
+      <Stack spacing={2.5}>
+        <Box
+          sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 2, display: 'grid', gap: 1.5 }}
+        >
+          <Box>
+            <Typography component="p" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+              Selected file: {selectedState.file.name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {formatFileSize(selectedState.file.size)}
+            </Typography>
+          </Box>
+
+          {selectedState.status === 'selected' ? (
+            <Alert severity="success" role="status">
+              Ready to submit. The server will check the file when you submit it.
+            </Alert>
+          ) : null}
+          {selectedState.status === 'blocked' || selectedState.status === 'rejected' || selectedState.status === 'failed' ? (
+            <Alert severity="error">{selectedState.message}</Alert>
+          ) : null}
+          {busy ? (
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }} role="status">
+              <CircularProgress size={20} aria-hidden="true" />
+              <Typography>Submitting the document…</Typography>
+            </Stack>
+          ) : null}
+        </Box>
+
+        <Stack sx={actionRowSx}>
+          <Stack sx={groupSx}>
+            <Button variant="text" sx={fullWidthOnPhone} disabled={busy} onClick={onExit}>
+              ← Back to source selection
+            </Button>
+            <Button
+              variant={needsNewFile ? 'contained' : 'outlined'}
+              sx={fullWidthOnPhone}
+              disabled={busy}
+              onClick={chooseFile}
+            >
+              Choose another file
+            </Button>
+            <Button variant="text" sx={fullWidthOnPhone} disabled={busy} onClick={() => { setDropMessage(null); setState(initialUploadState) }}>
+              Clear selection
+            </Button>
+          </Stack>
+          {selectedState.status === 'selected' || selectedState.status === 'submitting' ? (
+            <Button variant="contained" sx={fullWidthOnPhone} disabled={busy} onClick={() => void submit()}>
+              Submit document
+            </Button>
+          ) : null}
+          {selectedState.status === 'failed' ? (
+            <Button variant="contained" sx={fullWidthOnPhone} onClick={() => void submit()}>
+              Try again
+            </Button>
+          ) : null}
+        </Stack>
+      </Stack>
+    )
+  }
+
+  const renderEmptyState = () => (
+    <Stack
+      spacing={2}
+      sx={{
+        border: 2,
+        borderStyle: 'dashed',
+        borderColor: dragActive ? 'primary.main' : 'divider',
+        bgcolor: dragActive ? 'action.hover' : undefined,
+        borderRadius: 2,
+        p: 3,
+        alignItems: 'center',
+        textAlign: 'center',
+      }}
+    >
+      <Typography>
+        {canDrag
+          ? `Drag a ${ACCEPTED_TYPES_TEXT} file here, or choose one. Up to ${FILE_UPLOAD_MAX_LABEL}.`
+          : `Choose one ${ACCEPTED_TYPES_TEXT} file, up to ${FILE_UPLOAD_MAX_LABEL}.`}
+      </Typography>
+      <Button variant="contained" sx={fullWidthOnPhone} onClick={chooseFile}>
+        Choose file
+      </Button>
+      <Button variant="text" sx={fullWidthOnPhone} onClick={onExit}>
+        ← Back to source selection
+      </Button>
+    </Stack>
+  )
+
+  const renderState = () => {
+    if (state.status === 'received') {
+      return renderReceivedState(state.document)
+    }
+
+    return 'file' in state ? renderSelectedState(state) : renderEmptyState()
+  }
 
   return (
     <Paper
@@ -184,118 +318,7 @@ export function FileUpload({
 
         {dropMessage ? <Alert severity="warning">{dropMessage}</Alert> : null}
 
-        {state.status === 'received' ? (
-          <Stack spacing={2.5}>
-            <Alert severity="success" role="status">
-              <Typography
-                variant="subtitle1"
-                component="h3"
-                tabIndex={-1}
-                ref={headingRef}
-                sx={{ outline: 'none' }}
-              >
-                Document received
-              </Typography>
-              <Typography>Source document ID: {state.document.sourceDocumentId}</Typography>
-              {state.document.origin?.upload?.originalFileName ? (
-                <Typography>File: {state.document.origin.upload.originalFileName}</Typography>
-              ) : null}
-            </Alert>
-            {originalError ? <Alert severity="error">{originalError}</Alert> : null}
-            <Stack sx={actionRowSx}>
-              <Stack sx={groupSx}>
-                <Button variant="outlined" sx={fullWidthOnPhone} onClick={() => void openOriginal(state.document, 'view')}>
-                  View original
-                </Button>
-                <Button variant="outlined" sx={fullWidthOnPhone} onClick={() => void openOriginal(state.document, 'download')}>
-                  Download original
-                </Button>
-              </Stack>
-              <Button variant="contained" sx={fullWidthOnPhone} onClick={uploadAnother}>
-                Upload another
-              </Button>
-            </Stack>
-          </Stack>
-        ) : selectedFile ? (
-          <Stack spacing={2.5}>
-            <Box
-              sx={{ border: 1, borderColor: 'divider', borderRadius: 2, p: 2, display: 'grid', gap: 1.5 }}
-            >
-              <Box>
-                <Typography component="p" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
-                  Selected file: {selectedFile.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {formatFileSize(selectedFile.size)}
-                </Typography>
-              </Box>
-
-              {state.status === 'selected' ? (
-                <Alert severity="success" role="status">
-                  Ready to submit. The server will check the file when you submit it.
-                </Alert>
-              ) : null}
-              {state.status === 'blocked' || state.status === 'rejected' || state.status === 'failed' ? (
-                <Alert severity="error">{state.message}</Alert>
-              ) : null}
-              {busy ? (
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }} role="status">
-                  <CircularProgress size={20} aria-hidden="true" />
-                  <Typography>Submitting the document…</Typography>
-                </Stack>
-              ) : null}
-            </Box>
-
-            <Stack sx={actionRowSx}>
-              <Stack sx={groupSx}>
-                <Button
-                  variant={needsNewFile ? 'contained' : 'outlined'}
-                  sx={fullWidthOnPhone}
-                  disabled={busy}
-                  onClick={chooseFile}
-                >
-                  Choose another file
-                </Button>
-                <Button variant="text" sx={fullWidthOnPhone} disabled={busy} onClick={() => { setDropMessage(null); setState(initialUploadState) }}>
-                  Clear selection
-                </Button>
-              </Stack>
-              {state.status === 'selected' || state.status === 'submitting' ? (
-                <Button variant="contained" sx={fullWidthOnPhone} disabled={busy} onClick={() => void submit()}>
-                  Submit document
-                </Button>
-              ) : null}
-              {state.status === 'failed' ? (
-                <Button variant="contained" sx={fullWidthOnPhone} onClick={() => void submit()}>
-                  Try again
-                </Button>
-              ) : null}
-            </Stack>
-          </Stack>
-        ) : (
-          <Stack
-            spacing={2}
-            sx={{
-              border: 2,
-              borderStyle: 'dashed',
-              borderColor: dragActive ? 'primary.main' : 'divider',
-              bgcolor: dragActive ? 'action.hover' : undefined,
-              borderRadius: 2,
-              p: 3,
-              alignItems: 'center',
-              textAlign: 'center',
-            }}
-          >
-            <Typography>
-              {canDrag
-                ? `Drag a ${ACCEPTED_TYPES_TEXT} file here, or choose one. Up to ${FILE_UPLOAD_MAX_LABEL}.`
-                : `Choose one ${ACCEPTED_TYPES_TEXT} file, up to ${FILE_UPLOAD_MAX_LABEL}.`}
-            </Typography>
-            <Button variant="contained" sx={fullWidthOnPhone} onClick={chooseFile}>
-              Choose file
-            </Button>
-          </Stack>
-        )}
+        {renderState()}
       </Stack>
     </Paper>
   )

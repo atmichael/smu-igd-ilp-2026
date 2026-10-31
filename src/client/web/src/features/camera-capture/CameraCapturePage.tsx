@@ -21,7 +21,6 @@ export function CameraCapturePage({ onNavigate }: CameraCapturePageProps) {
           status={submittedSourceDocument.status}
           onBack={() => {
             setSubmittedSourceDocument(null)
-            onNavigate('/home')
           }}
         />
       ) : (

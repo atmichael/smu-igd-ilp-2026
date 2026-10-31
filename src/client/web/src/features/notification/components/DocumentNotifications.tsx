@@ -22,7 +22,14 @@ export function DocumentNotifications() {
       open={message !== null}
       autoHideDuration={8000}
       onClose={(_, reason) => reason !== 'clickaway' && setMessage(null)}
-      anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+      sx={{
+        '& .MuiAlert-root': {
+          boxSizing: 'border-box',
+          width: 'min(60vw, 400px)',
+          minWidth: 'min(250px, calc(100vw - 32px))',
+        },
+      }}
     >
       <Alert severity="info" variant="filled" onClose={() => setMessage(null)}>
         {message}

@@ -21,7 +21,6 @@ export function FileUploadPage({ onNavigate }: FileUploadPageProps) {
           status={submittedSourceDocument.status}
           onBack={() => {
             setSubmittedSourceDocument(null)
-            onNavigate('/home')
           }}
         />
       ) : (
