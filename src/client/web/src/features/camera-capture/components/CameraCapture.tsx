@@ -226,6 +226,121 @@ export function CameraCapture({
 
   const canCapture = session.state === 'liveCapture'
 
+  const renderStage = () => {
+    if (session.state === 'pageReview' && session.pendingPage) {
+      return (
+        <Box className="camera-capture__stage camera-capture__stage--review">
+          <img
+            src={session.pendingPage.previewUrl}
+            alt="Captured page preview"
+            className="camera-capture__preview"
+          />
+        </Box>
+      )
+    }
+
+    if (session.state === 'documentReview' && session.acceptedPages.length > 0) {
+      return (
+        <Box className="camera-capture__stage camera-capture__stage--review">
+          <img
+            src={session.acceptedPages[session.acceptedPages.length - 1].previewUrl}
+            alt={`Accepted page ${session.acceptedPages.length} preview`}
+            className="camera-capture__preview"
+          />
+        </Box>
+      )
+    }
+
+    return (
+      <Box className="camera-capture__stage">
+        <video ref={videoRef} autoPlay playsInline muted className="camera-capture__video" />
+      </Box>
+    )
+  }
+
+  const renderActions = () => (
+    <Stack className="camera-capture__actions" spacing={1.25}>
+      {(session.state === 'idle' || session.state === 'recoverableError') && (
+        <Button variant="contained" onClick={startCapture}>
+          Start Camera Capture
+        </Button>
+      )}
+
+      {canCapture && session.state !== 'recoverableError' && (
+        <Button variant="contained" onClick={captureStill}>
+          Capture page
+        </Button>
+      )}
+
+      {session.state === 'pageReview' && session.pendingPage && (
+        <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
+          <Button variant="outlined" onClick={retakePage} sx={{ flex: 1 }}>
+            Retake page
+          </Button>
+          <Button variant="contained" onClick={acceptPage} sx={{ flex: 1 }}>
+            Accept page
+          </Button>
+        </Stack>
+      )}
+
+      {session.state === 'documentReview' && session.acceptedPages.length < 3 && (
+        <Button variant="outlined" onClick={captureAnotherPage}>
+          Capture another page
+        </Button>
+      )}
+
+      {session.acceptedPages.length > 0 && (
+        <Box className="camera-capture__pages">
+          <Typography variant="h6" component="h3">
+            Accepted pages
+          </Typography>
+          <Typography variant="body2">Capture one to three pages.</Typography>
+          <ul>
+            {session.acceptedPages.map((page) => (
+              <li key={page.id}>
+                <img
+                  src={page.previewUrl}
+                  alt={`Accepted page ${page.position} thumbnail`}
+                  className="camera-capture__thumbnail"
+                />
+                <span>Page {page.position}</span>
+                <Button variant="outlined" size="small" onClick={() => removePage(page.id)}>
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </Box>
+      )}
+
+      {session.acceptedPages.length > 0 && (
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={session.state === 'submitting'}
+        >
+          {session.state === 'submitting' ? 'Submitting…' : 'Submit capture'}
+        </Button>
+      )}
+
+      <Button variant="text" onClick={cancelSession} disabled={session.state === 'submitting'}>
+        Back to source selection
+      </Button>
+    </Stack>
+  )
+
+  const renderSubmittedDocument = () => (
+    submittedDocument && (
+      <Box className="camera-capture__success">
+        <Typography variant="h6" component="h3">
+          Submitted
+        </Typography>
+        <Typography>Source document ID: {submittedDocument.sourceDocumentId}</Typography>
+        <Typography>Status: {submittedDocument.status}</Typography>
+      </Box>
+    )
+  )
+
   return (
     <Paper className="camera-capture" aria-live="polite" elevation={0} sx={{ p: 3, border: '1px solid #e2e8f0', borderRadius: 3 }}>
       <Stack spacing={2}>
@@ -237,106 +352,15 @@ export function CameraCapture({
 
         {session.errorMessage ? <Alert severity="error">{session.errorMessage}</Alert> : null}
 
-        {session.state === 'pageReview' && session.pendingPage ? (
-          <Box className="camera-capture__stage camera-capture__stage--review">
-            <img
-              src={session.pendingPage.previewUrl}
-              alt="Captured page preview"
-              className="camera-capture__preview"
-            />
-          </Box>
-        ) : session.state === 'documentReview' && session.acceptedPages.length > 0 ? (
-          <Box className="camera-capture__stage camera-capture__stage--review">
-            <img
-              src={session.acceptedPages[session.acceptedPages.length - 1].previewUrl}
-              alt={`Accepted page ${session.acceptedPages.length} preview`}
-              className="camera-capture__preview"
-            />
-          </Box>
-        ) : (
-          <Box className="camera-capture__stage">
-            <video ref={videoRef} autoPlay playsInline muted className="camera-capture__video" />
-          </Box>
-        )}
+        {renderStage()}
 
         <Typography className="camera-capture__prompt" variant="body1">
           Capture one to three pages.
         </Typography>
 
-        <Stack className="camera-capture__actions" spacing={1.25}>
-          {(session.state === 'idle' || session.state === 'recoverableError') && (
-            <Button variant="contained" onClick={startCapture}>
-              Start Camera Capture
-            </Button>
-          )}
+        {renderActions()}
 
-          {canCapture && session.state !== 'recoverableError' && (
-            <Button variant="contained" onClick={captureStill}>
-              Capture page
-            </Button>
-          )}
-
-          {session.state === 'pageReview' && session.pendingPage && (
-            <Stack direction="row" spacing={1} sx={{ width: '100%' }}>
-              <Button variant="outlined" onClick={retakePage} sx={{ flex: 1 }}>
-                Retake page
-              </Button>
-              <Button variant="contained" onClick={acceptPage} sx={{ flex: 1 }}>
-                Accept page
-              </Button>
-            </Stack>
-          )}
-
-          {session.state === 'documentReview' && session.acceptedPages.length < 3 && (
-            <Button variant="outlined" onClick={captureAnotherPage}>
-              Capture another page
-            </Button>
-          )}
-
-          {session.acceptedPages.length > 0 && (
-            <Box className="camera-capture__pages">
-              <Typography variant="h6" component="h3">
-                Accepted pages
-              </Typography>
-              <Typography variant="body2">Capture one to three pages.</Typography>
-              <ul>
-                {session.acceptedPages.map((page) => (
-                  <li key={page.id}>
-                    <img
-                      src={page.previewUrl}
-                      alt={`Accepted page ${page.position} thumbnail`}
-                      className="camera-capture__thumbnail"
-                    />
-                    <span>Page {page.position}</span>
-                    <Button variant="outlined" size="small" onClick={() => removePage(page.id)}>
-                      Remove
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </Box>
-          )}
-
-          {session.acceptedPages.length > 0 && (
-            <Button
-              variant="contained"
-              onClick={handleSubmit}
-              disabled={session.state === 'submitting'}
-            >
-              {session.state === 'submitting' ? 'Submitting…' : 'Submit capture'}
-            </Button>
-          )}
-        </Stack>
-
-        {submittedDocument && (
-          <Box className="camera-capture__success">
-            <Typography variant="h6" component="h3">
-              Submitted
-            </Typography>
-            <Typography>Source document ID: {submittedDocument.sourceDocumentId}</Typography>
-            <Typography>Status: {submittedDocument.status}</Typography>
-          </Box>
-        )}
+        {renderSubmittedDocument()}
       </Stack>
     </Paper>
   )
