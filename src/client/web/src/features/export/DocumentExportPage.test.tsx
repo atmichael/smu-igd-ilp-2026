@@ -22,7 +22,26 @@ const record = {
 }
 
 describe('DocumentExportPage', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useRealTimers()
+  })
+
+  it('defaults the range to the start of the current month through today in local time', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 9, 31, 23, 30))
+    render(<DocumentExportPage />)
+
+    expect(screen.getByLabelText('Created from')).toHaveValue('2026-10-01')
+    expect(screen.getByLabelText('Created to')).toHaveValue('2026-10-31')
+  })
+
+  it('places the export button in a separate row from the filters', () => {
+    render(<DocumentExportPage />)
+    const filters = screen.getByLabelText('Created from').closest('.export-form__filters')
+
+    expect(filters).not.toContainElement(screen.getByRole('button', { name: /export to xero/i }))
+  })
 
   it('retrieves documents for the date range and downloads a Xero CSV', async () => {
     vi.mocked(getDocumentsForExport).mockResolvedValue({ items: [record], totalCount: 1 })

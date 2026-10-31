@@ -10,9 +10,18 @@ type ExportStatus =
   | { kind: 'success'; count: number }
   | { kind: 'error'; message: string }
 
+function toLocalDateInput(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
 export function DocumentExportPage() {
-  const [createdFrom, setCreatedFrom] = useState('')
-  const [createdTo, setCreatedTo] = useState('')
+  const [createdFrom, setCreatedFrom] = useState(() => {
+    const now = new Date()
+    return toLocalDateInput(new Date(now.getFullYear(), now.getMonth(), 1))
+  })
+  const [createdTo, setCreatedTo] = useState(() => toLocalDateInput(new Date()))
   const [status, setStatus] = useState<ExportStatus>({ kind: 'idle' })
   const invalidRange = createdFrom !== '' && createdTo !== '' && createdFrom > createdTo
 
@@ -48,6 +57,7 @@ export function DocumentExportPage() {
         </div>
       </div>
       <Paper variant="outlined" component="form" className="export-form" onSubmit={handleExport}>
+        <div className="export-form__filters">
         <TextField
           label="Created from"
           type="date"
@@ -66,6 +76,8 @@ export function DocumentExportPage() {
           helperText={invalidRange ? 'Created to must not be earlier than created from.' : undefined}
           size="small"
         />
+        </div>
+        <div className="export-form__actions">
         <Button
           type="submit"
           variant="contained"
@@ -74,6 +86,7 @@ export function DocumentExportPage() {
         >
           Export to Xero
         </Button>
+        </div>
       </Paper>
       {status.kind === 'error' && <Alert severity="error">{status.message}</Alert>}
       {status.kind === 'success' && (
