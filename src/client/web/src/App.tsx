@@ -12,6 +12,7 @@ import { CompanyListPage } from './features/company/CompanyListPage'
 import { DocumentDetailsPage } from './features/document/DocumentDetailsPage'
 import { DocumentHubPage } from './features/document/DocumentHubPage'
 import { DocumentExportPage } from './features/export/DocumentExportPage'
+import { DocumentNotifications } from './features/notification/components/DocumentNotifications'
 import { PortalShell } from './features/layout/PortalShell'
 import './App.css'
 
@@ -65,6 +66,7 @@ function App() {
       onNavigate={navigate}
       onSignOut={handleSignOut}
     >
+      <DocumentNotifications />
       {content}
     </PortalShell>
   )

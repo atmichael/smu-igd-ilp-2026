@@ -14,6 +14,7 @@ public sealed class InboxSyncService : IInboxSyncService
     private readonly IDocumentContentExtractor _extractor;
     private readonly IGoogleDriveFileProvider? _driveFileProvider;
     private readonly IInboxExtractionPersistence? _persistence;
+    private readonly IDocumentNotificationPublisher? _notificationPublisher;
     private readonly InboxMonitoringOptions _options;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -22,8 +23,10 @@ public sealed class InboxSyncService : IInboxSyncService
         IDocumentContentExtractor extractor,
         IOptions<InboxMonitoringOptions> options,
         IGoogleDriveFileProvider? driveFileProvider = null,
-        IInboxExtractionPersistence? persistence = null)
+        IInboxExtractionPersistence? persistence = null,
+        IDocumentNotificationPublisher? notificationPublisher = null)
     {
+        _notificationPublisher = notificationPublisher;
         _options = options.Value;
         _source = source;
         _extractor = extractor;
@@ -109,6 +112,7 @@ public sealed class InboxSyncService : IInboxSyncService
                                 extracted.Attachment))
                             .ToList();
                         await _persistence.SaveAsync(mappings, cancellationToken);
+                        PublishNotifications(extractedDocuments.Select(extracted => extracted.Document), traceId);
                     }
 
                     processed++;
@@ -148,6 +152,27 @@ public sealed class InboxSyncService : IInboxSyncService
         finally
         {
             _gate.Release();
+        }
+    }
+
+    private void PublishNotifications(IEnumerable<DocumentDto> documents, string traceId)
+    {
+        if (_notificationPublisher == null)
+        {
+            return;
+        }
+
+        foreach (var document in documents)
+        {
+            try
+            {
+                _notificationPublisher.Publish(
+                    new DocumentNotificationDto(document.TypeCode, document.RefNumber, document.Company?.UEN));
+            }
+            catch (Exception ex)
+            {
+                LogHelper.Error(traceId, ex, "Failed to publish document notification");
+            }
         }
     }
 
