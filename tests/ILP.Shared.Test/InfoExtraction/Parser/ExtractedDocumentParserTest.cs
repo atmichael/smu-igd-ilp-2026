@@ -14,6 +14,9 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             company-name| ACME LOGISTICS PTE LTD
             company-uen| 201509876K
             company-tax-registration-number| null
+            company-email| accounts@acme.example
+            company-address| 1 Harbour Road, Singapore 018900
+            currency| USD
             document-number| INV-2026-00422
             document-type| Invoice
             document-date| 2026-10-04
@@ -31,6 +34,26 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             [CONFIDENCE]
             confidence|0.95
             """;
+
+        [Fact]
+        public void Parse_ReadsContactDetailsAndCurrency()
+        {
+            var fields = ExtractedDocumentParser.Parse(SampleOutput);
+
+            var company = fields.GetCompany();
+            Assert.Equal("accounts@acme.example", company.Email);
+            Assert.Equal("1 Harbour Road, Singapore 018900", company.Address);
+            Assert.All(fields.GetLineItems(), item => Assert.Equal("USD", item.CurrencyCode));
+        }
+
+        [Fact]
+        public void Parse_MissingCurrency_KeepsDefaultCurrency()
+        {
+            var fields = ExtractedDocumentParser.Parse("[HEADER]\ncurrency| null\n[LINE_ITEMS]\n1|Item|1|2|2|0|0");
+
+            Assert.Equal("SGD", Assert.Single(fields.GetLineItems()).CurrencyCode);
+            Assert.Equal(string.Empty, fields.GetCompany().Email);
+        }
 
         [Fact]
         public void Parse_MissingOrInvalidDueDate_YieldsNullDueDate()

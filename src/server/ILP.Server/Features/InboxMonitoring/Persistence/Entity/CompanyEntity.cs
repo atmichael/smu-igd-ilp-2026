@@ -10,5 +10,7 @@ public sealed class CompanyEntity : AuditedEntity
 
     public string TaxRegistrationNumber { get; set; } = "";
 
+    public string Email { get; set; } = "";
+
     public ICollection<DocumentEntity> Documents { get; set; } = new List<DocumentEntity>();
 }

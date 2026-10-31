@@ -49,6 +49,33 @@ public sealed class SqliteTransactionDocumentRepository(
         return (results, totalCount);
     }
 
+    public async Task<IReadOnlyList<DocumentEntity>> ExportAsync(
+        DateTime? createdFrom,
+        DateTime? createdBefore,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        IQueryable<DocumentEntity> documents = context.Documents
+            .Where(document => document.ActiveStatus)
+            .Include(document => document.Company)
+            .Include(document => document.DocumentItems);
+
+        if (createdFrom.HasValue)
+        {
+            documents = documents.Where(document => document.CreatedTime >= createdFrom.Value);
+        }
+
+        if (createdBefore.HasValue)
+        {
+            documents = documents.Where(document => document.CreatedTime < createdBefore.Value);
+        }
+
+        return await documents
+            .OrderBy(document => document.CreatedTime)
+            .ThenBy(document => document.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<DocumentEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);

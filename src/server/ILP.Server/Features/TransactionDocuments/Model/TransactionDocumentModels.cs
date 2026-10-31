@@ -23,7 +23,12 @@ public sealed record TransactionDocumentRecord(
     string? ManualOverrideBy = null,
     DateTime? DueDate = null);
 
-public sealed record TransactionDocumentCompany(long Id, string? Uen, string Name);
+public sealed record TransactionDocumentCompany(
+    long Id,
+    string? Uen,
+    string Name,
+    string? Email = null,
+    string? Address = null);
 
 public sealed record TransactionDocumentItem(
     long Id,

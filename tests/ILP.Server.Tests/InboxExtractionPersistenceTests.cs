@@ -38,7 +38,7 @@ public sealed class InboxExtractionPersistenceTests
             new DateTime(2026, 10, 24),
             12.50m,
             [new DocumentItemDto(2, 6.25m, description: "Parts", amount: 12.50m)],
-            company: new CompanyDto("Supplier", "UEN-21"),
+            company: new CompanyDto("Supplier", "UEN-21", "1 Road", email: "ap@supplier.example"),
             confidence: 0.91m);
 
         try
@@ -77,6 +77,8 @@ public sealed class InboxExtractionPersistenceTests
             Assert.Equal("INV-21", mapping.Document.RefNumber);
             Assert.Equal(0.91m, mapping.Document.Confidence);
             Assert.Equal("UEN-21", mapping.Document.Company.Uen);
+            Assert.Equal("ap@supplier.example", mapping.Document.Company.Email);
+            Assert.Equal("1 Road", mapping.Document.Company.Address);
             Assert.Equal("Parts", Assert.Single(mapping.Document.DocumentItems).Description);
             Assert.Equal(21u, mapping.Message.UniqueId);
             Assert.Equal(attachment.WebViewLink, mapping.SourceAttachment?.WebViewLink);

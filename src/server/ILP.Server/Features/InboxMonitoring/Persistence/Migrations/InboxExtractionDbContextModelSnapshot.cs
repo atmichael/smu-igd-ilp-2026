@@ -15,7 +15,7 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("ILP.Server.Features.InboxMonitoring.Persistence.Entity.CompanyEntity", b =>
                 {
@@ -34,6 +34,12 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
 
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("");
 
                     b.Property<DateTime>("ModifiedTime")
                         .HasColumnType("TEXT");

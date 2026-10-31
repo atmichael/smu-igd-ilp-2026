@@ -46,6 +46,42 @@ public sealed class TransactionDocumentEndpointTests
     }
 
     [Fact]
+    public async Task Export_PassesDateRangeToServiceAndRejectsInvalidRange()
+    {
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseTestServer();
+        builder.Services.AddAuthentication(TestAuthHandler.SchemeName)
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy(TransactionDocumentEndpoints.AuthorizationPolicy, policy =>
+                policy.RequireAuthenticatedUser());
+        });
+        var service = new MissingDocumentService();
+        builder.Services.AddSingleton<ITransactionDocumentService>(service);
+
+        await using var app = builder.Build();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapTransactionDocumentEndpoints();
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        using var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(TestAuthHandler.SchemeName);
+        var ok = await client.GetAsync(
+            "/api/documents/export?createdFrom=2026-10-01&createdTo=2026-10-31", TestContext.Current.CancellationToken);
+        var invalid = await client.GetAsync(
+            "/api/documents/export?createdFrom=2026-11-01&createdTo=2026-10-31", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        Assert.Equal(new DateOnly(2026, 10, 1), service.ExportFrom);
+        Assert.Equal(new DateOnly(2026, 10, 31), service.ExportTo);
+        var body = await ok.Content.ReadFromJsonAsync<DocumentSearchResponse>(TestContext.Current.CancellationToken);
+        Assert.Equal(1, body!.TotalCount);
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+    }
+
+    [Fact]
     public async Task Delete_ReturnsBadRequestNotFoundAndNoContent()
     {
         var builder = WebApplication.CreateBuilder();
@@ -161,6 +197,19 @@ public sealed class TransactionDocumentEndpointTests
             string sortDirection,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new DocumentSearchResponse([], 0));
+
+        public DateOnly? ExportFrom { get; private set; }
+        public DateOnly? ExportTo { get; private set; }
+
+        public Task<DocumentSearchResponse> ExportAsync(
+            DateOnly? createdFrom,
+            DateOnly? createdTo,
+            CancellationToken cancellationToken = default)
+        {
+            ExportFrom = createdFrom;
+            ExportTo = createdTo;
+            return Task.FromResult(new DocumentSearchResponse([Record(1)], 1));
+        }
 
         public Task<TransactionDocumentRecord?> GetByIdAsync(long id, CancellationToken cancellationToken = default) =>
             Task.FromResult<TransactionDocumentRecord?>(id == 7 ? Record(id) : null);

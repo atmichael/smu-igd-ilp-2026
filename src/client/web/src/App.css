@@ -371,3 +371,26 @@
     padding: 0.5rem;
   }
 }
+
+.export-form {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1rem;
+}
+
+.export-form__filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 240px));
+  align-items: start;
+  gap: 1rem;
+}
+
+.export-form__actions {
+  display: flex;
+}
+
+@media (max-width: 760px) {
+  .export-form__filters {
+    grid-template-columns: 1fr;
+  }
+}

@@ -103,6 +103,40 @@ public sealed class TransactionDocumentRepositoryTests
     }
 
     [Fact]
+    public async Task ExportAsync_FiltersActiveDocumentsByInclusiveCreatedDateRange()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var company = CreateCompany();
+        company.Email = "ap@supplier.example";
+        var before = CreateDocument("INV-BEFORE", 0.8m, 10m, company, new DateTime(2026, 9, 30, 23, 59, 59));
+        var first = CreateDocument("INV-FIRST", 0.8m, 10m, company, new DateTime(2026, 10, 1));
+        var last = CreateDocument("INV-LAST", 0.8m, 10m, company, new DateTime(2026, 10, 3, 23, 59, 59));
+        var after = CreateDocument("INV-AFTER", 0.8m, 10m, company, new DateTime(2026, 10, 4));
+        var inactive = CreateDocument("INV-INACTIVE", 0.8m, 10m, company, new DateTime(2026, 10, 2));
+        inactive.ActiveStatus = false;
+        database.Context.Documents.AddRange(after, last, inactive, first, before);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions()));
+
+        var ranged = await service.ExportAsync(
+            new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 3), TestContext.Current.CancellationToken);
+        var fromOnly = await service.ExportAsync(
+            new DateOnly(2026, 10, 3), null, TestContext.Current.CancellationToken);
+        var toOnly = await service.ExportAsync(
+            null, new DateOnly(2026, 9, 30), TestContext.Current.CancellationToken);
+        var all = await service.ExportAsync(null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["INV-FIRST", "INV-LAST"], ranged.Items.Select(document => document.RefNumber));
+        Assert.Equal(2, ranged.TotalCount);
+        Assert.Equal(["INV-LAST", "INV-AFTER"], fromOnly.Items.Select(document => document.RefNumber));
+        Assert.Equal(["INV-BEFORE"], toOnly.Items.Select(document => document.RefNumber));
+        Assert.Equal(4, all.TotalCount);
+        Assert.Equal("ap@supplier.example", all.Items[0].Company.Email);
+    }
+
+    [Fact]
     public async Task GetByIdAsync_ReturnsOnlyActiveDocuments()
     {
         await using var database = await TestDatabase.CreateAsync();
@@ -288,7 +322,8 @@ public sealed class TransactionDocumentRepositoryTests
         string reference,
         decimal? confidence,
         decimal totalAmount,
-        CompanyEntity? company = null) => new()
+        CompanyEntity? company = null,
+        DateTime? createdTime = null) => new()
     {
         RefNumber = reference,
         TypeCode = "INV",
@@ -296,8 +331,8 @@ public sealed class TransactionDocumentRepositoryTests
         SentDate = new DateTime(2026, 10, 1),
         TotalAmount = totalAmount,
         Confidence = confidence,
-        CreatedTime = new DateTime(2026, 10, 2),
-        ModifiedTime = new DateTime(2026, 10, 2)
+        CreatedTime = createdTime ?? new DateTime(2026, 10, 2),
+        ModifiedTime = createdTime ?? new DateTime(2026, 10, 2)
     };
 
     private sealed class TestDatabase : IAsyncDisposable

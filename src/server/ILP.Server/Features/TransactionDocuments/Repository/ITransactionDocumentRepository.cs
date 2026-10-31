@@ -14,6 +14,11 @@ public interface ITransactionDocumentRepository
         string sortDirection,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<DocumentEntity>> ExportAsync(
+        DateTime? createdFrom,
+        DateTime? createdBefore,
+        CancellationToken cancellationToken = default);
+
     Task<DocumentEntity?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 
     Task<DocumentEntity?> UpdateAsync(

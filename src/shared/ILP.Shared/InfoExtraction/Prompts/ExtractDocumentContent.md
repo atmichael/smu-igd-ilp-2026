@@ -13,6 +13,9 @@ Rules:
 company-name| Issuing supplier name
 company-uen| Singapore UEN (e.g. 201234567M)
 company-tax-registration-number| GST Reg No (e.g. M90000000X)
+company-email| Issuing supplier's primary contact email address, or null
+company-address| Issuing supplier's postal address on a single line, or null
+currency| 3-letter ISO 4217 currency code of the document amounts (e.g. SGD, USD), or null
 document-number| Invoice or reference number
 document-type| Exactly one of: Invoice, Purchase Order, Delivery Order, Service Order, Sales Order, Statement of Account
 document-date| Document date for record keeping in YYYY-MM-DD, or null
