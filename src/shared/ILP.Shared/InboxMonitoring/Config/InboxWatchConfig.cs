@@ -4,7 +4,7 @@ namespace ILP.Shared.InboxMonitoring.Config;
 
 public static class InboxWatchConfig
 {
-    public const string DefaultTopicName = "projects/ethereal-yen-232614/subscriptions/ilpteam5-inbox";
+    public const string DefaultTopicName = "projects/ethereal-yen-232614/topics/smuilpteam5-inbox";
     public const int DefaultRenewIntervalHours = 24;
 
     public static string m_topicName = DefaultTopicName;
