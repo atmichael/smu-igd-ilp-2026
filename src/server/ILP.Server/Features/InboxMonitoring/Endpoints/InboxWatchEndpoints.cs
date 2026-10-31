@@ -1,5 +1,5 @@
-using System.Text.Json;
 using ILP.Server.Features.InboxMonitoring.Service;
+using System.Text.Json;
 
 namespace ILP.Server.Features.InboxMonitoring.Endpoints;
 
