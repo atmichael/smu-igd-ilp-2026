@@ -17,7 +17,15 @@ public sealed class InboxSyncSignal : BackgroundService
         _logger = logger;
     }
 
-    public void Signal() => _channel.Writer.TryWrite(true);
+    public Task Signal()
+    {
+        if (!_channel.Writer.TryWrite(true))
+        {
+            _logger.LogDebug("Webhook sync signal dropped because a sync is already queued.");
+        }
+
+        return Task.CompletedTask;
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
