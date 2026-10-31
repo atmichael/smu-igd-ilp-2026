@@ -13,6 +13,7 @@ const navigationItems = [
   { label: 'File upload', href: '/file-upload', group: true },
   { label: 'Company', href: '/company' },
   { label: 'Document hub', href: '/document' },
+  { label: 'Export', href: '/export' },
 ]
 
 export function PortalShell({ activePath, onNavigate, onSignOut, children }: PortalShellProps) {

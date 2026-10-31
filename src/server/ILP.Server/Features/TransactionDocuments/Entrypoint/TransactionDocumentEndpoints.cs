@@ -62,6 +62,26 @@ public static class TransactionDocumentEndpoints
         })
         .RequireAuthorization(AuthorizationPolicy);
 
+        app.MapGet("/api/documents/export", async (
+            ITransactionDocumentService service,
+            CancellationToken cancellationToken,
+            DateOnly? createdFrom = null,
+            DateOnly? createdTo = null) =>
+        {
+            if (createdFrom.HasValue && createdTo.HasValue && createdFrom > createdTo)
+            {
+                return Results.BadRequest(new ProblemDetails
+                {
+                    Title = "Invalid date range.",
+                    Detail = "The createdFrom date must not be later than the createdTo date.",
+                    Status = StatusCodes.Status400BadRequest
+                });
+            }
+
+            return Results.Ok(await service.ExportAsync(createdFrom, createdTo, cancellationToken));
+        })
+        .RequireAuthorization(AuthorizationPolicy);
+
         app.MapGet("/api/documents/{id:long}", async (
             long id,
             ITransactionDocumentService service,

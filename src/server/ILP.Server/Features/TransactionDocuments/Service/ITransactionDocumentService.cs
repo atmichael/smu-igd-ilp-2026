@@ -19,6 +19,11 @@ public interface ITransactionDocumentService
         string sortDirection,
         CancellationToken cancellationToken = default);
 
+    Task<DocumentSearchResponse> ExportAsync(
+        DateOnly? createdFrom,
+        DateOnly? createdTo,
+        CancellationToken cancellationToken = default);
+
     Task<TransactionDocumentRecord?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 
     Task<TransactionDocumentRecord?> UpdateAsync(

@@ -14,6 +14,9 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
             ExtractedDocFieldNames.CompanyName,
             ExtractedDocFieldNames.CompanyUen,
             ExtractedDocFieldNames.CompanyTaxRegistrationNumber,
+            ExtractedDocFieldNames.CompanyEmail,
+            ExtractedDocFieldNames.CompanyAddress,
+            ExtractedDocFieldNames.Currency,
             ExtractedDocFieldNames.DocumentNumber,
             ExtractedDocFieldNames.DocumentType,
             ExtractedDocFieldNames.DocumentDate,
@@ -38,7 +41,9 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
         public CompanyDto GetCompany() => new(
             GetHeaderField(ExtractedDocFieldNames.CompanyName) ?? string.Empty,
             GetHeaderField(ExtractedDocFieldNames.CompanyUen) ?? string.Empty,
-            taxRegistrationNumber: GetHeaderField(ExtractedDocFieldNames.CompanyTaxRegistrationNumber) ?? string.Empty);
+            GetHeaderField(ExtractedDocFieldNames.CompanyAddress) ?? string.Empty,
+            GetHeaderField(ExtractedDocFieldNames.CompanyTaxRegistrationNumber) ?? string.Empty,
+            email: GetHeaderField(ExtractedDocFieldNames.CompanyEmail) ?? string.Empty);
 
         public List<DocumentItemDto> GetLineItems() => LineItems;
 
@@ -78,7 +83,7 @@ namespace ILP.Shared.InfoExtraction.Model.Dto
         internal void SetHeaderField(string key, string? value) =>
             _headerFields[key] = value;
 
-        private string? GetHeaderField(string key) =>
+        internal string? GetHeaderField(string key) =>
             _headerFields.TryGetValue(key, out var value) ? value : null;
 
         internal static decimal? ParseDecimal(string? value) =>

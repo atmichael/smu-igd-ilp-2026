@@ -153,8 +153,9 @@ public sealed class SqliteInboxExtractionRepo(IDbContextFactory<InboxExtractionD
         }
 
         entity.Name = company.Name;
-        entity.Address = company.Address;
+        entity.Address = string.IsNullOrWhiteSpace(company.Address) ? entity.Address : company.Address;
         entity.TaxRegistrationNumber = company.TaxRegistrationNumber;
+        entity.Email = string.IsNullOrWhiteSpace(company.Email) ? entity.Email : company.Email;
         entity.ModifiedTime = now;
         if (uen != null)
         {

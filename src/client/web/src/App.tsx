@@ -11,6 +11,7 @@ import { LoginPage } from './features/login/LoginPage'
 import { CompanyListPage } from './features/company/CompanyListPage'
 import { DocumentDetailsPage } from './features/document/DocumentDetailsPage'
 import { DocumentHubPage } from './features/document/DocumentHubPage'
+import { DocumentExportPage } from './features/export/DocumentExportPage'
 import { PortalShell } from './features/layout/PortalShell'
 import './App.css'
 
@@ -74,7 +75,7 @@ function resolvePath(isAuthenticated: boolean, currentPath: string): string {
     return '/'
   }
 
-  return ['/home', '/camera-capture', '/file-upload', '/company', '/document'].includes(currentPath) ||
+  return ['/home', '/camera-capture', '/file-upload', '/company', '/document', '/export'].includes(currentPath) ||
     /^\/document\/\d+$/.test(currentPath)
     ? currentPath
     : '/home'
@@ -95,6 +96,10 @@ function resolveContent(path: string, navigate: (nextPath: string) => void): Rea
 
   if (path === '/document') {
     return <DocumentHubPage onNavigate={navigate} />
+  }
+
+  if (path === '/export') {
+    return <DocumentExportPage />
   }
 
   const documentId = path.match(/^\/document\/(\d+)$/)?.[1]

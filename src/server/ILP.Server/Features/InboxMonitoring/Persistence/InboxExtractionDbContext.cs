@@ -26,6 +26,7 @@ public sealed class InboxExtractionDbContext(DbContextOptions<InboxExtractionDbC
             entity.Property(company => company.Name).IsRequired();
             entity.Property(company => company.Address).IsRequired();
             entity.Property(company => company.TaxRegistrationNumber).IsRequired();
+            entity.Property(company => company.Email).IsRequired().HasDefaultValue("");
             ConfigureAuditFields(entity);
         });
 

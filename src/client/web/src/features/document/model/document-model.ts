@@ -2,6 +2,8 @@ export interface DocumentCompany {
   id: number
   uen: string | null
   name: string
+  email?: string | null
+  address?: string | null
 }
 
 export interface DocumentItem {

@@ -5,6 +5,9 @@ namespace ILP.Shared.TransactionDocument.Constant
         public const string CompanyName = "company-name";
         public const string CompanyUen = "company-uen";
         public const string CompanyTaxRegistrationNumber = "company-tax-registration-number";
+        public const string CompanyEmail = "company-email";
+        public const string CompanyAddress = "company-address";
+        public const string Currency = "currency";
         public const string DocumentNumber = "document-number";
         public const string DocumentType = "document-type";
         public const string DocumentDate = "document-date";

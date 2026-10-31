@@ -1,4 +1,5 @@
 using ILP.Shared.InfoExtraction.Model.Dto;
+using ILP.Shared.TransactionDocument.Constant;
 using ILP.Shared.TransactionDocument.Dto;
 using System.Globalization;
 
@@ -88,6 +89,7 @@ namespace ILP.Shared.InfoExtraction.Parser
             var serialNumber = int.TryParse(columns[0].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSerial)
                 ? parsedSerial
                 : (int?)null;
+            var currencyCode = document.GetHeaderField(ExtractedDocFieldNames.Currency)?.ToUpperInvariant() ?? "SGD";
             var description = ParseValue(columns[1]) ?? string.Empty;
             var quantity = columns.Length > 2 ? ExtractedDocumentDto.ParseDecimal(ParseValue(columns[2])) ?? 0m : 0m;
             var unitPrice = columns.Length > 3 ? ExtractedDocumentDto.ParseDecimal(ParseValue(columns[3])) ?? 0m : 0m;
@@ -99,6 +101,7 @@ namespace ILP.Shared.InfoExtraction.Parser
                 quantity,
                 unitPrice,
                 description: description,
+                currencyCode: currencyCode,
                 taxRate: taxRate,
                 serialNumber: serialNumber,
                 amount: amount,

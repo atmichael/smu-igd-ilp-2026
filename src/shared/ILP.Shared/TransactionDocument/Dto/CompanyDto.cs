@@ -11,19 +11,21 @@ namespace ILP.Shared.TransactionDocument.Dto
         public string Name { get; private set; }
         public string Address { get; private set; }
         public string TaxRegistrationNumber { get; set; }
+        public string Email { get; private set; } = string.Empty;
 
         public CompanyDto()
         {
 
         }
 
-        public CompanyDto(string name, string uen, string address = "", string taxRegistrationNumber = "", long id = 0)
+        public CompanyDto(string name, string uen, string address = "", string taxRegistrationNumber = "", long id = 0, string email = "")
         {
             Id = id;
             Name = name;
             UEN = uen;
             Address = address;
             TaxRegistrationNumber = taxRegistrationNumber;
+            Email = email;
         }
     }
 }

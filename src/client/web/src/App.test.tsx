@@ -33,6 +33,10 @@ vi.mock('./features/document/DocumentHubPage', () => ({
   DocumentHubPage: () => <h2>Document hub route</h2>,
 }))
 
+vi.mock('./features/export/DocumentExportPage', () => ({
+  DocumentExportPage: () => <h2>Export route</h2>,
+}))
+
 describe('App authentication and navigation', () => {
   beforeEach(() => {
     clearGoogleIdToken()
@@ -91,6 +95,15 @@ describe('App authentication and navigation', () => {
 
     expect(window.location.pathname).toBe('/document')
     expect(screen.getByRole('heading', { name: /document hub route/i })).toBeInTheDocument()
+  })
+
+  it('navigates to the export page', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /sign in with google/i }))
+    fireEvent.click(screen.getByRole('link', { name: /^export$/i }))
+
+    expect(window.location.pathname).toBe('/export')
+    expect(screen.getByRole('heading', { name: /export route/i })).toBeInTheDocument()
   })
 
   it('redirects an unauthenticated feature route to the login page', () => {

@@ -27,6 +27,18 @@ public sealed class TransactionDocumentService(
         CancellationToken cancellationToken = default) =>
         SearchCoreAsync(null, options.Value.ConfidenceThreshold, page, pageSize, sortBy, sortDirection, cancellationToken);
 
+    public async Task<DocumentSearchResponse> ExportAsync(
+        DateOnly? createdFrom,
+        DateOnly? createdTo,
+        CancellationToken cancellationToken = default)
+    {
+        var documents = await repository.ExportAsync(
+            createdFrom?.ToDateTime(TimeOnly.MinValue),
+            createdTo?.AddDays(1).ToDateTime(TimeOnly.MinValue),
+            cancellationToken);
+        return new DocumentSearchResponse(documents.Select(MapDocument).ToArray(), documents.Count);
+    }
+
     public async Task<TransactionDocumentRecord?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         var document = await repository.GetByIdAsync(id, cancellationToken);
@@ -65,7 +77,12 @@ public sealed class TransactionDocumentService(
             document.Id,
             document.RefNumber,
             document.TypeCode,
-            new TransactionDocumentCompany(document.Company.Id, document.Company.Uen, document.Company.Name),
+            new TransactionDocumentCompany(
+                document.Company.Id,
+                document.Company.Uen,
+                document.Company.Name,
+                document.Company.Email,
+                document.Company.Address),
             document.SentDate,
             document.TotalAmount,
             document.Confidence,

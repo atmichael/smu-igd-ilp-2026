@@ -371,3 +371,17 @@
     padding: 0.5rem;
   }
 }
+
+.export-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 240px)) auto;
+  align-items: start;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+@media (max-width: 760px) {
+  .export-form {
+    grid-template-columns: 1fr;
+  }
+}
