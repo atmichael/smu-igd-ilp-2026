@@ -8,7 +8,7 @@ public sealed class InboxMonitoringOptions
 
     public bool Enabled { get; set; } = true;
 
-    public int PollIntervalSeconds { get; set; } = 300;
+    public int PollIntervalSeconds { get; set; } = 86400;
 
     public string EmailAddress { get; set; } = "";
 

@@ -23,7 +23,9 @@ public static class InboxMonitoringServiceCollectionExtensions
     public static IServiceCollection AddInboxMonitoring(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddInboxSync(configuration);
+        services.AddSingleton<IInboxWatchClient, GmailInboxWatchClient>();
         services.AddHostedService<InboxMonitorWorker>();
+        services.AddHostedService<InboxWatchRenewalWorker>();
         return services;
     }
 }

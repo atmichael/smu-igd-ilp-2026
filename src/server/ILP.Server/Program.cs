@@ -5,9 +5,12 @@ using ILP.Server.Features.EvidenceStorage;
 using ILP.Server.Features.EvidenceStorage.Endpoints;
 using ILP.Server.Features.InboxMonitoring.Endpoints;
 using ILP.Server.Features.InboxMonitoring.Persistence;
+using ILP.Server.Features.InboxMonitoring.Service;
 using ILP.Server.Features.TransactionDocuments.Configuration;
 using ILP.Server.Features.TransactionDocuments.Entrypoint;
 using ILP.Shared.InboxMonitoring;
+using ILP.Shared.InboxMonitoring.Abstraction;
+using ILP.Shared.InboxMonitoring.Config;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -45,6 +48,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
     });
 
+    options.AddPolicy(InboxWatchEndpoints.NotificationAuthorizationPolicy, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+    });
+
     options.AddPolicy(TransactionDocumentEndpoints.AuthorizationPolicy, policy =>
     {
         policy.RequireAuthenticatedUser();
@@ -65,6 +73,10 @@ builder.Services.AddEvidenceStorage(builder.Configuration);
 builder.Services.AddInboxExtractionPersistence();
 builder.Services.AddTransactionDocuments(builder.Configuration);
 builder.Services.AddCompaniesManagement();
+builder.Services.AddSingleton<DocumentNotificationBroker>();
+builder.Services.AddSingleton<IDocumentNotificationPublisher>(sp => sp.GetRequiredService<DocumentNotificationBroker>());
+builder.Services.AddSingleton<InboxSyncSignal>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<InboxSyncSignal>());
 builder.Services.AddInboxMonitoring(builder.Configuration);
 
 builder.Services.AddCors(options =>
@@ -87,6 +99,7 @@ builder.Services.AddCors(options =>
 
 OpenRouterConfig.Initialize(builder.Configuration);
 PromptConfig.Initialize(builder.Configuration);
+InboxWatchConfig.Initialize(builder.Configuration);
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -125,6 +138,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapEndpoints();
 app.MapEvidencePackagesEndpoints();
 app.MapInboxSyncEndpoints();
+app.MapInboxWatchEndpoints();
 app.MapTransactionDocumentEndpoints();
 app.MapCompanyEndpoints();
 

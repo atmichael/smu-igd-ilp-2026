@@ -254,6 +254,41 @@ public class InboxSyncServiceTest
         Assert.Equal([5u], source.MarkedAsRead);
     }
 
+    private sealed class FakePublisher : IDocumentNotificationPublisher
+    {
+        public List<DocumentNotificationDto> Published { get; } = [];
+
+        public void Publish(DocumentNotificationDto notification) => Published.Add(notification);
+    }
+
+    [Fact]
+    public async Task SyncAsync_NewDocument_PublishesNotification()
+    {
+        var source = new FakeSource(new InboxMessageDto { UniqueId = 7, Body = "b" });
+        var publisher = new FakePublisher();
+        var sut = new InboxSyncService(
+            source, new FixedExtractor(InvoiceContent), Opts(), null, new FakePersistence(), publisher);
+
+        await sut.SyncAsync();
+
+        Assert.Equal(new DocumentNotificationDto("Invoice", "INV-1", "UEN-1"), Assert.Single(publisher.Published));
+    }
+
+    [Fact]
+    public async Task SyncAsync_DuplicateDocument_DoesNotPublishNotification()
+    {
+        var persistence = new FakePersistence();
+        persistence.Existing.Add(("UEN-1", "Invoice", "INV-1"));
+        var publisher = new FakePublisher();
+        var sut = new InboxSyncService(
+            new FakeSource(new InboxMessageDto { UniqueId = 8, Body = "b" }),
+            new FixedExtractor(InvoiceContent), Opts(), null, persistence, publisher);
+
+        await sut.SyncAsync();
+
+        Assert.Empty(publisher.Published);
+    }
+
     [Fact]
     public async Task SyncAsync_NewComposite_InsertsRow()
     {
