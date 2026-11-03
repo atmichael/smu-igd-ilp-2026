@@ -35,6 +35,38 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             confidence|0.95
             """;
 
+        private const string TwoDocuments = "[DOCUMENT]\n[HEADER]\ncompany-uen| 201509876K\ndocument-number| INV-1\ndocument-type| Invoice\n[LINE_ITEMS]\n1|A|1|2|2|0|0\n[CONFIDENCE]\nconfidence|0.9\n"
+            + "[DOCUMENT]\n[HEADER]\ncompany-uen| 201509876K\ndocument-number| INV-2\ndocument-type| Invoice\n[LINE_ITEMS]\n1|B|1|3|3|0|0\n2|C|1|4|4|0|0\n[CONFIDENCE]\nconfidence|0.8";
+
+        [Fact]
+        public void ParseAll_MultipleDocuments_ReturnsEachWithOwnLineItems()
+        {
+            var documents = ExtractedDocumentParser.ParseAll(TwoDocuments);
+
+            Assert.Equal(2, documents.Count);
+            Assert.Equal("INV-1", documents[0].GetDocumentInfo().RefNumber);
+            Assert.Single(documents[0].GetLineItems());
+            Assert.Equal("INV-2", documents[1].GetDocumentInfo().RefNumber);
+            Assert.Equal(2, documents[1].GetLineItems().Count);
+        }
+
+        [Fact]
+        public void ParseAll_SingleDocumentWithoutMarker_ReturnsOneDocument()
+        {
+            var documents = ExtractedDocumentParser.ParseAll(SampleOutput);
+
+            Assert.Equal("INV-2026-00422", Assert.Single(documents).GetDocumentInfo().RefNumber);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("[DOCUMENT]\n")]
+        public void ParseAll_EmptyOutput_ReturnsOneEmptyDocument(string? output)
+        {
+            Assert.Single(ExtractedDocumentParser.ParseAll(output));
+        }
+
         [Fact]
         public void Parse_ReadsContactDetailsAndCurrency()
         {
