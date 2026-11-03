@@ -51,6 +51,25 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
         }
 
         [Fact]
+        public void ParseAll_SingleDeclaredConfidence_IsInheritedByAllDocuments()
+        {
+            var output = "[DOCUMENT]\n[HEADER]\ndocument-number| A\n[DOCUMENT]\n[HEADER]\ndocument-number| B\n[CONFIDENCE]\nconfidence|0.85";
+
+            var documents = ExtractedDocumentParser.ParseAll(output);
+
+            Assert.All(documents, d => Assert.Equal(0.85m, d.Confidence));
+        }
+
+        [Fact]
+        public void ParseAll_PerDocumentConfidence_IsKept()
+        {
+            var documents = ExtractedDocumentParser.ParseAll(TwoDocuments);
+
+            Assert.Equal(0.9m, documents[0].Confidence);
+            Assert.Equal(0.8m, documents[1].Confidence);
+        }
+
+        [Fact]
         public void ParseAll_SingleDocumentWithoutMarker_ReturnsOneDocument()
         {
             var documents = ExtractedDocumentParser.ParseAll(SampleOutput);

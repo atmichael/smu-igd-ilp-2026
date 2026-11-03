@@ -37,6 +37,13 @@ namespace ILP.Shared.InfoExtraction.Parser
                 documents.Add(new ExtractedDocumentDto());
             }
 
+            // Documents without their own confidence inherit the one declared in the same response.
+            var inherited = documents.Select(d => d.Confidence).LastOrDefault(c => c.HasValue);
+            foreach (var document in documents.Where(d => !d.Confidence.HasValue))
+            {
+                document.Confidence = inherited;
+            }
+
             return documents;
         }
 
