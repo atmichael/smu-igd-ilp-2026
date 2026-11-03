@@ -67,6 +67,7 @@ public sealed class FileStorageRestartTests : IDisposable
             builder.UseSetting("EvidenceStorage:RootPath", Path.Combine(_root, "evidence-store"));
             builder.UseSetting("EvidenceStorage:ContentRootPath", Path.Combine(_root, "source-documents"));
             builder.UseSetting("EvidenceStorage:SourceDocumentRecordsPath", Path.Combine(_root, "source-document-records"));
+            builder.UseSetting("InboxMonitoring:SendSourceDocumentsToEmail", "false");
         });
 
     private static HttpClient Client(WebApplicationFactory<Program> api, string idempotencyKey)

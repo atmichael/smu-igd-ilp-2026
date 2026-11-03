@@ -64,10 +64,13 @@ public sealed class InboxSyncService : IInboxSyncService
                     {
                         string content = await _extractor.ExtractAsync(message.Body, "", traceId, message.InlineImages);
                         contents.Add(content);
-                        var document = ExtractedDocumentParser.Parse(content).GetDocumentInfo();
-                        if (!await IsDuplicateAsync(document, message, seenKeys, traceId, cancellationToken))
+                        foreach (var parsed in ExtractedDocumentParser.ParseAll(content))
                         {
-                            extractedDocuments.Add((document, null));
+                            var document = parsed.GetDocumentInfo();
+                            if (!await IsDuplicateAsync(document, message, seenKeys, traceId, cancellationToken))
+                            {
+                                extractedDocuments.Add((document, null));
+                            }
                         }
                     }
 
@@ -75,21 +78,27 @@ public sealed class InboxSyncService : IInboxSyncService
                     {
                         string content = await _extractor.ExtractAsync(message.Body, file, traceId, message.InlineImages);
                         contents.Add(content);
-                        var document = ExtractedDocumentParser.Parse(content).GetDocumentInfo();
 
-                        if (await IsDuplicateAsync(document, message, seenKeys, traceId, cancellationToken))
+                        foreach (var parsed in ExtractedDocumentParser.ParseAll(content))
                         {
-                            continue;
-                        }
+                            var document = parsed.GetDocumentInfo();
+                            if (await IsDuplicateAsync(document, message, seenKeys, traceId, cancellationToken))
+                            {
+                                continue;
+                            }
 
-                        InboxMessageAttachmentDto? uploadedAttachment = null;
-                        if (_driveFileProvider != null)
-                        {
-                            uploadedAttachment = await _driveFileProvider.UploadAsync(file, document, cancellationToken);
-                            driveAttachments.Add(uploadedAttachment);
-                        }
+                            InboxMessageAttachmentDto? uploadedAttachment = null;
+                            if (_driveFileProvider != null)
+                            {
+                                uploadedAttachment = await _driveFileProvider.UploadAsync(file, document, cancellationToken);
+                                if (!driveAttachments.Any(existing => existing.DriveFileId == uploadedAttachment.DriveFileId))
+                                {
+                                    driveAttachments.Add(uploadedAttachment);
+                                }
+                            }
 
-                        extractedDocuments.Add((document, uploadedAttachment));
+                            extractedDocuments.Add((document, uploadedAttachment));
+                        }
                     }
 
                     if (_persistence != null && extractedDocuments.Count > 0)

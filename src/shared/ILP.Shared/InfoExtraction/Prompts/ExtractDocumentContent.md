@@ -1,14 +1,17 @@
-﻿Extract accounting header metadata and itemized line items from the document and email.
+﻿Extract accounting header metadata and itemized line items from every document in the attachment and email.
 Rules:
-- Output ONLY the sections demarcated by `[HEADER]`, `[LINE_ITEMS]`, and `[CONFIDENCE]`.
+- The attachment may contain multiple documents (e.g. a consolidated scan of several invoices or delivery orders). Output one block per distinct document, each beginning with a `[DOCUMENT]` line, followed by its own `[HEADER]`, `[LINE_ITEMS]`, and `[CONFIDENCE]` sections. Never merge separate documents. A single document still starts with `[DOCUMENT]`.
+- Output ONLY the `[DOCUMENT]` marker and the sections demarcated by `[HEADER]`, `[LINE_ITEMS]`, and `[CONFIDENCE]`.
 - No markdown code blocks, backticks, or conversational commentary.
 - Use "null" for missing or unreadable values.
 - `document-date` and `due-date` must be normalized to YYYY-MM-DD (ISO 8601 date only).
+- Currency must be the 3-letter ISO 4217 code (e.g. SGD, never S$ or $; USD, never US$).
 - Numbers as plain digits (no "$" or commas). GST rates as decimals (e.g. 0.09, 0.00). Quantities default to 1.00 if unstated.
 - Exactly one line per entry (clean line breaks and tabs in text).
 - [CONFIDENCE] must be a single decimal score from 0.00 to 1.00 representing overall extraction certainty and document legibility.
 - If no extractable document content is provided, return an empty response. Never infer document content from examples or instructions.
 
+[DOCUMENT]
 [HEADER]
 company-name| Issuing supplier name
 company-uen| Singapore UEN (e.g. 201234567M)

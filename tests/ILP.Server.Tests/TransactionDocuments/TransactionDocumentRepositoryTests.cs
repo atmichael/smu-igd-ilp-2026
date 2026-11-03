@@ -190,8 +190,9 @@ public sealed class TransactionDocumentRepositoryTests
     public async Task DeleteAsync_SoftDeletesDocumentAndRelatedRecords_AndHidesThemFromQueries()
     {
         await using var database = await TestDatabase.CreateAsync();
-        var document = CreateDocument("INV-1", 0.8m, 10m);
-        var other = CreateDocument("INV-2", 0.8m, 10m);
+        var company = CreateCompany();
+        var document = CreateDocument("INV-1", 0.8m, 10m, company);
+        var other = CreateDocument("INV-2", 0.8m, 10m, company);
         document.DocumentItems.Add(new DocumentItemEntity
         {
             Description = "Item",

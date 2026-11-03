@@ -74,7 +74,7 @@ public class InboxWatchRenewalWorkerTest
     {
         InboxWatchConfig.Initialize(Config([]));
 
-        Assert.Equal("projects/ethereal-yen-232614/subscriptions/ilpteam5-inbox", InboxWatchConfig.TopicName);
+        Assert.Equal("projects/ethereal-yen-232614/topics/smuilpteam5-inbox", InboxWatchConfig.TopicName);
         Assert.Equal(TimeSpan.FromHours(24), InboxWatchConfig.RenewInterval);
     }
 

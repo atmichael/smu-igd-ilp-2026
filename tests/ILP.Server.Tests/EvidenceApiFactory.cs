@@ -19,6 +19,7 @@ public sealed class EvidenceApiFactory : WebApplicationFactory<Program>
     {
         builder.UseSetting("EvidenceStorage:Provider", "InMemory");
         builder.UseSetting("InboxMonitoring:Enabled", "false");
+        builder.UseSetting("InboxMonitoring:SendSourceDocumentsToEmail", "false");
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<TimeProvider>();

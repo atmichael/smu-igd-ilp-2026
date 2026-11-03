@@ -84,6 +84,41 @@ public class InboxSyncServiceTest
     private static IOptions<InboxMonitoringOptions> Opts(string? autoMarkAsRead = null) =>
         Options.Create(new InboxMonitoringOptions { AutoMarkAsReadSetting = autoMarkAsRead });
 
+    private const string MultiDocumentContent =
+        "[DOCUMENT]\n[HEADER]\ncompany-uen| 201509876K\ndocument-number| INV-1\ndocument-type| Invoice\n"
+        + "[DOCUMENT]\n[HEADER]\ncompany-uen| 201509876K\ndocument-number| INV-2\ndocument-type| Invoice";
+
+    private static InboxMessageDto MessageWithAttachment() =>
+        new() { UniqueId = 7, Body = "b", AttachmentPaths = [Path.Combine(Path.GetTempPath(), "multi.pdf")] };
+
+    [Fact]
+    public async Task SyncAsync_MultipleDocumentsInOneAttachment_PersistsAll()
+    {
+        var persistence = new FakePersistence();
+        var sut = new InboxSyncService(new FakeSource(MessageWithAttachment()), new FixedExtractor(MultiDocumentContent), Opts(), null, persistence);
+
+        await sut.SyncAsync();
+
+        var mappings = Assert.Single(persistence.Saves);
+        Assert.Equal(["INV-1", "INV-2"], mappings.Select(m => m.Document.RefNumber).ToArray());
+    }
+
+    [Fact]
+    public async Task SyncAsync_MultipleDocumentsWithSomeDuplicates_PersistsOnlyNew()
+    {
+        var persistence = new FakePersistence();
+        var existing = ILP.Shared.InfoExtraction.Parser.ExtractedDocumentParser.ParseAll(MultiDocumentContent)[0].GetDocumentInfo();
+        persistence.Existing.Add(("201509876K", existing.TypeCode, existing.RefNumber));
+        var source = new FakeSource(MessageWithAttachment());
+        var sut = new InboxSyncService(source, new FixedExtractor(MultiDocumentContent), Opts(), null, persistence);
+
+        var result = await sut.SyncAsync();
+
+        Assert.Equal(0, result.MessagesFailed);
+        var mappings = Assert.Single(persistence.Saves);
+        Assert.Equal("INV-2", Assert.Single(mappings).Document.RefNumber);
+    }
+
     [Fact]
     public async Task SyncAsync_SuccessAndFailure_MarksOnlySuccessfulAsRead()
     {

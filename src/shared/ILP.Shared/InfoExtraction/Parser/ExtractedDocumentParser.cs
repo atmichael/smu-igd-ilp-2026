@@ -8,7 +8,54 @@ namespace ILP.Shared.InfoExtraction.Parser
 
     public static class ExtractedDocumentParser
     {
-        /// <summary>Parses the prompt's sectioned output; "null" or blank values become null and unknown keys are ignored.</summary>
+        private const string DocumentMarker = "[DOCUMENT]";
+
+        /// <summary>Parses model output holding one or more documents, each optionally introduced by a [DOCUMENT] marker; always returns at least one document.</summary>
+        public static IReadOnlyList<ExtractedDocumentDto> ParseAll(string? modelOutput)
+        {
+            var documents = new List<ExtractedDocumentDto>();
+            if (!string.IsNullOrWhiteSpace(modelOutput))
+            {
+                var current = new List<string>();
+                foreach (var line in modelOutput.Split('\n'))
+                {
+                    if (line.Trim().Equals(DocumentMarker, StringComparison.OrdinalIgnoreCase))
+                    {
+                        AddSegment(documents, current);
+                        current.Clear();
+                        continue;
+                    }
+
+                    current.Add(line);
+                }
+
+                AddSegment(documents, current);
+            }
+
+            if (documents.Count == 0)
+            {
+                documents.Add(new ExtractedDocumentDto());
+            }
+
+            // Documents without their own confidence inherit the one declared in the same response.
+            var inherited = documents.Select(d => d.Confidence).LastOrDefault(c => c.HasValue);
+            foreach (var document in documents.Where(d => !d.Confidence.HasValue))
+            {
+                document.Confidence = inherited;
+            }
+
+            return documents;
+        }
+
+        private static void AddSegment(List<ExtractedDocumentDto> documents, List<string> lines)
+        {
+            if (lines.Any(line => !string.IsNullOrWhiteSpace(line)))
+            {
+                documents.Add(Parse(string.Join('\n', lines)));
+            }
+        }
+
+        /// <summary>Parses the prompt's sectioned output for a single document; "null" or blank values become null and unknown keys are ignored.</summary>
         public static ExtractedDocumentDto Parse(string? modelOutput)
         {
             var document = new ExtractedDocumentDto();
