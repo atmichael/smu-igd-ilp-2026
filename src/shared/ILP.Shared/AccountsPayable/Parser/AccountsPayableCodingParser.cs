@@ -65,6 +65,11 @@ public static class AccountsPayableCodingParser
             throw new FormatException("The AP coding response must include one GST code record.");
         }
 
+        if (suggestions.Count == 0)
+        {
+            throw new FormatException("The AP coding response must include at least one COA suggestion.");
+        }
+
         if (suggestions.Select(suggestion => suggestion.LineIndex).Distinct().Count() != suggestions.Count)
         {
             throw new FormatException("The AP coding response contains duplicate line suggestions.");
