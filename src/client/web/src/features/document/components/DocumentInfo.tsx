@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import {
   Alert,
   Button,
@@ -22,7 +22,8 @@ import {
 import { findCompaniesByUen } from '../../company/service/company-service'
 import type { CompanySummary } from '../../company/model/company-model'
 import { IconAction } from '../../../common/components/IconAction'
-import type { DocumentRecord, DocumentUpdateRequest } from '../model/document-model'
+import type { AccountsPayableReferenceData, DocumentAPSuggestion, DocumentRecord, DocumentUpdateRequest } from '../model/document-model'
+import { getAccountsPayableReferenceData } from '../service/document-service'
 
 interface DocumentInfoProps {
   document: DocumentRecord
@@ -174,6 +175,26 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
   const [confirming, setConfirming] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [apReferenceData, setApReferenceData] = useState<AccountsPayableReferenceData | null>(null)
+  const [apGstCode, setApGstCode] = useState(document.apJournal?.gstCode ?? '')
+  const [apSuggestions, setApSuggestions] = useState<DocumentAPSuggestion[]>(
+    () => document.apJournal?.coaSuggestions ?? [],
+  )
+
+  useEffect(() => {
+    if (!document.apJournal) return
+    let active = true
+    getAccountsPayableReferenceData()
+      .then((data) => {
+        if (active) setApReferenceData(data)
+      })
+      .catch(() => {
+        if (active) setApReferenceData(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [document.apJournal])
 
   const trimmedUen = uen.trim()
 
@@ -282,6 +303,18 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         totalAmount: total,
         relatedDocumentNumbers: related.trim() || null,
         manualOverrideFlag: document.manualOverrideFlag == null && manualOverrideFlag ? true : null,
+        ...(document.apJournal
+          ? {
+              apJournal: {
+                gstCode: apGstCode,
+                coaSuggestions: apSuggestions.map(({ lineIndex, accountCode, reason }) => ({
+                  lineIndex,
+                  accountCode,
+                  reason,
+                })),
+              },
+            }
+          : {}),
         documentItems: items.map((item, index) => ({
           id: item.id,
           description: item.description.trim(),
@@ -360,6 +393,18 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         error={!!error('taxAmount')} helperText={error('taxAmount')}
         slotProps={{ htmlInput: { inputMode: 'decimal' } }}
       />
+      {document.apJournal && (
+        <TextField
+          label="AP GST code" size="small" select value={apGstCode}
+          onChange={(event) => setApGstCode(event.target.value)}
+          slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+        >
+          <option value="">Select a GST code…</option>
+          {(apReferenceData?.gstCodes ?? [{ code: apGstCode, description: apGstCode }])
+            .filter((code) => code.code)
+            .map((code) => <option key={code.code} value={code.code}>{code.code} — {code.description}</option>)}
+        </TextField>
+      )}
       <dl className="document-info__fields">
         <dt>Document type</dt><dd>{document.typeCode || '—'}</dd>
         <dt>Subtotal</dt><dd>{formatAmount(subtotal)}</dd>
@@ -389,6 +434,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
             <TableCell>Quantity</TableCell>
             <TableCell>Unit price</TableCell>
             <TableCell>Amount</TableCell>
+            {document.apJournal && <TableCell>AP account code</TableCell>}
             <TableCell />
           </TableRow>
         </TableHead>
@@ -427,13 +473,39 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
                   slotProps={{ htmlInput: { 'aria-label': `Line item ${index + 1} amount`, inputMode: 'decimal' } }}
                 />
               </TableCell>
+              {document.apJournal && (
+                <TableCell data-label="AP account code">
+                  <TextField
+                    label={`Line item ${index + 1} AP account code`}
+                    size="small"
+                    select
+                    value={apSuggestions.find((suggestion) => suggestion.lineIndex === index + 1)?.accountCode ?? ''}
+                    onChange={(event) => {
+                      const lineIndex = index + 1
+                      const accountCode = event.target.value
+                      const existing = apSuggestions.find((suggestion) => suggestion.lineIndex === lineIndex)
+                      setApSuggestions((current) => [
+                        ...current.filter((suggestion) => suggestion.lineIndex !== lineIndex),
+                        { lineIndex, accountCode, reason: existing?.reason ?? 'Human-verified account selection' },
+                      ])
+                    }}
+                    slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+                  >
+                    <option value="">Select an AP account…</option>
+                    {(apReferenceData?.accounts ?? [])
+                      .filter((account) => account.enabled && account.code !== '6130'
+                        && ['Expense', 'Direct Cost', 'Classification'].includes(account.apRole))
+                      .map((account) => <option key={account.code} value={account.code}>{account.code} — {account.name}</option>)}
+                  </TextField>
+                </TableCell>
+              )}
               <TableCell data-label="Actions">
                 <IconAction kind="delete" label={`Remove line item ${index + 1}`} onClick={() => removeItem(item.key)} />
               </TableCell>
             </TableRow>
           ))}
           {items.length === 0 && (
-            <TableRow><TableCell colSpan={5}>No line items available.</TableCell></TableRow>
+            <TableRow><TableCell colSpan={document.apJournal ? 6 : 5}>No line items available.</TableCell></TableRow>
           )}
         </TableBody>
       </Table>
@@ -501,6 +573,19 @@ export function DocumentInfo({ document, mode = 'view', onSubmit, onSaved, onCan
               </dd>
               <dt>Manual override by</dt><dd>{document.manualOverrideBy ?? '-'}</dd>
               <dt>Related documents</dt><dd>{document.relatedDocumentNumbers || '—'}</dd>
+              {document.apJournal && (
+                <>
+                  <dt>AP coding confidence</dt>
+                  <dd>{document.apJournal.confidence == null ? '—' : `${Math.round(document.apJournal.confidence * 100)}%`}</dd>
+                  <dt>Suggested GST code</dt><dd>{document.apJournal.gstCode || '—'}</dd>
+                  {document.apJournal.coaSuggestions.map((suggestion) => (
+                    <Fragment key={suggestion.lineIndex}>
+                      <dt>Line {suggestion.lineIndex} AP account</dt>
+                      <dd>{suggestion.accountCode || '—'}</dd>
+                    </Fragment>
+                  ))}
+                </>
+              )}
             </dl>
             <Typography variant="subtitle1" component="h3">Line items</Typography>
             <Table size="small" aria-label="Document line items" className="document-info__items">
@@ -524,6 +609,14 @@ export function DocumentInfo({ document, mode = 'view', onSubmit, onSaved, onCan
             </Table>
           </>
         )}
+        {document.apJournal?.verificationNotes.length ? (
+          <Alert severity="warning" className="document-info__verification">
+            <Typography component="p" variant="subtitle2">Human verification required</Typography>
+            <ul>
+              {document.apJournal.verificationNotes.map((note, index) => <li key={`${index}-${note}`}>{note}</li>)}
+            </ul>
+          </Alert>
+        ) : null}
       </Paper>
     </div>
   )

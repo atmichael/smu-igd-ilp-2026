@@ -10,4 +10,6 @@ public interface IAccountsPayableService
     Task<AccountsPayableCodingResult> EvaluateAsync(
         AccountsPayableInvoiceRequest invoice,
         CancellationToken cancellationToken);
+
+    Task<DocumentAPJournalDto?> GetCodingAsync(long documentId, CancellationToken cancellationToken);
 }

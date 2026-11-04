@@ -55,6 +55,25 @@ public static class TransactionDocumentUpdateValidator
             }
         }
 
+        if (request.ApJournal is { } apJournal)
+        {
+            if (string.IsNullOrWhiteSpace(apJournal.GstCode))
+            {
+                errors["apJournal.gstCode"] = ["An AP GST code is required."];
+            }
+
+            var suggestions = apJournal.CoaSuggestions ?? [];
+            for (var index = 0; index < suggestions.Count; index++)
+            {
+                if (suggestions[index].LineIndex <= 0
+                    || string.IsNullOrWhiteSpace(suggestions[index].AccountCode))
+                {
+                    errors[$"apJournal.coaSuggestions[{index}]"] =
+                        ["Each AP coding suggestion requires a positive line index and account code."];
+                }
+            }
+        }
+
         if (errors.Count > 0)
         {
             return errors;

@@ -1,3 +1,5 @@
+using ILP.Server.Features.AccountsPayable.Persistence.Entity;
+
 namespace ILP.Server.Features.InboxMonitoring.Persistence.Entity;
 
 public sealed class DocumentEntity : AuditedEntity
@@ -33,4 +35,6 @@ public sealed class DocumentEntity : AuditedEntity
     public ICollection<DocumentItemEntity> DocumentItems { get; set; } = new List<DocumentItemEntity>();
 
     public DocumentInboxMessageEntity? InboxMessageMapping { get; set; }
+
+    public DocumentAPJournalEntity? ApJournal { get; set; }
 }

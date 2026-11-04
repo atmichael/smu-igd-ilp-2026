@@ -1,3 +1,5 @@
+using ILP.Shared.AccountsPayable.Dto;
+
 namespace ILP.Server.Features.TransactionDocuments.Model;
 
 public sealed record DocumentSearchResponse(
@@ -21,7 +23,8 @@ public sealed record TransactionDocumentRecord(
     string? OriginalFileUrl = null,
     bool? ManualOverrideFlag = null,
     string? ManualOverrideBy = null,
-    DateTime? DueDate = null);
+    DateTime? DueDate = null,
+    DocumentAPJournalDto? ApJournal = null);
 
 public sealed record TransactionDocumentCompany(
     long Id,

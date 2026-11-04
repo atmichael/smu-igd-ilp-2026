@@ -11,11 +11,13 @@ public sealed class AccountsPayableCodingParserTests
     {
         var recommendation = AccountsPayableCodingParser.Parse(
             """
+            "confidence"|"0.97"
             "gst_code"|"SG_STD_9"
             "coa_suggestion"|"1"|"6000"|"Stationery"|"false"
             "review_reason"|"Supplier identity requires human review"
             """);
 
+        Assert.Equal(0.97m, recommendation.Confidence);
         Assert.Equal("SG_STD_9", recommendation.GstCode);
         var suggestion = Assert.Single(recommendation.CoaSuggestions);
         Assert.Equal(1, suggestion.LineIndex);
@@ -25,17 +27,28 @@ public sealed class AccountsPayableCodingParserTests
         Assert.Equal("Supplier identity requires human review", Assert.Single(recommendation.ReviewReasons));
     }
 
+    [Theory]
+    [InlineData("\"gst_code\"|\"SG_UNKNOWN\"\n\"coa_suggestion\"|\"1\"|\"6000\"|\"reason\"|\"false\"")]
+    [InlineData("\"confidence\"|\"1.01\"\n\"gst_code\"|\"SG_UNKNOWN\"\n\"coa_suggestion\"|\"1\"|\"6000\"|\"reason\"|\"false\"")]
+    [InlineData("\"confidence\"|\"0.9\"\n\"confidence\"|\"0.8\"\n\"gst_code\"|\"SG_UNKNOWN\"\n\"coa_suggestion\"|\"1\"|\"6000\"|\"reason\"|\"false\"")]
+    public void Parse_InvalidConfidence_ThrowsFormatException(string response)
+    {
+        Assert.Throws<FormatException>(() => AccountsPayableCodingParser.Parse(response));
+    }
+
     [Fact]
     public void Parse_PipeDelimitedFields_EscapesQuotesAndPipesInsideQuotedValues()
     {
         var recommendation = AccountsPayableCodingParser.Parse(
             """"
+            "confidence"|"0.83"
             "gst_code"|"SG_UNKNOWN"
             "coa_suggestion"|"1"|"6000"|"Parts | ""special"""|"true"
             "review_reason"|"Review ""quoted"" | evidence"
             """");
 
         Assert.Equal("SG_UNKNOWN", recommendation.GstCode);
+        Assert.Equal(0.83m, recommendation.Confidence);
         var suggestion = Assert.Single(recommendation.CoaSuggestions);
         Assert.Equal("Parts | \"special\"", suggestion.Reason);
         Assert.True(suggestion.RequiresReview);
@@ -59,6 +72,7 @@ public sealed class AccountsPayableCodingParserTests
     {
         Assert.Throws<FormatException>(() => AccountsPayableCodingParser.Parse(
             """
+            "confidence"|"0.6"
             "gst_code"|"SG_UNKNOWN"
             "coa_suggestion"|"1"|"6000"|"first"|"false"
             "coa_suggestion"|"1"|"6000"|"second"|"false"

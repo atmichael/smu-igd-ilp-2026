@@ -2,10 +2,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DocumentInfo } from './DocumentInfo'
 import { findCompaniesByUen } from '../../company/service/company-service'
+import { getAccountsPayableReferenceData } from '../service/document-service'
 import type { DocumentRecord } from '../model/document-model'
 
 vi.mock('../../company/service/company-service', () => ({
   findCompaniesByUen: vi.fn(),
+}))
+
+vi.mock('../service/document-service', () => ({
+  getAccountsPayableReferenceData: vi.fn(),
 }))
 
 const base: DocumentRecord = {
@@ -74,6 +79,30 @@ describe('DocumentInfo original attachment', () => {
       'Amount',
     ])
   })
+
+  it('renders AP coding and verification notes as a bullet list', () => {
+    render(
+      <DocumentInfo
+        document={{
+          ...base,
+          apJournal: {
+            confidence: 0.62,
+            gstCode: 'SG_UNKNOWN',
+            coaSuggestions: [{ lineIndex: 1, accountCode: '6000', reason: 'Office supplies' }],
+            verificationNotes: ['Invoice totals do not reconcile', 'GST treatment requires verification'],
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Suggested GST code').nextElementSibling).toHaveTextContent('SG_UNKNOWN')
+    expect(screen.getByText('Line 1 AP account').nextElementSibling).toHaveTextContent('6000')
+    expect(screen.getByText('Human verification required')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Invoice totals do not reconcile',
+      'GST treatment requires verification',
+    ])
+  })
 })
 
 describe('DocumentInfo edit mode', () => {
@@ -90,6 +119,54 @@ describe('DocumentInfo edit mode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(findCompaniesByUen).mockResolvedValue([])
+    vi.mocked(getAccountsPayableReferenceData).mockResolvedValue({ accounts: [], gstCodes: [] })
+  })
+
+  it('uses reference-data dropdowns to update AP account and GST suggestions', async () => {
+    vi.mocked(getAccountsPayableReferenceData).mockResolvedValue({
+      accounts: [
+        { code: '6000', name: 'Office Supplies', apRole: 'Expense', enabled: true },
+        { code: '6040', name: 'Software', apRole: 'Expense', enabled: true },
+        { code: '6130', name: 'Review Only', apRole: 'Expense', enabled: true },
+      ],
+      gstCodes: [
+        { code: 'SG_UNKNOWN', description: 'Unknown' },
+        { code: 'SG_STD_9', description: 'Standard rated' },
+      ],
+    })
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(
+      <DocumentInfo
+        document={{
+          ...editable,
+          apJournal: {
+            confidence: 0.7,
+            gstCode: 'SG_UNKNOWN',
+            coaSuggestions: [{ lineIndex: 1, accountCode: '6000', reason: 'Office supplies' }],
+            verificationNotes: [],
+          },
+        }}
+        mode="edit"
+        onSubmit={onSubmit}
+      />,
+    )
+
+    const account = await screen.findByLabelText('Line item 1 AP account code')
+    expect(screen.getByRole('option', { name: /6040 — Software/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /6130/ })).not.toBeInTheDocument()
+    fireEvent.change(account, { target: { value: '6040' } })
+    fireEvent.change(screen.getByLabelText('AP GST code'), { target: { value: 'SG_STD_9' } })
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apJournal: {
+          gstCode: 'SG_STD_9',
+          coaSuggestions: [{ lineIndex: 1, accountCode: '6040', reason: 'Office supplies' }],
+        },
+      }),
+    ))
   })
 
   const change = (label: string | RegExp, value: string) =>

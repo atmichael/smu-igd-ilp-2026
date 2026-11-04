@@ -4,6 +4,7 @@ import type {
   DocumentRecord,
   DocumentSearchResponse,
   DocumentUpdateRequest,
+  AccountsPayableReferenceData,
 } from '../model/document-model'
 
 export function searchDocuments(search: string, options?: DocumentListQuery): Promise<DocumentSearchResponse> {
@@ -31,6 +32,10 @@ export function updateDocument(documentId: number, request: DocumentUpdateReques
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   })
+}
+
+export function getAccountsPayableReferenceData(): Promise<AccountsPayableReferenceData> {
+  return apiJson<AccountsPayableReferenceData>('/api/accounts-payable/reference-data')
 }
 
 export async function deleteDocument(documentId: number): Promise<void> {

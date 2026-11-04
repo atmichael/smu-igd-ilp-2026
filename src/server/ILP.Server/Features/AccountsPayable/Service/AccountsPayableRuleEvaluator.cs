@@ -145,6 +145,7 @@ public static class AccountsPayableRuleEvaluator
             invoice.VendorName,
             invoice.InvoiceNumber,
             invoice.Currency,
+            recommendation.Confidence,
             invoice.SourceEvidence,
             gstCode,
             suggestions,

@@ -1,5 +1,6 @@
 using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
+using ILP.Server.Features.AccountsPayable.Persistence.Entity;
 using ILP.Server.Features.TransactionDocuments.Configuration;
 using ILP.Server.Features.TransactionDocuments.Model;
 using ILP.Server.Features.TransactionDocuments.Repository;
@@ -8,11 +9,28 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Xunit;
+using System.Text.Json;
+using ILP.Shared.AccountsPayable.Dto;
 
 namespace ILP.Server.Tests.TransactionDocuments;
 
 public sealed class TransactionDocumentRepositoryTests
 {
+    [Fact]
+    public async Task Migration_CreatesDocumentApJournalTable()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        var options = new DbContextOptionsBuilder<InboxExtractionDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var context = new InboxExtractionDbContext(options);
+
+        await context.Database.MigrateAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(await context.DocumentAPJournals.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task SearchAsync_FiltersByConfidenceIncludingThreshold_AndPaginatesInRequestedOrder()
     {
@@ -47,6 +65,78 @@ public sealed class TransactionDocumentRepositoryTests
         Assert.Equal(2, belowThreshold.TotalCount);
         Assert.Equal(2, totalCount);
         Assert.Equal("INV-2", Assert.Single(documents).RefNumber);
+    }
+
+    [Fact]
+    public async Task GetBelowThresholdAsync_IncludesLowApConfidenceAndLowDocumentConfidence()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var company = CreateCompany();
+        var lowApConfidence = CreateDocument("INV-AP-LOW", 0.99m, 10m, company, typeCode: "Invoice");
+        lowApConfidence.ApJournal = new DocumentAPJournalEntity
+        {
+            Confidence = 0.7m,
+            GstCode = "SG_UNKNOWN",
+            CoaSuggestionsJson = "[]",
+            VerificationNotes = "GST treatment requires verification"
+        };
+        var confidentAp = CreateDocument("INV-AP-HIGH", 0.99m, 20m, company, typeCode: "Invoice");
+        confidentAp.ApJournal = new DocumentAPJournalEntity
+        {
+            Confidence = 0.99m,
+            GstCode = "SG_STD_9",
+            CoaSuggestionsJson = "[]",
+            VerificationNotes = ""
+        };
+        database.Context.Documents.AddRange(
+            lowApConfidence,
+            confidentAp,
+            CreateDocument("DOC-LOW", 0.5m, 30m, company, typeCode: "Purchase Order"),
+            CreateDocument("INV-LOW", 0.5m, 40m, company, typeCode: "Invoice"));
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions { ConfidenceThreshold = 0.95m }));
+
+        var result = await service.GetBelowThresholdAsync(
+            1, 10, "refNumber", "asc", TestContext.Current.CancellationToken);
+
+        Assert.Equal(["DOC-LOW", "INV-AP-LOW", "INV-LOW"], result.Items.Select(document => document.RefNumber));
+        Assert.Equal("GST treatment requires verification", Assert.Single(
+            result.Items.Single(document => document.RefNumber == "INV-AP-LOW").ApJournal!.VerificationNotes));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_UpsertsApJournalAndPreservesConfidenceAndVerificationNotes()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var document = CreateDocument("INV-AP-EDIT", 0.99m, 11m, typeCode: "Invoice");
+        document.ApJournal = new DocumentAPJournalEntity
+        {
+            Confidence = 0.74m,
+            GstCode = "SG_UNKNOWN",
+            CoaSuggestionsJson = JsonSerializer.Serialize(
+                new[] { new AccountsPayableLineSuggestion(1, "6000", "Office supplies") }),
+            VerificationNotes = "Invoice totals do not reconcile"
+        };
+        database.Context.Documents.Add(document);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions()));
+        var request = new UpdateTransactionDocumentRequest(
+            "INV-AP-EDIT", document.SentDate, document.Company.Uen, document.Company.Name,
+            10m, 1m, 11m, null, [],
+            ApJournal: new UpdateTransactionDocumentAPJournal(
+                "SG_STD_9",
+                [new UpdateTransactionDocumentAPSuggestion(1, "6040", "Software subscription")]));
+
+        var updated = await service.UpdateAsync(document.Id, request, TestContext.Current.CancellationToken);
+
+        Assert.Equal("SG_STD_9", updated!.ApJournal!.GstCode);
+        Assert.Equal(0.74m, updated.ApJournal.Confidence);
+        Assert.Equal("6040", Assert.Single(updated.ApJournal.CoaSuggestions).AccountCode);
+        Assert.Equal("Invoice totals do not reconcile", Assert.Single(updated.ApJournal.VerificationNotes));
     }
 
     [Fact]
@@ -324,10 +414,11 @@ public sealed class TransactionDocumentRepositoryTests
         decimal? confidence,
         decimal totalAmount,
         CompanyEntity? company = null,
-        DateTime? createdTime = null) => new()
+        DateTime? createdTime = null,
+        string typeCode = "INV") => new()
     {
         RefNumber = reference,
-        TypeCode = "INV",
+        TypeCode = typeCode,
         Company = company ?? CreateCompany(),
         SentDate = new DateTime(2026, 10, 1),
         TotalAmount = totalAmount,
