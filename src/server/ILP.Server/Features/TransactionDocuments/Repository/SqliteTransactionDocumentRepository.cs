@@ -254,6 +254,7 @@ public sealed class SqliteTransactionDocumentRepository(
         var document = await context.Documents
             .Where(candidate => candidate.ActiveStatus && candidate.Id == id)
             .Include(candidate => candidate.DocumentItems)
+            .Include(candidate => candidate.ApJournal)
             .Include(candidate => candidate.InboxMessageMapping)
             .SingleOrDefaultAsync(cancellationToken);
         if (document is null)
@@ -271,6 +272,11 @@ public sealed class SqliteTransactionDocumentRepository(
         if (document.InboxMessageMapping is { ActiveStatus: true } mapping)
         {
             Deactivate(mapping, now);
+        }
+
+        if (document.ApJournal is { ActiveStatus: true } apJournal)
+        {
+            Deactivate(apJournal, now);
         }
 
         await context.SaveChangesAsync(cancellationToken);

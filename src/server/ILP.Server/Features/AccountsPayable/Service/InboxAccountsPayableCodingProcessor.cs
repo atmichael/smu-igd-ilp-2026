@@ -1,15 +1,18 @@
 using ILP.Server.Features.AccountsPayable.Model;
 using ILP.Server.Features.InboxMonitoring.Persistence;
+using ILP.Server.Features.TransactionDocuments.Configuration;
 using ILP.Shared.AccountsPayable.Abstraction;
 using ILP.Shared.AccountsPayable.Dto;
 using ILP.Shared.AccountsPayable.Provider;
 using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace ILP.Server.Features.AccountsPayable.Service;
 
 public sealed class InboxAccountsPayableCodingProcessor(
-    IDbContextFactory<InboxExtractionDbContext> contextFactory) : IAccountsPayableCodingProcessor
+    IDbContextFactory<InboxExtractionDbContext> contextFactory,
+    IOptions<TransactionDocumentsOptions> documentOptions) : IAccountsPayableCodingProcessor
 {
     private static readonly IReadOnlyDictionary<string, string> VerificationPrompts =
         new Dictionary<string, string>(StringComparer.Ordinal)
@@ -35,17 +38,22 @@ public sealed class InboxAccountsPayableCodingProcessor(
         CancellationToken cancellationToken)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var accounts = await context.AccountsPayableAccounts.AsNoTracking()
+        var accountReferences = await context.AccountsPayableAccounts.AsNoTracking()
             .OrderBy(account => account.Code)
-            .Select(account => new AccountsPayableAccountOption(
-                account.Code, account.Name, account.Type, account.ApRole, account.Enabled,
+            .Select(account => new AccountsPayableReferenceAccount(
+                account.Code, account.Name, account.Type, account.NormalBalance, account.ApRole, account.Enabled,
                 account.UseWhen, account.Sector, account.AiSuggestion, account.Notes))
             .ToListAsync(cancellationToken);
-        var gstCodes = await context.AccountsPayableGstTaxCodes.AsNoTracking()
+        var gstReferences = await context.AccountsPayableGstTaxCodes.AsNoTracking()
             .OrderBy(code => code.Code)
-            .Select(code => new AccountsPayableGstOption(
-                code.Code, code.Description, code.AutoProcessing, code.ReviewConditions))
+            .Select(code => new AccountsPayableReferenceGstCode(
+                code.Code, code.Description, code.AutoProcessing == "Conditional", code.ReviewConditions))
             .ToListAsync(cancellationToken);
+        var accounts = accountReferences.Select(account => new AccountsPayableAccountOption(
+            account.Code, account.Name, account.Type, account.ApRole, account.Enabled,
+            account.UseWhen, account.Sector, account.AiSuggestion, account.Notes)).ToArray();
+        var gstCodes = gstReferences.Select(code => new AccountsPayableGstOption(
+            code.Code, code.Description, code.CanAutoProcess ? "Conditional" : "No", code.ReviewConditions)).ToArray();
 
         var invoice = new AccountsPayableInvoiceRequest
         {
@@ -67,43 +75,27 @@ public sealed class InboxAccountsPayableCodingProcessor(
                 item.Description,
                 item.Quantity,
                 item.UnitPrice)).ToArray(),
-            SourceEvidence = [$"Extracted document {document.RefNumber}"],
             DuplicateCheckPassed = true
         };
         var recommendation = await AccountsPayableCodingProvider.GetRecommendation(
             invoice, accounts, gstCodes, Guid.NewGuid().ToString(), cancellationToken);
-        var references = await GetRuleReferencesAsync(context, cancellationToken);
         var result = AccountsPayableRuleEvaluator.Evaluate(
-            invoice, recommendation, references.Accounts, references.GstCodes);
+            invoice, recommendation, accountReferences, gstReferences);
         var notes = result.Validation
             .Where(check => !check.Passed)
             .Select(check => VerificationPrompts.GetValueOrDefault(check.Check, "AP coding requires human verification"))
             .Distinct(StringComparer.Ordinal)
-            .ToArray();
+            .ToList();
+        if (result.Confidence <= documentOptions.Value.ConfidenceThreshold)
+        {
+            notes.Add("AP coding confidence is below the review threshold");
+        }
 
         return new DocumentAPJournalDto(
             result.Confidence,
             result.GstCode,
             recommendation.CoaSuggestions,
-            notes);
+            notes.Distinct(StringComparer.Ordinal).ToArray());
     }
 
-    private static async Task<(IReadOnlyList<AccountsPayableReferenceAccount> Accounts,
-        IReadOnlyList<AccountsPayableReferenceGstCode> GstCodes)> GetRuleReferencesAsync(
-        InboxExtractionDbContext context,
-        CancellationToken cancellationToken)
-    {
-        var accounts = await context.AccountsPayableAccounts.AsNoTracking()
-            .OrderBy(account => account.Code)
-            .Select(account => new AccountsPayableReferenceAccount(
-                account.Code, account.Name, account.Type, account.NormalBalance, account.ApRole, account.Enabled,
-                account.UseWhen, account.Sector, account.AiSuggestion, account.Notes))
-            .ToListAsync(cancellationToken);
-        var gstCodes = await context.AccountsPayableGstTaxCodes.AsNoTracking()
-            .OrderBy(code => code.Code)
-            .Select(code => new AccountsPayableReferenceGstCode(
-                code.Code, code.Description, code.AutoProcessing == "Conditional", code.ReviewConditions))
-            .ToListAsync(cancellationToken);
-        return (accounts, gstCodes);
-    }
 }

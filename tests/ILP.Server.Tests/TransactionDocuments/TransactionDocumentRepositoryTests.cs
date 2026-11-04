@@ -17,6 +17,21 @@ namespace ILP.Server.Tests.TransactionDocuments;
 public sealed class TransactionDocumentRepositoryTests
 {
     [Fact]
+    public async Task Migration_CreatesDocumentApJournalTable()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        var options = new DbContextOptionsBuilder<InboxExtractionDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using var context = new InboxExtractionDbContext(options);
+
+        await context.Database.MigrateAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(await context.DocumentAPJournals.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task SearchAsync_FiltersByConfidenceIncludingThreshold_AndPaginatesInRequestedOrder()
     {
         await using var database = await TestDatabase.CreateAsync();

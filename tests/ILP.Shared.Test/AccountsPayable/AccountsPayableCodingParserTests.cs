@@ -72,6 +72,7 @@ public sealed class AccountsPayableCodingParserTests
     {
         Assert.Throws<FormatException>(() => AccountsPayableCodingParser.Parse(
             """
+            "confidence"|"0.6"
             "gst_code"|"SG_UNKNOWN"
             "coa_suggestion"|"1"|"6000"|"first"|"false"
             "coa_suggestion"|"1"|"6000"|"second"|"false"
