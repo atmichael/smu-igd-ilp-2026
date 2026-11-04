@@ -4,6 +4,7 @@ using ILP.Shared.Test.InfoExtraction.Config;
 
 namespace ILP.Shared.Test.InfoExtraction.Provider
 {
+    [Collection("PromptConfigDependentTests")]
     public class EmailInfoExtractionProviderTest
     {
         [Theory]
