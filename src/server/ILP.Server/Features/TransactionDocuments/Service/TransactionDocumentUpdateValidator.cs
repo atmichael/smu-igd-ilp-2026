@@ -12,7 +12,8 @@ public static class TransactionDocumentUpdateValidator
         "Delivery Order",
         "Service Order",
         "Sales Order",
-        "Statement of Account"
+        "Statement of Account",
+        "Credit Note"
     };
 
     public static IDictionary<string, string[]> Validate(UpdateTransactionDocumentRequest? request)

@@ -17,12 +17,15 @@ public sealed record UpdateTransactionDocumentRequest(
 
 public sealed record UpdateTransactionDocumentAPJournal(
     string? GstCode,
-    IReadOnlyList<UpdateTransactionDocumentAPSuggestion>? CoaSuggestions);
+    IReadOnlyList<UpdateTransactionDocumentAPSuggestion>? CoaSuggestions,
+    decimal? Confidence = null,
+    IReadOnlyList<string>? VerificationNotes = null);
 
 public sealed record UpdateTransactionDocumentAPSuggestion(
     int LineIndex,
     string? AccountCode,
-    string? Reason);
+    string? Reason,
+    bool RequiresReview = false);
 
 public sealed record UpdateTransactionDocumentItem(
     long? Id,

@@ -1,7 +1,9 @@
 using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
 using ILP.Server.Features.AccountsPayable.Persistence.Entity;
+using ILP.Server.Features.AccountsPayable;
 using ILP.Server.Features.TransactionDocuments.Model;
+using ILP.Shared.AccountsPayable.Dto;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -125,7 +127,14 @@ public sealed class SqliteTransactionDocumentRepository(
         document.RefNumber = request.RefNumber!.Trim();
         if (request.TypeCode is not null)
         {
+            var wasInvoiceOrCreditNote = AccountsPayableDocumentType.IsInvoiceOrCreditNote(document.TypeCode);
             document.TypeCode = request.TypeCode.Trim();
+            if (wasInvoiceOrCreditNote
+                && !AccountsPayableDocumentType.IsInvoiceOrCreditNote(document.TypeCode)
+                && document.ApJournal is { ActiveStatus: true } journalToDeactivate)
+            {
+                Deactivate(journalToDeactivate, now);
+            }
         }
         document.SentDate = request.SentDate;
         document.DueDate = request.DueDate;
@@ -169,7 +178,9 @@ public sealed class SqliteTransactionDocumentRepository(
             Deactivate(removed, now);
         }
 
-        if (request.ApJournal is not null)
+        var requestedApJournal = request.ApJournal;
+        if (requestedApJournal is not null
+            && AccountsPayableDocumentType.IsInvoiceOrCreditNote(document.TypeCode))
         {
             var apJournal = document.ApJournal;
             if (apJournal is null)
@@ -186,16 +197,26 @@ public sealed class SqliteTransactionDocumentRepository(
             {
                 apJournal.Version++;
                 apJournal.ModifiedTime = now;
+                apJournal.ActiveStatus = true;
             }
 
-            apJournal.GstCode = request.ApJournal.GstCode?.Trim() ?? "";
+            apJournal.GstCode = requestedApJournal.GstCode?.Trim() ?? "";
             apJournal.CoaSuggestionsJson = JsonSerializer.Serialize(
-                (request.ApJournal.CoaSuggestions ?? [])
+                (requestedApJournal.CoaSuggestions ?? [])
                 .Select(suggestion => new ILP.Shared.AccountsPayable.Dto.AccountsPayableLineSuggestion(
                     suggestion.LineIndex,
                     suggestion.AccountCode?.Trim() ?? "",
                     suggestion.Reason?.Trim() ?? "",
-                    false)));
+                    suggestion.RequiresReview)));
+            if (requestedApJournal.Confidence.HasValue)
+            {
+                apJournal.Confidence = requestedApJournal.Confidence;
+            }
+
+            if (requestedApJournal.VerificationNotes is not null)
+            {
+                apJournal.VerificationNotes = string.Join('|', requestedApJournal.VerificationNotes);
+            }
         }
 
         await context.SaveChangesAsync(cancellationToken);
