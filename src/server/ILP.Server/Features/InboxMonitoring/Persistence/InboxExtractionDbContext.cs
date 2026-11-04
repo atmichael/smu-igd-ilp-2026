@@ -1,4 +1,5 @@
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
+using ILP.Server.Features.AccountsPayable.Persistence.Entity;
 using Microsoft.EntityFrameworkCore;
 
 namespace ILP.Server.Features.InboxMonitoring.Persistence;
@@ -17,8 +18,39 @@ public sealed class InboxExtractionDbContext(DbContextOptions<InboxExtractionDbC
 
     public DbSet<DocumentInboxMessageEntity> DocumentInboxMessages => Set<DocumentInboxMessageEntity>();
 
+    public DbSet<AccountsPayableAccountEntity> AccountsPayableAccounts => Set<AccountsPayableAccountEntity>();
+
+    public DbSet<AccountsPayableGstTaxCodeEntity> AccountsPayableGstTaxCodes => Set<AccountsPayableGstTaxCodeEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AccountsPayableAccountEntity>(entity =>
+        {
+            entity.ToTable("AccountsPayableAccounts");
+            entity.HasKey(account => account.Code);
+            entity.Property(account => account.Code).HasMaxLength(16);
+            entity.Property(account => account.Name).IsRequired();
+            entity.Property(account => account.Type).IsRequired();
+            entity.Property(account => account.NormalBalance).IsRequired();
+            entity.Property(account => account.ApRole).IsRequired();
+            entity.Property(account => account.UseWhen).IsRequired();
+            entity.Property(account => account.Sector).IsRequired();
+            entity.Property(account => account.AiSuggestion).IsRequired();
+            entity.Property(account => account.Notes).IsRequired();
+        });
+
+        modelBuilder.Entity<AccountsPayableGstTaxCodeEntity>(entity =>
+        {
+            entity.ToTable("AccountsPayableGstTaxCodes");
+            entity.HasKey(code => code.Code);
+            entity.Property(code => code.Code).HasMaxLength(32);
+            entity.Property(code => code.Description).IsRequired();
+            entity.Property(code => code.SuggestedTreatment).IsRequired();
+            entity.Property(code => code.InputGstAccount).IsRequired();
+            entity.Property(code => code.AutoProcessing).IsRequired();
+            entity.Property(code => code.ReviewConditions).IsRequired();
+        });
+
         modelBuilder.Entity<CompanyEntity>(entity =>
         {
             entity.ToTable("Companies", table => table.HasCheckConstraint("CK_Companies_ActiveStatus", "\"ActiveStatus\" IN (0, 1)"));
