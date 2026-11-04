@@ -8,7 +8,7 @@ Use exactly one `gst_code` record. Return exactly one `coa_suggestion` record fo
 
 EXPECTED OUTPUT — ONE-SHOT EXAMPLE (return records in this exact shape):
 "gst_code"|"SG_UNKNOWN"
-"coa_suggestion"|"1"|"6000"|"Office stationery; classified from the line description"|"false"
+"coa_suggestion"|"1"|"6000"|"Office stationery; supplier identity needs review"|"true"
 "review_reason"|"Supplier identity is not verified"
 
 Choose `SG_UNKNOWN` when tax treatment is not established by the evidence. Propose `SG_STD_9` only when the evidence supports a domestic standard-rated supply and claimable input tax; do not infer GST from a 9% calculation alone. Never authorize posting or payment.
