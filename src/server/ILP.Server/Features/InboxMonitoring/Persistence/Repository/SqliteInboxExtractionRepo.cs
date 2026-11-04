@@ -1,8 +1,10 @@
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
+using ILP.Server.Features.AccountsPayable.Persistence.Entity;
 using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ILP.Server.Features.InboxMonitoring.Persistence.Repository;
 
@@ -107,6 +109,19 @@ public sealed class SqliteInboxExtractionRepo(IDbContextFactory<InboxExtractionD
             }
 
             context.Documents.Add(document);
+            if (mapping.ApJournal is not null)
+            {
+                document.ApJournal = new DocumentAPJournalEntity
+                {
+                    Confidence = mapping.ApJournal.Confidence,
+                    GstCode = mapping.ApJournal.GstCode,
+                    CoaSuggestionsJson = JsonSerializer.Serialize(mapping.ApJournal.CoaSuggestions),
+                    VerificationNotes = string.Join('|', mapping.ApJournal.VerificationNotes),
+                    CreatedTime = now,
+                    ModifiedTime = now
+                };
+            }
+
             context.DocumentInboxMessages.Add(new DocumentInboxMessageEntity
             {
                 Document = document,

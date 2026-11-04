@@ -1,9 +1,9 @@
+using ILP.Shared.AccountsPayable.Abstraction;
+using ILP.Shared.AccountsPayable.Dto;
 using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.InboxMonitoring.Service;
-using ILP.Shared.AccountsPayable.Abstraction;
-using ILP.Shared.AccountsPayable.Dto;
 using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
@@ -81,20 +81,20 @@ public class InboxSyncServiceTest
             Saves.Add(mappings);
             return Task.CompletedTask;
         }
+    }
 
-        private sealed class FakeAccountsPayableCodingProcessor : IAccountsPayableCodingProcessor
+    private sealed class FakeAccountsPayableCodingProcessor : IAccountsPayableCodingProcessor
+    {
+        public List<DocumentDto> ProcessedDocuments { get; } = [];
+
+        public Task<DocumentAPJournalDto> ProcessAsync(DocumentDto document, CancellationToken cancellationToken)
         {
-            public List<DocumentDto> ProcessedDocuments { get; } = [];
-
-            public Task<DocumentAPJournalDto> ProcessAsync(DocumentDto document, CancellationToken cancellationToken)
-            {
-                ProcessedDocuments.Add(document);
-                return Task.FromResult(new DocumentAPJournalDto(
-                    0.82m,
-                    "SG_UNKNOWN",
-                    [new AccountsPayableLineSuggestion(1, "6000", "Office supplies", true)],
-                    ["Invoice totals do not reconcile", "GST treatment requires verification"]));
-            }
+            ProcessedDocuments.Add(document);
+            return Task.FromResult(new DocumentAPJournalDto(
+                0.82m,
+                "SG_UNKNOWN",
+                [new AccountsPayableLineSuggestion(1, "6000", "Office supplies", true)],
+                ["Invoice totals do not reconcile", "GST treatment requires verification"]));
         }
     }
 

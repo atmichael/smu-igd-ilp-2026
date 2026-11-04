@@ -4,9 +4,11 @@ The user message contains an invoice context followed by enabled-account and GST
 
 Return one response only in the pipe-delimited, token-optimized record format shown below. Do not return JSON, Markdown, code fences, a CSV header, or explanatory prose. Each record must be one physical line, every field must be double-quoted, and `|` separates fields. The first quoted field is the string record identifier. Escape a double quote inside a field by doubling it. Do not include line breaks inside a field.
 
+Return exactly one `confidence` record with a decimal score from 0.00 to 1.00 representing confidence in the AP coding suggestions and supplied evidence. Use lower scores when classification or tax treatment is uncertain; a low score never authorizes posting.
 Use exactly one `gst_code` record. Return exactly one `coa_suggestion` record for each supplied invoice line, using its one-based line index and an enabled account from the reference table. Never suggest bank/payment, tax-control, AP-control, liability, or accrual accounts, or 6130 General Expenses - Review Only. If a line is uncertain, set `requires_review` to `true` and explain why rather than guessing. Use one or more `review_reason` records for any additional review reasons; omit them when there are none.
 
 EXPECTED OUTPUT — ONE-SHOT EXAMPLE (return records in this exact shape):
+"confidence"|"0.35"
 "gst_code"|"SG_UNKNOWN"
 "coa_suggestion"|"1"|"6000"|"Office stationery; supplier identity needs review"|"true"
 "review_reason"|"Supplier identity is not verified"

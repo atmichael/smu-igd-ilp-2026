@@ -2,10 +2,17 @@ namespace ILP.Shared.AccountsPayable.Dto;
 
 public sealed record AccountsPayableCodingRecommendation
 {
+    public decimal Confidence { get; init; }
     public string GstCode { get; init; } = "";
     public IReadOnlyList<AccountsPayableLineSuggestion> CoaSuggestions { get; init; } = [];
     public IReadOnlyList<string> ReviewReasons { get; init; } = [];
 }
+
+public sealed record DocumentAPJournalDto(
+    decimal? Confidence,
+    string GstCode,
+    IReadOnlyList<AccountsPayableLineSuggestion> CoaSuggestions,
+    IReadOnlyList<string> VerificationNotes);
 
 public sealed record AccountsPayableLineSuggestion(
     int LineIndex,

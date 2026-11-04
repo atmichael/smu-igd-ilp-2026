@@ -14,6 +14,7 @@ public static class AccountsPayableCodingParser
         }
 
         string? gstCode = null;
+        decimal? confidence = null;
         var suggestions = new List<AccountsPayableLineSuggestion>();
         var reviewReasons = new List<string>();
         foreach (var line in modelOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries))
@@ -21,6 +22,18 @@ public static class AccountsPayableCodingParser
             var fields = ParseRecord(line.TrimEnd('\r'));
             switch (fields[0])
             {
+                case "confidence":
+                    if (fields.Count != 2
+                        || confidence.HasValue
+                        || !decimal.TryParse(fields[1], NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var parsedConfidence)
+                        || parsedConfidence is < 0m or > 1m)
+                    {
+                        throw new FormatException("The response must contain exactly one confidence score between 0 and 1.");
+                    }
+
+                    confidence = parsedConfidence;
+                    break;
+
                 case "gst_code":
                     if (fields.Count != 2 || gstCode is not null || string.IsNullOrWhiteSpace(fields[1]))
                     {
@@ -60,6 +73,11 @@ public static class AccountsPayableCodingParser
             }
         }
 
+        if (confidence is null)
+        {
+            throw new FormatException("The AP coding response must include one confidence record.");
+        }
+
         if (gstCode is null)
         {
             throw new FormatException("The AP coding response must include one GST code record.");
@@ -77,6 +95,7 @@ public static class AccountsPayableCodingParser
 
         return new AccountsPayableCodingRecommendation
         {
+            Confidence = confidence.Value,
             GstCode = gstCode,
             CoaSuggestions = suggestions,
             ReviewReasons = reviewReasons

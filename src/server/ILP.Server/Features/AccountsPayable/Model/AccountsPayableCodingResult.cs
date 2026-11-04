@@ -23,6 +23,7 @@ public sealed record AccountsPayableCodingResult(
     string VendorName,
     string InvoiceNumber,
     string Currency,
+    decimal Confidence,
     IReadOnlyList<string> SourceEvidence,
     string GstCode,
     IReadOnlyList<AccountsPayableCoaSuggestion> CoaSuggestions,

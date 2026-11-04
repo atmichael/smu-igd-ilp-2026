@@ -22,6 +22,8 @@ public sealed class InboxExtractionDbContext(DbContextOptions<InboxExtractionDbC
 
     public DbSet<AccountsPayableGstTaxCodeEntity> AccountsPayableGstTaxCodes => Set<AccountsPayableGstTaxCodeEntity>();
 
+    public DbSet<DocumentAPJournalEntity> DocumentAPJournals => Set<DocumentAPJournalEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AccountsPayableAccountEntity>(entity =>
@@ -80,6 +82,22 @@ public sealed class InboxExtractionDbContext(DbContextOptions<InboxExtractionDbC
             entity.HasOne(item => item.Document)
                 .WithMany(document => document.DocumentItems)
                 .HasForeignKey(item => item.DocumentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            ConfigureAuditFields(entity);
+        });
+
+        modelBuilder.Entity<DocumentAPJournalEntity>(entity =>
+        {
+            entity.ToTable("DocumentAPJournals", table => table.HasCheckConstraint(
+                "CK_DocumentAPJournals_ActiveStatus", "\"ActiveStatus\" IN (0, 1)"));
+            entity.HasIndex(journal => journal.DocumentId).IsUnique();
+            entity.Property(journal => journal.Confidence).HasPrecision(5, 4);
+            entity.Property(journal => journal.GstCode).HasMaxLength(32).IsRequired();
+            entity.Property(journal => journal.CoaSuggestionsJson).IsRequired();
+            entity.Property(journal => journal.VerificationNotes).IsRequired();
+            entity.HasOne(journal => journal.Document)
+                .WithOne(document => document.ApJournal)
+                .HasForeignKey<DocumentAPJournalEntity>(journal => journal.DocumentId)
                 .OnDelete(DeleteBehavior.Cascade);
             ConfigureAuditFields(entity);
         });

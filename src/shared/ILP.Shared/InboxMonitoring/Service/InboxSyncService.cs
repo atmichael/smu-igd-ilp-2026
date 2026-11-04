@@ -1,4 +1,6 @@
 using ILP.Shared.Helper;
+using ILP.Shared.AccountsPayable.Abstraction;
+using ILP.Shared.AccountsPayable.Dto;
 using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
@@ -15,6 +17,7 @@ public sealed class InboxSyncService : IInboxSyncService
     private readonly IGoogleDriveFileProvider? _driveFileProvider;
     private readonly IInboxExtractionPersistence? _persistence;
     private readonly IDocumentNotificationPublisher? _notificationPublisher;
+    private readonly IAccountsPayableCodingProcessor? _accountsPayableCodingProcessor;
     private readonly InboxMonitoringOptions _options;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -24,9 +27,11 @@ public sealed class InboxSyncService : IInboxSyncService
         IOptions<InboxMonitoringOptions> options,
         IGoogleDriveFileProvider? driveFileProvider = null,
         IInboxExtractionPersistence? persistence = null,
-        IDocumentNotificationPublisher? notificationPublisher = null)
+        IDocumentNotificationPublisher? notificationPublisher = null,
+        IAccountsPayableCodingProcessor? accountsPayableCodingProcessor = null)
     {
         _notificationPublisher = notificationPublisher;
+        _accountsPayableCodingProcessor = accountsPayableCodingProcessor;
         _options = options.Value;
         _source = source;
         _extractor = extractor;
@@ -114,15 +119,42 @@ public sealed class InboxSyncService : IInboxSyncService
                             GoogleDriveAttachments = driveAttachments
                         };
 
-                        var mappings = extractedDocuments
-                            .Select(extracted => new DocumentInboxMessageMappingDto(
+                        var mappings = new List<DocumentInboxMessageMappingDto>();
+                        foreach (var extracted in extractedDocuments)
+                        {
+                            DocumentAPJournalDto? apJournal = null;
+                            if (_accountsPayableCodingProcessor is not null && IsInvoiceOrCreditNote(extracted.Document.TypeCode))
+                            {
+                                try
+                                {
+                                    apJournal = await _accountsPayableCodingProcessor.ProcessAsync(extracted.Document, cancellationToken);
+                                }
+                                catch (Exception ex) when (ex is not OperationCanceledException)
+                                {
+                                    LogHelper.Error(traceId, ex, $"Failed to suggest AP coding for '{extracted.Document.RefNumber}'");
+                                    apJournal = new DocumentAPJournalDto(
+                                        0m,
+                                        "SG_UNKNOWN",
+                                        [],
+                                        ["AP coding could not be completed"]);
+                                }
+                            }
+
+                            mappings.Add(new DocumentInboxMessageMappingDto(
                                 extracted.Document,
                                 persistedMessage,
-                                extracted.Attachment))
-                            .ToList();
+                                extracted.Attachment,
+                                apJournal));
+                        }
+
                         await _persistence.SaveAsync(mappings, cancellationToken);
                         PublishNotifications(extractedDocuments.Select(extracted => extracted.Document), traceId);
                     }
+
+                    private static bool IsInvoiceOrCreditNote(string? documentType) =>
+                        string.Equals(documentType, "invoice", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(documentType, "credit-note", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(documentType, "credit note", StringComparison.OrdinalIgnoreCase);
 
                     processed++;
                     processedUniqueIds.Add(message.UniqueId);

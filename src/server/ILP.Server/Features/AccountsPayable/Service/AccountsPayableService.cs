@@ -3,6 +3,7 @@ using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Shared.AccountsPayable.Dto;
 using ILP.Shared.AccountsPayable.Provider;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ILP.Server.Features.AccountsPayable.Service;
 
@@ -96,6 +97,25 @@ public sealed class AccountsPayableService(
         }
 
         return AccountsPayableRuleEvaluator.Evaluate(checkedInvoice, suggestion, accounts, gstCodes);
+    }
+
+    public async Task<DocumentAPJournalDto?> GetCodingAsync(long documentId, CancellationToken cancellationToken)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var journal = await context.DocumentAPJournals.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.DocumentId == documentId && item.ActiveStatus, cancellationToken);
+        if (journal is null)
+        {
+            return null;
+        }
+
+        var suggestions = JsonSerializer.Deserialize<List<AccountsPayableLineSuggestion>>(
+            journal.CoaSuggestionsJson) ?? [];
+        return new DocumentAPJournalDto(
+            journal.Confidence,
+            journal.GstCode,
+            suggestions,
+            journal.VerificationNotes.Split('|', StringSplitOptions.RemoveEmptyEntries));
     }
 
     private static bool IsCreditNote(string? documentType) =>

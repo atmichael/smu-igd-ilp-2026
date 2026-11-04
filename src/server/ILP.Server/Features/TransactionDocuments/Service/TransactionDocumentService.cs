@@ -2,7 +2,9 @@ using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
 using ILP.Server.Features.TransactionDocuments.Configuration;
 using ILP.Server.Features.TransactionDocuments.Model;
 using ILP.Server.Features.TransactionDocuments.Repository;
+using ILP.Shared.AccountsPayable.Dto;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 namespace ILP.Server.Features.TransactionDocuments.Service;
 
@@ -107,5 +109,31 @@ public sealed class TransactionDocumentService(
                 : document.InboxMessageMapping.SourceAttachment.WebViewLink,
             document.ManualOverrideFlag,
             document.ManualOverrideBy,
-            document.DueDate);
+            document.DueDate,
+            MapApJournal(document.ApJournal));
+
+    private static DocumentAPJournalDto? MapApJournal(ILP.Server.Features.AccountsPayable.Persistence.Entity.DocumentAPJournalEntity? apJournal)
+    {
+        if (apJournal is null)
+        {
+            return null;
+        }
+
+        IReadOnlyList<AccountsPayableLineSuggestion> suggestions;
+        try
+        {
+            suggestions = JsonSerializer.Deserialize<List<AccountsPayableLineSuggestion>>(
+                apJournal.CoaSuggestionsJson) ?? [];
+        }
+        catch (JsonException)
+        {
+            suggestions = [];
+        }
+
+        return new DocumentAPJournalDto(
+            apJournal.Confidence,
+            apJournal.GstCode,
+            suggestions,
+            apJournal.VerificationNotes.Split('|', StringSplitOptions.RemoveEmptyEntries));
+    }
 }
