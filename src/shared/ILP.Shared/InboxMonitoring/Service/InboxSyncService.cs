@@ -151,11 +151,6 @@ public sealed class InboxSyncService : IInboxSyncService
                         PublishNotifications(extractedDocuments.Select(extracted => extracted.Document), traceId);
                     }
 
-                    private static bool IsInvoiceOrCreditNote(string? documentType) =>
-                        string.Equals(documentType, "invoice", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(documentType, "credit-note", StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(documentType, "credit note", StringComparison.OrdinalIgnoreCase);
-
                     processed++;
                     processedUniqueIds.Add(message.UniqueId);
                 }
@@ -195,6 +190,11 @@ public sealed class InboxSyncService : IInboxSyncService
             _gate.Release();
         }
     }
+
+    private static bool IsInvoiceOrCreditNote(string? documentType) =>
+        string.Equals(documentType, "invoice", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(documentType, "credit-note", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(documentType, "credit note", StringComparison.OrdinalIgnoreCase);
 
     private void PublishNotifications(IEnumerable<DocumentDto> documents, string traceId)
     {

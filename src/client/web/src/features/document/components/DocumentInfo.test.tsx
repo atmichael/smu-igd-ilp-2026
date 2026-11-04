@@ -74,6 +74,30 @@ describe('DocumentInfo original attachment', () => {
       'Amount',
     ])
   })
+
+  it('renders AP coding and verification notes as a bullet list', () => {
+    render(
+      <DocumentInfo
+        document={{
+          ...base,
+          apJournal: {
+            confidence: 0.62,
+            gstCode: 'SG_UNKNOWN',
+            coaSuggestions: [{ lineIndex: 1, accountCode: '6000', reason: 'Office supplies' }],
+            verificationNotes: ['Invoice totals do not reconcile', 'GST treatment requires verification'],
+          },
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Suggested GST code').nextElementSibling).toHaveTextContent('SG_UNKNOWN')
+    expect(screen.getByText('Line 1 AP account').nextElementSibling).toHaveTextContent('6000')
+    expect(screen.getByText('Human verification required')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Invoice totals do not reconcile',
+      'GST treatment requires verification',
+    ])
+  })
 })
 
 describe('DocumentInfo edit mode', () => {
