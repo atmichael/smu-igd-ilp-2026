@@ -6,6 +6,39 @@ Describe the target flow for turning invoice images or PDFs into reviewed, valid
 
 ## Components
 
+### Declared components: current implementation and gaps
+
+This inventory describes repository code and checked-in configuration, not external services that may be provisioned manually.
+
+| Declared component | Current state | Findings |
+|---|---|---|
+| Frontend: React, TypeScript, Vite | Present | The web client uses React 19, TypeScript, and Vite. Aspire starts the Vite app and provides the backend reference. |
+| Backend: C#/.NET 10 | Present | `ILP.Server` is an ASP.NET Core `net10.0` project. It currently only starts in Development because production authentication is not implemented. |
+| Coding agent: GitHub Copilot agent | Developer tooling only | Spec Kit includes a Copilot integration and repository skills. Copilot is not a runtime service or dependency of the deployed application. |
+| Database: SQLite in-memory | Mismatch | Inbox-extraction metadata uses a file-backed SQLite database (`InboxExtractionPersistence:DatabasePath`, normally `data/inbox-extraction.db`); it is not in-memory. Development configuration also selects MySQL for source-document content. Evidence packages and source-document records use file/JSON storage. |
+| Orchestrator: .NET Aspire | Present | `ILP.AppHost` starts the backend and Vite frontend. It does not provision or run Google Pub/Sub, Google Drive, OpenRouter, MySQL, or an ngrok tunnel. |
+| Mail inbox: Google API for Gmail | Partial | The Gmail API is used to create/renew Gmail watch notifications. Message retrieval and marking as read use Gmail IMAP through MailKit and OAuth; the app does not fetch messages through the Gmail API. |
+| Cloud Drive: Google API for Google Drive | Present | The shared Google Drive provider uses Drive API v3 to create/reuse folders and upload attachments. |
+| Event bus: Google Pub/Sub | Partial / externally provisioned | Gmail watch is configured with a Pub/Sub topic, and the API exposes a push webhook that signals inbox synchronization. Topic/subscription provisioning and tunnel exposure are external; Aspire does not manage them. The webhook acknowledges the push and triggers a fresh inbox sync. |
+| LLM hosting: OpenRouter | Present, with workflow limits | The shared email-attachment extraction provider and console prototype call OpenRouter. The API loads the OpenRouter key at startup, but camera and file-upload intake do not invoke extraction. |
+| Internet gateway: ngrok | Integration configuration only | The API CORS/forwarded-header configuration and Vite allowed-host list include the configured ngrok hostname. No ngrok process, tunnel lifecycle, or deployment configuration is managed by this repository's Aspire AppHost. |
+
+Other components found in the implementation:
+
+- Google Identity Services supplies the browser sign-in credential. Server-side authentication remains a Development-only test scheme; it is not production authentication.
+- Gmail inbox access also depends on MailKit IMAP and Gmail SMTP for outbound attachment messages.
+- Persistence is split across file-backed SQLite, file/JSON stores, and a Development-configured MySQL content store; SQLite is not the application's sole database.
+- Aspire service defaults add health checks, service discovery, HTTP resilience, and OpenTelemetry instrumentation.
+
+### Actions to align the declared target
+
+1. Confirm whether inbox metadata should remain durable in file-backed SQLite or move to an in-memory database; update the declared architecture and configuration together. Include the Development MySQL content store and file/JSON stores in the storage design either way.
+2. Confirm whether Gmail REST API access is required for message retrieval. If so, replace the current IMAP retrieval path; otherwise, describe the mail dependency as Gmail IMAP/OAuth plus Gmail API watch.
+3. Provision and verify the Google Cloud Pub/Sub topic, push subscription, and reachable webhook URL. Keep that external setup documented or add explicit deployment automation; Aspire does not create these resources.
+4. If ngrok is a required runtime gateway, provide and document tunnel startup, endpoint configuration, and lifecycle ownership instead of relying only on hostname/CORS settings.
+5. If web uploads and camera captures are expected to produce extracted values, connect those API workflows to OpenRouter and verify the result path; current extraction is used by inbox attachment processing and the console prototype.
+6. Treat GitHub Copilot as developer tooling, not an application runtime component. Before shared or production deployment, also replace the Development-only test authentication scheme with the intended production authentication.
+
 ```mermaid
 flowchart LR
   U[React upload and camera capture] --> A[ASP.NET Core API]
@@ -116,4 +149,3 @@ The example is illustrative; model-reported confidence is not ground truth. Cand
 5. Prepare an evaluation set alongside extraction work; compare providers using equivalent inputs and record quality, latency, and hosted usage cost where available.
 6. Add deterministic verification and human review with provenance and audit history.
 7. Complete access control and processing reliability before shared or production use; add matching and automation only after their evidence, reference-data, and evaluation dependencies are met.
-
