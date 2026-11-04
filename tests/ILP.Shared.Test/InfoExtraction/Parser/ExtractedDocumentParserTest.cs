@@ -114,6 +114,21 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
             Assert.Null(ExtractedDocumentParser.Parse("[HEADER]\ndocument-number| X").GetDocumentInfo().DueDate);
         }
 
+        [Theory]
+        [InlineData("Tax Invoice", "Invoice")]
+        [InlineData("PURCHASE ORDER (PO)", "Purchase Order")]
+        [InlineData("Original Delivery Order", "Delivery Order")]
+        [InlineData("Service Order No. 123", "Service Order")]
+        [InlineData("Customer Sales Order", "Sales Order")]
+        [InlineData("Monthly Statement of Account", "Statement of Account")]
+        [InlineData("credit-note", "credit-note")]
+        public void Parse_NormalizesRecognizedDocumentTypePartialMatches(string extractedType, string expectedType)
+        {
+            var document = ExtractedDocumentParser.Parse($"[HEADER]\ndocument-type| {extractedType}");
+
+            Assert.Equal(expectedType, document.GetDocumentInfo().TypeCode);
+        }
+
         [Fact]
         public void Parse_ReadsKnownKeysAndTreatsNullAsMissing()
         {

@@ -81,6 +81,7 @@ export interface DocumentUpdateItem {
 
 export interface DocumentUpdateRequest {
   refNumber: string
+  typeCode?: string
   sentDate: string
   dueDate?: string | null
   companyUen: string | null

@@ -123,6 +123,10 @@ public sealed class SqliteTransactionDocumentRepository(
         var company = await FindOrCreateCompanyAsync(context, request, now, cancellationToken);
         document.Company = company;
         document.RefNumber = request.RefNumber!.Trim();
+        if (request.TypeCode is not null)
+        {
+            document.TypeCode = request.TypeCode.Trim();
+        }
         document.SentDate = request.SentDate;
         document.DueDate = request.DueDate;
         document.Subtotal = request.Subtotal;

@@ -12,7 +12,8 @@ public sealed record UpdateTransactionDocumentRequest(
     IReadOnlyList<UpdateTransactionDocumentItem>? DocumentItems,
     bool? ManualOverrideFlag = null,
     DateTime? DueDate = null,
-    UpdateTransactionDocumentAPJournal? ApJournal = null);
+    UpdateTransactionDocumentAPJournal? ApJournal = null,
+    string? TypeCode = null);
 
 public sealed record UpdateTransactionDocumentAPJournal(
     string? GstCode,

@@ -9,6 +9,15 @@ namespace ILP.Shared.InfoExtraction.Parser
     public static class ExtractedDocumentParser
     {
         private const string DocumentMarker = "[DOCUMENT]";
+        private static readonly string[] DocumentTypes =
+        [
+            "Invoice",
+            "Purchase Order",
+            "Delivery Order",
+            "Service Order",
+            "Sales Order",
+            "Statement of Account"
+        ];
 
         /// <summary>Parses model output holding one or more documents, each optionally introduced by a [DOCUMENT] marker; always returns at least one document.</summary>
         public static IReadOnlyList<ExtractedDocumentDto> ParseAll(string? modelOutput)
@@ -100,7 +109,10 @@ namespace ILP.Shared.InfoExtraction.Parser
                         continue;
                     }
 
-                    document.SetHeaderField(key, ParseValue(trimmedLine[(separator + 1)..]));
+                    var value = ParseValue(trimmedLine[(separator + 1)..]);
+                    document.SetHeaderField(
+                        key,
+                        key == ExtractedDocFieldNames.DocumentType ? NormalizeDocumentType(value) : value);
                     continue;
                 }
 
@@ -161,6 +173,18 @@ namespace ILP.Shared.InfoExtraction.Parser
             return trimmedValue.Length == 0 || trimmedValue.Equals("null", StringComparison.OrdinalIgnoreCase)
                 ? null
                 : trimmedValue;
+        }
+
+        private static string? NormalizeDocumentType(string? value)
+        {
+            if (value is null)
+            {
+                return null;
+            }
+
+            var normalizedValue = value.Replace('-', ' ').Replace('_', ' ');
+            return DocumentTypes.FirstOrDefault(type =>
+                normalizedValue.Contains(type, StringComparison.OrdinalIgnoreCase)) ?? value;
         }
     }
 }

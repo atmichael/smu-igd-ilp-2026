@@ -5,6 +5,15 @@ namespace ILP.Server.Features.TransactionDocuments.Service;
 public static class TransactionDocumentUpdateValidator
 {
     private const decimal Tolerance = 0.01m;
+    private static readonly HashSet<string> DocumentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Invoice",
+        "Purchase Order",
+        "Delivery Order",
+        "Service Order",
+        "Sales Order",
+        "Statement of Account"
+    };
 
     public static IDictionary<string, string[]> Validate(UpdateTransactionDocumentRequest? request)
     {
@@ -18,6 +27,11 @@ public static class TransactionDocumentUpdateValidator
         if (string.IsNullOrWhiteSpace(request.RefNumber))
         {
             errors["refNumber"] = ["The document number is required."];
+        }
+
+        if (request.TypeCode is not null && !DocumentTypes.Contains(request.TypeCode.Trim()))
+        {
+            errors["typeCode"] = ["The document type is not supported."];
         }
 
         if (request.SentDate == default)

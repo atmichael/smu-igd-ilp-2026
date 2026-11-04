@@ -129,11 +129,13 @@ public sealed class TransactionDocumentRepositoryTests
             10m, 1m, 11m, null, [],
             ApJournal: new UpdateTransactionDocumentAPJournal(
                 "SG_STD_9",
-                [new UpdateTransactionDocumentAPSuggestion(1, "6040", "Software subscription")]));
+                [new UpdateTransactionDocumentAPSuggestion(1, "6040", "Software subscription")]),
+            TypeCode: "Purchase Order");
 
         var updated = await service.UpdateAsync(document.Id, request, TestContext.Current.CancellationToken);
 
         Assert.Equal("SG_STD_9", updated!.ApJournal!.GstCode);
+        Assert.Equal("Purchase Order", updated.TypeCode);
         Assert.Equal(0.74m, updated.ApJournal.Confidence);
         Assert.Equal("6040", Assert.Single(updated.ApJournal.CoaSuggestions).AccountCode);
         Assert.Equal("Invoice totals do not reconcile", Assert.Single(updated.ApJournal.VerificationNotes));
@@ -395,6 +397,7 @@ public sealed class TransactionDocumentRepositoryTests
         Assert.Contains("totalAmount", TransactionDocumentUpdateValidator.Validate(valid with { TotalAmount = 12m }).Keys);
         Assert.Contains("refNumber", TransactionDocumentUpdateValidator.Validate(valid with { RefNumber = " " }).Keys);
         Assert.Contains("companyName", TransactionDocumentUpdateValidator.Validate(valid with { CompanyUen = null }).Keys);
+        Assert.Contains("typeCode", TransactionDocumentUpdateValidator.Validate(valid with { TypeCode = "Tax Invoice" }).Keys);
         Assert.NotEmpty(TransactionDocumentUpdateValidator.Validate(null));
     }
 

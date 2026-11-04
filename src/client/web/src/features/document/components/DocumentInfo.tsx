@@ -160,8 +160,20 @@ interface DocumentEditFieldsProps {
   onCancel?: () => void
 }
 
+const DOCUMENT_TYPES = [
+  'Invoice',
+  'Purchase Order',
+  'Delivery Order',
+  'Service Order',
+  'Sales Order',
+  'Statement of Account',
+]
+
 function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentEditFieldsProps) {
   const [refNumber, setRefNumber] = useState(document.refNumber)
+  const [typeCode, setTypeCode] = useState(
+    () => DOCUMENT_TYPES.find((type) => type.toLowerCase() === document.typeCode.trim().toLowerCase()) ?? '',
+  )
   const [sentDate, setSentDate] = useState(document.sentDate?.slice(0, 10) ?? '')
   const [dueDate, setDueDate] = useState(document.dueDate?.slice(0, 10) ?? '')
   const [uen, setUen] = useState(document.company.uen ?? '')
@@ -294,6 +306,7 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
     try {
       await onSubmit({
         refNumber: refNumber.trim(),
+        ...(typeCode ? { typeCode } : {}),
         sentDate,
         dueDate: dueDate || null,
         companyUen: trimmedUen || null,
@@ -346,6 +359,14 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         onChange={(event) => setRefNumber(event.target.value)}
         error={!!error('refNumber')} helperText={error('refNumber')}
       />
+      <TextField
+        label="Document type" size="small" select value={typeCode}
+        onChange={(event) => setTypeCode(event.target.value)}
+        slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+      >
+        <option value="">Select a document type…</option>
+        {DOCUMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+      </TextField>
       <TextField
         label="Posting date" size="small" type="date" value={sentDate} required
         onChange={(event) => setSentDate(event.target.value)}
@@ -406,7 +427,6 @@ function DocumentEditFields({ document, onSubmit, onSaved, onCancel }: DocumentE
         </TextField>
       )}
       <dl className="document-info__fields">
-        <dt>Document type</dt><dd>{document.typeCode || '—'}</dd>
         <dt>Subtotal</dt><dd>{formatAmount(subtotal)}</dd>
         <dt>Total amount</dt><dd>{formatAmount(total)}</dd>
         <dt>Manual override</dt>

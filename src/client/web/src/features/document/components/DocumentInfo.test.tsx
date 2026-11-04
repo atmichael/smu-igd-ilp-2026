@@ -169,6 +169,29 @@ describe('DocumentInfo edit mode', () => {
     ))
   })
 
+  it('restricts document type to the supported options and submits the selection', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined)
+    render(<DocumentInfo document={{ ...editable, typeCode: 'Invoice' }} mode="edit" onSubmit={onSubmit} />)
+
+    const documentType = screen.getByLabelText('Document type') as HTMLSelectElement
+    expect(Array.from(documentType.options).map((option) => option.textContent)).toEqual([
+      'Select a document type…',
+      'Invoice',
+      'Purchase Order',
+      'Delivery Order',
+      'Service Order',
+      'Sales Order',
+      'Statement of Account',
+    ])
+    fireEvent.change(documentType, { target: { value: 'Purchase Order' } })
+    fireEvent.click(screen.getByRole('button', { name: /^submit$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /confirm/i }))
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ typeCode: 'Purchase Order' }),
+    ))
+  })
+
   const change = (label: string | RegExp, value: string) =>
     fireEvent.change(screen.getByLabelText(label), { target: { value } })
 
