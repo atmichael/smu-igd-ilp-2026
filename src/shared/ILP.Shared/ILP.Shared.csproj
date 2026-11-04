@@ -8,10 +8,14 @@
 
   <ItemGroup>
     <None Remove="InfoExtraction\Prompts\ExtractDocumentContent.md" />
+    <None Remove="AccountsPayable\Prompts\AccountsPayableCoding.md" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="InfoExtraction\Prompts\ExtractDocumentContent.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="AccountsPayable\Prompts\AccountsPayableCoding.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

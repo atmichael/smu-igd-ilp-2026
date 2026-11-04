@@ -1,6 +1,7 @@
 using ILP.Server.Features.AccountsPayable.Model;
 using ILP.Server.Features.AccountsPayable.Service;
 using ILP.Shared.AccountsPayable.Dto;
+using Xunit;
 
 namespace ILP.Server.Tests.AccountsPayable;
 
@@ -44,16 +45,37 @@ public sealed class AccountsPayableRuleEvaluatorTests
     }
 
     [Fact]
-    public void Evaluate_DisabledOrReviewOnlyAccount_RequiresReviewAndDoesNotSubstitute()
+    public void Evaluate_CreditNoteWithoutPersistedOriginalCoding_RequiresReviewWithoutJournal()
     {
         var result = AccountsPayableRuleEvaluator.Evaluate(
-            ValidRequest(),
-            Recommendation("5010"),
-            [Account("5010", enabled: false), Account("2000", enabled: true), Account("1200", enabled: true)],
+            ValidRequest() with { DocumentType = "credit-note" },
+            Recommendation(),
+            EnabledAccounts(),
             [GstCode("SG_STD_9")]);
 
         Assert.Equal("NEEDS_REVIEW", result.Status);
-        Assert.Contains(result.ReviewReasons, reason => reason.Contains("5010", StringComparison.Ordinal));
+        Assert.Contains(result.ReviewReasons, reason => reason.Contains("original invoice", StringComparison.OrdinalIgnoreCase));
+        Assert.Empty(result.Journal);
+    }
+
+    [Theory]
+    [InlineData("5010", false)]
+    [InlineData("6130", true)]
+    [InlineData("1000", true)]
+    [InlineData("1200", true)]
+    public void Evaluate_DisabledOrReviewOnlyAccount_RequiresReviewAndDoesNotSubstitute(
+        string accountCode,
+        bool accountEnabled)
+    {
+        var result = AccountsPayableRuleEvaluator.Evaluate(
+            ValidRequest(),
+            Recommendation(accountCode),
+            EnabledAccounts().Where(account => account.Code != accountCode)
+                .Append(Account(accountCode, enabled: accountEnabled)).ToArray(),
+            [GstCode("SG_STD_9")]);
+
+        Assert.Equal("NEEDS_REVIEW", result.Status);
+        Assert.Contains(result.ReviewReasons, reason => reason.Contains(accountCode, StringComparison.Ordinal));
         Assert.DoesNotContain(result.Journal, entry => entry.AccountCode == "6130");
     }
 
@@ -68,6 +90,33 @@ public sealed class AccountsPayableRuleEvaluatorTests
 
         Assert.Equal("NEEDS_REVIEW", result.Status);
         Assert.Contains(result.Validation, check => check.Check == "invoice_total_reconciles" && !check.Passed);
+        Assert.Empty(result.Journal);
+    }
+
+    [Fact]
+    public void Evaluate_PossibleDuplicate_RequiresReview()
+    {
+        var result = AccountsPayableRuleEvaluator.Evaluate(
+            ValidRequest() with { DuplicateCheckPassed = false },
+            Recommendation(),
+            EnabledAccounts(),
+            [GstCode("SG_STD_9")]);
+
+        Assert.Equal("NEEDS_REVIEW", result.Status);
+        Assert.Contains(result.Validation, check => check.Check == "duplicate_check_passed" && !check.Passed);
+    }
+
+    [Fact]
+    public void Evaluate_ExpenseLineAboveCapitalizationThreshold_RequiresReview()
+    {
+        var result = AccountsPayableRuleEvaluator.Evaluate(
+            ValidRequest() with { CapitalizationThreshold = 500m },
+            Recommendation(),
+            EnabledAccounts(),
+            [GstCode("SG_STD_9")]);
+
+        Assert.Equal("NEEDS_REVIEW", result.Status);
+        Assert.Contains(result.ReviewReasons, reason => reason.Contains("capitalization threshold", StringComparison.OrdinalIgnoreCase));
         Assert.Empty(result.Journal);
     }
 
@@ -92,17 +141,22 @@ public sealed class AccountsPayableRuleEvaluatorTests
         VendorName = "Example Supplier",
         VendorIdentifier = "UEN-1",
         InvoiceNumber = "INV-001",
+        InvoiceDate = new DateOnly(2026, 11, 4),
         Currency = "SGD",
         Subtotal = 1000m,
         TaxAmount = 90m,
         TotalAmount = 1090m,
-        Lines = [new(1, "Office stationery", 1000m, 90m, "page 1")],
+        CapitalizationThreshold = 5000m,
+        CompanyPolicy = "Standard small-purchase policy",
+        Lines = [new(1, "Office stationery", 1000m, 90m, "page 1", Quantity: 1m)],
         SourceEvidence = ["invoice.pdf page 1"],
         CompanyGstRegistered = true,
+        DomesticStandardRatedConfirmed = true,
         InvoiceGstEvidenceValid = true,
         InputGstClaimableConfirmed = true,
         VendorWhitelisted = true,
         UenMasterVerified = true,
+        VendorBankDetailsChanged = false,
         DuplicateCheckPassed = true,
         RequiredDocumentsProfile = "INVOICE_ONLY",
         SupportingDocumentsComplete = true
@@ -122,7 +176,15 @@ public sealed class AccountsPayableRuleEvaluatorTests
     ];
 
     private static AccountsPayableReferenceAccount Account(string code, bool enabled) =>
-        new(code, $"Account {code}", "Expense", "Debit", code == "2000" ? "AP Control" : "Expense", enabled);
+        new(code, $"Account {code}", "Expense", "Debit",
+            code switch
+            {
+                "1000" => "Payment",
+                "1200" => "Tax",
+                "2000" => "AP Control",
+                _ => "Expense"
+            },
+            enabled);
 
     private static AccountsPayableReferenceGstCode GstCode(string code) =>
         new(code, code, true);
