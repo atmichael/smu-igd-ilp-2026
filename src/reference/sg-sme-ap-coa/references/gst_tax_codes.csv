@@ -1,0 +1,9 @@
+﻿Code,Description,Suggested treatment,Input GST account,Auto-processing,Review conditions
+SG_STD_9,"Local standard-rated purchase, 9% GST",Dr eligible cost net + Dr 1200 GST; Cr 2000 gross,1200,Conditional,"Check company GST status, valid invoice, recoverability, correct time of supply, allowed input tax"
+SG_ZERO,Supplier zero-rated taxable supply,Dr eligible cost gross; Cr 2000 gross,None,Conditional,Confirm zero-rate shown and that invoice supports treatment
+SG_EXEMPT,Exempt supply on supplier invoice,Dr eligible cost gross; Cr 2000 gross,None,Conditional,Exempt supplier output does not create recoverable input GST
+SG_NO_GST,No GST charged / supplier non-GST registered,Dr eligible cost gross; Cr 2000 gross,None,Conditional,Never manufacture a GST 9% amount
+SG_BLOCKED,GST charged but input tax not claimable,Dr eligible cost gross incl nonrecoverable GST; Cr 2000 gross,None,Review,Check relevant IRAS blocked input tax criteria
+SG_OUT,Out-of-scope purchase/charge,Dr eligible cost gross; Cr 2000 gross,None,Review,Confirm true classification; out-of-scope not interchangeable with zero-rated
+SG_IMPORT_REVIEW,Import / overseas service / reverse-charge potential,Stop tax auto-post and route for tax review,TBD,No,"Import GST, reverse charge, overseas vendor, foreign currency, WHT as applicable"
+SG_UNKNOWN,GST classification not supported by evidence,Stop and request tax review,None,No,"Missing tax invoice, mismatch, ambiguous tax treatment"

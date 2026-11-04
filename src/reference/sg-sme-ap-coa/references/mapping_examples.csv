@@ -1,0 +1,9 @@
+﻿Invoice description / situation,Suggested Code,GST code candidate,Route,Reason
+Office stationery SGD 1000 + SGD 90 GST,6000,SG_STD_9,Ready after validation,Operating consumable
+Microsoft 365 monthly subscription (domestic tax invoice),6040,SG_STD_9,Ready after validation,SaaS cost; tax treatment must be evidenced
+Electricity bill for office,6020,SG_STD_9,Ready after validation,Utilities
+Annual insurance renewal,1300,SG_UNKNOWN,Review,Potential prepayment; verify insurer GST treatment and period
+Project subcontractor invoice with signed contract and delivery record,5020,SG_UNKNOWN,Review if code disabled/retention applies,Enable project COA first; check retention and tax
+Capital computer purchase above approved capitalization threshold,1600,SG_UNKNOWN,Review,Capitalisation policy determines coding
+Statement of Account without source invoices,-,-,Never post,Reconcile only; no new payable from SOA
+Supplier credit note for an original office supplies invoice,6000,From original invoice,Review match,Reverse original journal correctly and link original invoice
