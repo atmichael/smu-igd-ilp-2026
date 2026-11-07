@@ -174,10 +174,12 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
             <TableRow>
               <TableCell>{sortLabel('refNumber', 'Document Number')}</TableCell>
               <TableCell>{sortLabel('companyUen', 'Company UEN & Name')}</TableCell>
+              <TableCell>Document Type</TableCell>
               <TableCell>Posting Date</TableCell>
               <TableCell>{sortLabel('dueDate', 'Due Date')}</TableCell>
               <TableCell align="right">Total Amount</TableCell>
               <TableCell>Confidence Level</TableCell>
+              <TableCell>AP Confidence</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -190,11 +192,15 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
                   <br />
                   {row.company?.name ?? '—'}
                 </TableCell>
+                <TableCell data-label="Document Type">{row.typeCode || '—'}</TableCell>
                 <TableCell data-label="Posting Date">{displayDate(row.sentDate)}</TableCell>
                 <TableCell data-label="Due Date">{displayDate(row.dueDate)}</TableCell>
                 <TableCell align="right" data-label="Total Amount">{displayAmount(row.totalAmount)}</TableCell>
                 <TableCell data-label="Confidence Level">
                   {row.confidence == null ? '—' : `${Math.round(row.confidence * 100)}%`}
+                </TableCell>
+                <TableCell data-label="AP Confidence">
+                  {row.apJournal?.confidence == null ? '—' : `${Math.round(row.apJournal.confidence * 100)}%`}
                 </TableCell>
                 <TableCell align="right" className="document-grid__actions" data-label="Actions">
                   <IconAction kind="view" label={`View ${row.refNumber}`} onClick={() => onView(row)} />
@@ -209,7 +215,7 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
             ))}
             {visibleRows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={9} align="center">
                   No documents found.
                 </TableCell>
               </TableRow>

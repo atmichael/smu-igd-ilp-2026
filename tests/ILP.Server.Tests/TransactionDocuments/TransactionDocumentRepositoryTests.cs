@@ -11,6 +11,8 @@ using Microsoft.Extensions.Options;
 using Xunit;
 using System.Text.Json;
 using ILP.Shared.AccountsPayable.Dto;
+using ILP.Shared.AccountsPayable.Abstraction;
+using ILP.Shared.TransactionDocument.Dto;
 
 namespace ILP.Server.Tests.TransactionDocuments;
 
@@ -129,14 +131,79 @@ public sealed class TransactionDocumentRepositoryTests
             10m, 1m, 11m, null, [],
             ApJournal: new UpdateTransactionDocumentAPJournal(
                 "SG_STD_9",
-                [new UpdateTransactionDocumentAPSuggestion(1, "6040", "Software subscription")]));
+                [new UpdateTransactionDocumentAPSuggestion(1, "6040", "Software subscription")]),
+            TypeCode: "Invoice");
 
         var updated = await service.UpdateAsync(document.Id, request, TestContext.Current.CancellationToken);
 
         Assert.Equal("SG_STD_9", updated!.ApJournal!.GstCode);
+        Assert.Equal("Invoice", updated.TypeCode);
         Assert.Equal(0.74m, updated.ApJournal.Confidence);
         Assert.Equal("6040", Assert.Single(updated.ApJournal.CoaSuggestions).AccountCode);
         Assert.Equal("Invoice totals do not reconcile", Assert.Single(updated.ApJournal.VerificationNotes));
+    }
+
+    [Theory]
+    [InlineData("Invoice")]
+    [InlineData("Credit Note")]
+    public async Task UpdateAsync_ChangingToApTypeRunsApCodingAndPersistsJournal(string newType)
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var document = CreateDocument("INV-TO-CODE", 0.8m, 11m, typeCode: "Purchase Order");
+        database.Context.Documents.Add(document);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var processor = new StubApCodingProcessor();
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions()),
+            processor);
+        var request = new UpdateTransactionDocumentRequest(
+            "INV-TO-CODE", document.SentDate, document.Company.Uen, document.Company.Name,
+            10m, 1m, 11m, null,
+            [new UpdateTransactionDocumentItem(null, "Widget", 2m, "SGD", 5m, "GST", 0.1m, 1, 10m, 1m)],
+            TypeCode: newType);
+
+        var updated = await service.UpdateAsync(document.Id, request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, processor.Calls);
+        Assert.Equal(newType, processor.ProcessedDocument!.TypeCode);
+        Assert.Equal("Widget", Assert.Single(processor.ProcessedDocument.DocumentItems).Description);
+        Assert.Equal("SG_STD_9", updated!.ApJournal!.GstCode);
+        Assert.Equal(0.91m, updated.ApJournal.Confidence);
+        Assert.Equal("6000", Assert.Single(updated.ApJournal.CoaSuggestions).AccountCode);
+        Assert.True(Assert.Single(updated.ApJournal.CoaSuggestions).RequiresReview);
+
+        await service.UpdateAsync(document.Id, request, TestContext.Current.CancellationToken);
+        Assert.Equal(1, processor.Calls);
+    }
+
+    [Fact]
+    public async Task UpdateAsync_ChangingOutOfInvoiceTypeDeactivatesApJournal()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var document = CreateDocument("INV-TO-PO", 0.8m, 11m, typeCode: "Invoice");
+        document.ApJournal = new DocumentAPJournalEntity
+        {
+            GstCode = "SG_STD_9",
+            CoaSuggestionsJson = "[]",
+            VerificationNotes = ""
+        };
+        database.Context.Documents.Add(document);
+        await database.Context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var service = new TransactionDocumentService(
+            new SqliteTransactionDocumentRepository(database.Factory),
+            Options.Create(new TransactionDocumentsOptions()));
+        var request = new UpdateTransactionDocumentRequest(
+            "INV-TO-PO", document.SentDate, document.Company.Uen, document.Company.Name,
+            10m, 1m, 11m, null, [], TypeCode: "Purchase Order");
+
+        var updated = await service.UpdateAsync(document.Id, request, TestContext.Current.CancellationToken);
+
+        Assert.Null(updated!.ApJournal);
+        var journal = await database.Context.DocumentAPJournals
+            .AsNoTracking()
+            .SingleAsync(TestContext.Current.CancellationToken);
+        Assert.False(journal.ActiveStatus);
     }
 
     [Fact]
@@ -395,6 +462,8 @@ public sealed class TransactionDocumentRepositoryTests
         Assert.Contains("totalAmount", TransactionDocumentUpdateValidator.Validate(valid with { TotalAmount = 12m }).Keys);
         Assert.Contains("refNumber", TransactionDocumentUpdateValidator.Validate(valid with { RefNumber = " " }).Keys);
         Assert.Contains("companyName", TransactionDocumentUpdateValidator.Validate(valid with { CompanyUen = null }).Keys);
+        Assert.Contains("typeCode", TransactionDocumentUpdateValidator.Validate(valid with { TypeCode = "Tax Invoice" }).Keys);
+        Assert.DoesNotContain("typeCode", TransactionDocumentUpdateValidator.Validate(valid with { TypeCode = "Credit Note" }).Keys);
         Assert.NotEmpty(TransactionDocumentUpdateValidator.Validate(null));
     }
 
@@ -426,6 +495,23 @@ public sealed class TransactionDocumentRepositoryTests
         CreatedTime = createdTime ?? new DateTime(2026, 10, 2),
         ModifiedTime = createdTime ?? new DateTime(2026, 10, 2)
     };
+
+    private sealed class StubApCodingProcessor : IAccountsPayableCodingProcessor
+    {
+        public int Calls { get; private set; }
+        public DocumentDto? ProcessedDocument { get; private set; }
+
+        public Task<DocumentAPJournalDto> ProcessAsync(DocumentDto document, CancellationToken cancellationToken)
+        {
+            Calls++;
+            ProcessedDocument = document;
+            return Task.FromResult(new DocumentAPJournalDto(
+                0.91m,
+                "SG_STD_9",
+                [new AccountsPayableLineSuggestion(1, "6000", "Widget expense", true)],
+                ["GST treatment requires verification"]));
+        }
+    }
 
     private sealed class TestDatabase : IAsyncDisposable
     {
