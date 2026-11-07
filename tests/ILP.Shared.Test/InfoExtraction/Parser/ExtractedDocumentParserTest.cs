@@ -115,7 +115,13 @@ namespace ILP.Shared.Test.InfoExtraction.Parser
         }
 
         [Theory]
+        [InlineData("Invoice", "Invoice")]
         [InlineData("Tax Invoice", "Invoice")]
+        [InlineData("BILL", "Invoice")]
+        [InlineData("Commercial Bill", "Invoice")]
+        [InlineData("Receipt", "Invoice")]
+        [InlineData("Supplier Debit Note", "Invoice")]
+        [InlineData("debit-note no. 123", "Invoice")]
         [InlineData("PURCHASE ORDER (PO)", "Purchase Order")]
         [InlineData("Original Delivery Order", "Delivery Order")]
         [InlineData("Service Order No. 123", "Service Order")]
