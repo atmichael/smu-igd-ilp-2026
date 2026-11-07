@@ -17,12 +17,21 @@ vi.mock('./components/DocumentDataGrid', () => ({
     rows,
     onEdit,
     onView,
+    serverPaging,
   }: {
+    serverPaging: {
+      onPageChange: (page: number) => void
+      onRowsPerPageChange: (rowsPerPage: number) => void
+      onUenFilterChange: (uen: string) => void
+    }
     rows: DocumentRecord[]
     onEdit: (document: DocumentRecord) => void
     onView: (document: DocumentRecord) => void
   }) => (
     <div>
+      <button onClick={() => serverPaging.onPageChange(1)}>Next page</button>
+      <button onClick={() => serverPaging.onRowsPerPageChange(50)}>Show 50</button>
+      <button onClick={() => serverPaging.onUenFilterChange('201912345A')}>Filter UEN</button>
       {rows.map((document) => (
         <div key={document.id}>
           <span>{document.refNumber}</span>
@@ -92,5 +101,26 @@ describe('DocumentHubPage document editing', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'View INV-001' }))
 
     expect(onNavigate).toHaveBeenCalledWith('/document/1?returnTo=%2Fdocument')
+  })
+
+  it('requests server-side pages, page sizes and UEN filters', async () => {
+    pageMocks.searchDocuments.mockReset()
+    pageMocks.searchDocuments.mockResolvedValue({ items: [documentRow('INV-001')], totalCount: 60 })
+
+    render(<DocumentHubPage onNavigate={vi.fn()} />)
+    await screen.findByText('INV-001')
+    expect(pageMocks.searchDocuments).toHaveBeenLastCalledWith('', { page: 1, pageSize: 25 })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    await waitFor(() =>
+      expect(pageMocks.searchDocuments).toHaveBeenLastCalledWith('', { page: 2, pageSize: 25 }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show 50' }))
+    await waitFor(() =>
+      expect(pageMocks.searchDocuments).toHaveBeenLastCalledWith('', { page: 2, pageSize: 50 }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filter UEN' }))
+    await waitFor(() =>
+      expect(pageMocks.searchDocuments).toHaveBeenLastCalledWith('201912345A', { page: 1, pageSize: 50 }))
   })
 })

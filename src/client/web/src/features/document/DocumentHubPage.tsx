@@ -11,24 +11,32 @@ interface DocumentHubPageProps {
 
 export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
   const [search, setSearch] = useState('')
+  const [uenFilter, setUenFilter] = useState('')
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(25)
   const [result, setResult] = useState<{
-    search: string
+    key: string
+    totalCount: number
     documents: DocumentRecord[]
     error: string | null
   } | null>(null)
   const [editing, setEditing] = useState<DocumentRecord | null>(null)
   const [reloadCount, setReloadCount] = useState(0)
 
+  const effectiveSearch = uenFilter.trim() || search
+  const requestKey = `${effectiveSearch}|${page}|${rowsPerPage}`
+
   useEffect(() => {
     let active = true
-    searchDocuments(search)
+    searchDocuments(effectiveSearch, { page: page + 1, pageSize: rowsPerPage })
       .then((result) => {
-        if (active) setResult({ search, documents: result.items, error: null })
+        if (active) setResult({ key: requestKey, totalCount: result.totalCount, documents: result.items, error: null })
       })
       .catch((reason: unknown) => {
         if (active) {
           setResult({
-            search,
+            key: requestKey,
+            totalCount: 0,
             documents: [],
             error: reason instanceof Error ? reason.message : 'Documents could not be loaded.',
           })
@@ -37,14 +45,14 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
     return () => {
       active = false
     }
-  }, [search, reloadCount])
+  }, [effectiveSearch, page, rowsPerPage, requestKey, reloadCount])
 
   const handleDelete = async (document: DocumentRecord) => {
     await deleteDocument(document.id)
     setReloadCount((count) => count + 1)
   }
 
-  const loading = result?.search !== search
+  const loading = result?.key !== requestKey
   const error = loading ? null : result?.error ?? null
   const documents = loading || error ? [] : result?.documents ?? []
 
@@ -58,7 +66,10 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
         <TextField
           label="Search by document number, UEN, or company name"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setPage(0)
+          }}
           size="small"
         />
       </section>
@@ -69,6 +80,17 @@ export function DocumentHubPage({ onNavigate }: DocumentHubPageProps) {
         onView={(document) => onNavigate(`/document/${document.id}?returnTo=%2Fdocument`)}
         onEdit={setEditing}
         onDelete={handleDelete}
+        serverPaging={{
+          totalCount: result?.totalCount ?? 0,
+          page,
+          rowsPerPage,
+          onPageChange: setPage,
+          onRowsPerPageChange: setRowsPerPage,
+          onUenFilterChange: (uen) => {
+            setUenFilter(uen)
+            setPage(0)
+          },
+        }}
       />
       <DocumentEditDialog
         document={editing}
