@@ -1,4 +1,6 @@
 using ILP.Server.Config;
+using ILP.Server.Features.AccountsPayable.Configuration;
+using ILP.Server.Features.AccountsPayable.Entrypoint;
 using ILP.Server.Features.CompaniesManagement.Configuration;
 using ILP.Server.Features.CompaniesManagement.Entrypoint;
 using ILP.Server.Features.EvidenceStorage;
@@ -63,6 +65,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireAuthenticatedUser();
     });
 
+    options.AddPolicy(AccountsPayableEndpoints.AuthorizationPolicy, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+    });
+
     options.AddPolicy(EvidenceStorageServiceCollectionExtensions.AuthorizationPolicy, policy =>
     {
         policy.RequireAuthenticatedUser();
@@ -72,6 +79,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddEvidenceStorage(builder.Configuration);
 builder.Services.AddInboxExtractionPersistence();
 builder.Services.AddTransactionDocuments(builder.Configuration);
+builder.Services.AddAccountsPayable();
 builder.Services.AddCompaniesManagement();
 builder.Services.AddSingleton<DocumentNotificationBroker>();
 builder.Services.AddSingleton<IDocumentNotificationPublisher>(sp => sp.GetRequiredService<DocumentNotificationBroker>());
@@ -141,6 +149,7 @@ app.MapInboxSyncEndpoints();
 app.MapInboxWatchEndpoints();
 app.MapTransactionDocumentEndpoints();
 app.MapCompanyEndpoints();
+app.MapAccountsPayableEndpoints();
 
 app.Run();
 

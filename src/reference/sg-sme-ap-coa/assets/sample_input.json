@@ -1,0 +1,29 @@
+{
+  "document_type": "INVOICE",
+  "document_id": "TEST-001",
+  "vendor_name": "Example Office Supplies Pte Ltd (FICTIONAL)",
+  "uen": null,
+  "invoice_number": "EX-2026-001",
+  "invoice_date": "2026-11-04",
+  "currency": "SGD",
+  "lines": [
+    {
+      "description": "Office stationery",
+      "net_amount": "1000.00",
+      "gst_amount": "90.00"
+    }
+  ],
+  "gross_amount": "1090.00",
+  "company_gst_registered": true,
+  "invoice_gst_evidence_valid": true,
+  "input_gst_claimable_confirmed": true,
+  "vendor_whitelisted": true,
+  "duplicate_check_passed": true,
+  "required_documents_profile": "INVOICE_ONLY",
+  "supporting_documents_complete": true,
+  "source_evidence": [
+    "test_invoice.pdf page 1"
+  ],
+  "live_posting_authorized": false,
+  "uen_master_verified": true
+}

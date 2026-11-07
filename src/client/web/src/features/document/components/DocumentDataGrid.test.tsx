@@ -17,6 +17,12 @@ const documents: DocumentRecord[] = [
     subtotalTaxRate: 0,
     subtotalTaxAmount: 0,
     documentItems: [],
+    apJournal: {
+      confidence: 0.85,
+      gstCode: 'SG_STD_9',
+      coaSuggestions: [],
+      verificationNotes: [],
+    },
   },
   {
     id: 2,
@@ -58,12 +64,25 @@ describe('DocumentDataGrid', () => {
     expect(Array.from(row?.querySelectorAll('[data-label]') ?? []).map((cell) => cell.getAttribute('data-label'))).toEqual([
       'Document Number',
       'Company UEN & Name',
+      'Document Type',
       'Posting Date',
       'Due Date',
       'Total Amount',
       'Confidence Level',
+      'AP Confidence',
       'Actions',
     ])
+  })
+
+  it('displays document type and AP confidence when available', () => {
+    render(<DocumentDataGrid rows={documents} onView={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />)
+
+    const firstRow = screen.getByText('INV-001').closest('tr')
+    const secondRow = screen.getByText('INV-002').closest('tr')
+    expect(firstRow).toHaveTextContent('INV')
+    expect(firstRow).toHaveTextContent('85%')
+    expect(secondRow).toHaveTextContent('INV')
+    expect(secondRow).toHaveTextContent('—')
   })
 
   it('only deletes after confirmation and closes the dialog on success', async () => {

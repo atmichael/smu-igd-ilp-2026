@@ -57,8 +57,11 @@ function lineItemsOf(document: DocumentRecord): DocumentItem[] {
 }
 
 function toRows(document: DocumentRecord): Array<Array<string | number>> {
-  return lineItemsOf(document).map((item) => {
+  return lineItemsOf(document).map((item, index) => {
     const amount = item.amount ?? item.quantity * item.unitPrice
+    const lineIndex = item.serialNumber ?? index + 1
+    const apCode = document.apJournal?.coaSuggestions
+      .find((suggestion) => suggestion.lineIndex === lineIndex)?.accountCode ?? ''
     return [
       document.company.name,
       document.company.email ?? '',
@@ -78,7 +81,7 @@ function toRows(document: DocumentRecord): Array<Array<string | number>> {
       item.description,
       item.quantity,
       item.unitPrice,
-      '',
+      apCode,
       item.taxName,
       item.taxAmount ?? round2(amount * item.taxRate),
       '',

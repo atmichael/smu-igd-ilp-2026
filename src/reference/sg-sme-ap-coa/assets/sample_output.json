@@ -1,0 +1,58 @@
+{
+  "document_id": "TEST-001",
+  "vendor_name": "Example Office Supplies Pte Ltd (FICTIONAL)",
+  "invoice_number": "EX-2026-001",
+  "currency": "SGD",
+  "source_evidence": [
+    "test_invoice.pdf page 1"
+  ],
+  "coa_suggestions": [
+    {
+      "line_index": 1,
+      "account_code": "6000",
+      "account_name": "Office Supplies",
+      "net_amount": "1000.00",
+      "reason": "Stationery invoice line"
+    }
+  ],
+  "gst_code": "SG_STD_9",
+  "journal": [
+    {
+      "account_code": "6000",
+      "debit": "1000.00",
+      "credit": "0.00"
+    },
+    {
+      "account_code": "1200",
+      "debit": "90.00",
+      "credit": "0.00"
+    },
+    {
+      "account_code": "2000",
+      "debit": "0.00",
+      "credit": "1090.00"
+    }
+  ],
+  "validation": [
+    {
+      "check": "invoice_total_reconciles",
+      "passed": true
+    },
+    {
+      "check": "journal_balanced",
+      "passed": true
+    },
+    {
+      "check": "vendor_whitelisted",
+      "passed": true
+    },
+    {
+      "check": "input_tax_claim_supported",
+      "passed": true
+    }
+  ],
+  "review_reasons": [],
+  "status": "READY_FOR_APPROVAL",
+  "posted": false,
+  "note": "Fictional example with pre-confirmed tax and supplier checks; not a real tax invoice."
+}

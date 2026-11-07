@@ -17,6 +17,83 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
+            modelBuilder.Entity("ILP.Server.Features.AccountsPayable.Persistence.Entity.AccountsPayableAccountEntity", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AiSuggestion")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ApRole")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NormalBalance")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Sector")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UseWhen")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("AccountsPayableAccounts");
+                });
+
+            modelBuilder.Entity("ILP.Server.Features.AccountsPayable.Persistence.Entity.AccountsPayableGstTaxCodeEntity", b =>
+                {
+                    b.Property<string>("Code")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AutoProcessing")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InputGstAccount")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReviewConditions")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SuggestedTreatment")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Code");
+
+                    b.ToTable("AccountsPayableGstTaxCodes");
+                });
+
             modelBuilder.Entity("ILP.Server.Features.InboxMonitoring.Persistence.Entity.CompanyEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -192,6 +269,60 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                     b.ToTable("DocumentInboxMessages", null, t =>
                         {
                             t.HasCheckConstraint("CK_DocumentInboxMessages_ActiveStatus", "\"ActiveStatus\" IN (0, 1)");
+                        });
+                });
+
+            modelBuilder.Entity("ILP.Server.Features.AccountsPayable.Persistence.Entity.DocumentAPJournalEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("ActiveStatus")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("CoaSuggestionsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Confidence")
+                        .HasPrecision(5, 4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("DocumentId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("GstCode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ModifiedTime")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
+                    b.Property<string>("VerificationNotes")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DocumentId")
+                        .IsUnique();
+
+                    b.ToTable("DocumentAPJournals", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DocumentAPJournals_ActiveStatus", "\"ActiveStatus\" IN (0, 1)");
                         });
                 });
 
@@ -396,6 +527,17 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                     b.Navigation("SourceAttachment");
                 });
 
+            modelBuilder.Entity("ILP.Server.Features.AccountsPayable.Persistence.Entity.DocumentAPJournalEntity", b =>
+                {
+                    b.HasOne("ILP.Server.Features.InboxMonitoring.Persistence.Entity.DocumentEntity", "Document")
+                        .WithOne("ApJournal")
+                        .HasForeignKey("ILP.Server.Features.AccountsPayable.Persistence.Entity.DocumentAPJournalEntity", "DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Document");
+                });
+
             modelBuilder.Entity("ILP.Server.Features.InboxMonitoring.Persistence.Entity.DocumentItemEntity", b =>
                 {
                     b.HasOne("ILP.Server.Features.InboxMonitoring.Persistence.Entity.DocumentEntity", "Document")
@@ -428,6 +570,8 @@ namespace ILP.Server.Features.InboxMonitoring.Persistence.Migrations
                     b.Navigation("DocumentItems");
 
                     b.Navigation("InboxMessageMapping");
+
+                    b.Navigation("ApJournal");
                 });
 
             modelBuilder.Entity("ILP.Server.Features.InboxMonitoring.Persistence.Entity.InboxMessageAttachmentEntity", b =>

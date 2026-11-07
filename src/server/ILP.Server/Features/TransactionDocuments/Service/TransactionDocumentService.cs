@@ -1,14 +1,20 @@
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
+using ILP.Server.Features.AccountsPayable;
 using ILP.Server.Features.TransactionDocuments.Configuration;
 using ILP.Server.Features.TransactionDocuments.Model;
 using ILP.Server.Features.TransactionDocuments.Repository;
+using ILP.Shared.AccountsPayable.Abstraction;
+using ILP.Shared.AccountsPayable.Dto;
+using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 
 namespace ILP.Server.Features.TransactionDocuments.Service;
 
 public sealed class TransactionDocumentService(
     ITransactionDocumentRepository repository,
-    IOptions<TransactionDocumentsOptions> options) : ITransactionDocumentService
+    IOptions<TransactionDocumentsOptions> options,
+    IAccountsPayableCodingProcessor? accountsPayableCodingProcessor = null) : ITransactionDocumentService
 {
     public Task<DocumentSearchResponse> SearchAsync(
         string? search,
@@ -51,6 +57,40 @@ public sealed class TransactionDocumentService(
         CancellationToken cancellationToken = default,
         string? overrideBy = null)
     {
+        if (request.TypeCode is not null)
+        {
+            var existing = await repository.GetByIdAsync(id, cancellationToken);
+            if (existing is null)
+            {
+                return null;
+            }
+
+            if (!AccountsPayableDocumentType.IsInvoiceOrCreditNote(existing.TypeCode)
+                && AccountsPayableDocumentType.IsInvoiceOrCreditNote(request.TypeCode))
+            {
+                if (accountsPayableCodingProcessor is null)
+                {
+                    throw new InvalidOperationException("The accounts payable coding processor is not configured.");
+                }
+
+                var apJournal = await accountsPayableCodingProcessor.ProcessAsync(
+                    CreateDocumentForCoding(existing, request),
+                    cancellationToken);
+                request = request with
+                {
+                    ApJournal = new UpdateTransactionDocumentAPJournal(
+                        apJournal.GstCode,
+                        apJournal.CoaSuggestions.Select(suggestion => new UpdateTransactionDocumentAPSuggestion(
+                            suggestion.LineIndex,
+                            suggestion.AccountCode,
+                            suggestion.Reason,
+                            suggestion.RequiresReview)).ToArray(),
+                        apJournal.Confidence,
+                        apJournal.VerificationNotes)
+                };
+            }
+        }
+
         var updated = await repository.UpdateAsync(id, request, cancellationToken, overrideBy);
         return updated is null ? null : await GetByIdAsync(id, cancellationToken);
     }
@@ -107,5 +147,81 @@ public sealed class TransactionDocumentService(
                 : document.InboxMessageMapping.SourceAttachment.WebViewLink,
             document.ManualOverrideFlag,
             document.ManualOverrideBy,
-            document.DueDate);
+            document.DueDate,
+            MapApJournal(document.ApJournal));
+
+    private static DocumentDto CreateDocumentForCoding(
+        DocumentEntity existing,
+        UpdateTransactionDocumentRequest request)
+    {
+        var items = request.DocumentItems?.Select(item => new DocumentItemDto(
+            item.Quantity,
+            item.UnitPrice,
+            item.Id,
+            item.Description ?? string.Empty,
+            item.CurrencyCode ?? "SGD",
+            item.TaxName ?? "GST",
+            item.TaxRate,
+            item.SerialNumber,
+            item.Amount,
+            item.TaxAmount))
+            ?? existing.DocumentItems.Where(item => item.ActiveStatus).Select(item => new DocumentItemDto(
+                item.Quantity,
+                item.UnitPrice,
+                item.Id,
+                item.Description,
+                item.CurrencyCode,
+                item.TaxName,
+                item.TaxRate,
+                item.SerialNumber,
+                item.Amount,
+                item.TaxAmount));
+        var company = new CompanyDto(
+            request.CompanyName?.Trim() ?? existing.Company.Name,
+            request.CompanyUen?.Trim() ?? string.Empty,
+            existing.Company.Address,
+            existing.Company.TaxRegistrationNumber,
+            existing.Company.Id,
+            existing.Company.Email);
+
+        return new DocumentDto(
+            request.RefNumber?.Trim() ?? existing.RefNumber,
+            request.TypeCode!.Trim(),
+            request.SentDate,
+            request.TotalAmount,
+            items,
+            existing.Id,
+            request.RelatedDocumentNumbers,
+            request.Subtotal,
+            existing.SubtotalTaxRate,
+            request.SubtotalTaxAmount,
+            company,
+            existing.Confidence,
+            request.DueDate);
+    }
+
+    private static DocumentAPJournalDto? MapApJournal(ILP.Server.Features.AccountsPayable.Persistence.Entity.DocumentAPJournalEntity? apJournal)
+    {
+        if (apJournal is null || !apJournal.ActiveStatus)
+        {
+            return null;
+        }
+
+        IReadOnlyList<AccountsPayableLineSuggestion> suggestions;
+        try
+        {
+            suggestions = JsonSerializer.Deserialize<List<AccountsPayableLineSuggestion>>(
+                apJournal.CoaSuggestionsJson) ?? [];
+        }
+        catch (JsonException)
+        {
+            suggestions = [];
+        }
+
+        return new DocumentAPJournalDto(
+            apJournal.Confidence,
+            apJournal.GstCode,
+            suggestions,
+            apJournal.VerificationNotes.Split('|', StringSplitOptions.RemoveEmptyEntries));
+    }
 }

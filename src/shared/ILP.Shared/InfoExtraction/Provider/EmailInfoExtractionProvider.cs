@@ -1,9 +1,6 @@
 ﻿using ILP.Server.Config;
-using ILP.Shared.Helper;
 using ILP.Shared.InfoExtraction.Model.Dto;
-using Newtonsoft.Json;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -24,37 +21,8 @@ namespace ILP.Shared.InfoExtraction.Provider
                 return "";
             }
 
-            string traceId = string.IsNullOrEmpty(parentTraceId) ? Guid.NewGuid().ToString() : parentTraceId;
-
             var request = await GetChatRequest(emailBody, attachmentPath, systemPrompt, inlineImages);
-            string requestJson = JsonConvert.SerializeObject(request);
-
-            LogHelper.Trace(traceId, $"OpenRouterRequest: {requestJson}");
-
-            // 3. Make HTTP request to OpenRouter API
-            string responseJson = "";
-            using (var client = new HttpClient())
-            {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", OpenRouterConfig.Key);
-                client.DefaultRequestHeaders.Add("HTTP-Referer", "https://your-app-domain.com");
-                client.DefaultRequestHeaders.Add("X-Title", ".NET 10 Native PDF Reader");
-                client.DefaultRequestHeaders.Add("Trace-ID", traceId);
-
-                var content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-                HttpResponseMessage response = await client.PostAsync("https://openrouter.ai/api/v1/chat/completions", content);
-                responseJson = await response.Content.ReadAsStringAsync();
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    throw new Exception($"OpenRouter API Error: {response.StatusCode} - {responseJson}");
-                }
-
-                LogHelper.Trace(traceId, $"OpenRouterResponse: {responseJson}");
-            }
-
-            // 4. Extract and return content response
-            var doc = JsonConvert.DeserializeObject<ChatCompletionResponseDto>(responseJson);
-            return doc == null ? "" : string.Join(",", doc.Choices.Select(s => s.Message.Content).ToArray());
+            return await OpenRouterChatClient.GetCompletionAsync(request, parentTraceId);
         }
 
         internal static async Task<ChatRequestDto> GetChatRequest(string emailBody, string attachmentPath, string systemPrompt, IReadOnlyDictionary<string, string>? inlineImages = null)

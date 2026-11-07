@@ -48,6 +48,26 @@ describe('xero exporter', () => {
     expect(lines[1]).toContain(',1,20,')
   })
 
+  it('writes the suggested AP account code to Xero AccountCode for each line', () => {
+    const codedDocument: DocumentRecord = {
+      ...document,
+      apJournal: {
+        confidence: 0.9,
+        gstCode: 'SG_STD_9',
+        coaSuggestions: [
+          { lineIndex: 1, accountCode: '6000', reason: 'Stationery' },
+          { lineIndex: 2, accountCode: '6040', reason: 'Software' },
+        ],
+        verificationNotes: [],
+      },
+    }
+
+    const lines = exporter.toCsv([codedDocument]).trimEnd().split('\r\n')
+
+    expect(lines[1].split(',')[19]).toBe('6000')
+    expect(lines[2].split(',')[19]).toBe('6040')
+  })
+
   it('names the file by generation date', () => {
     expect(exporter.fileName(new Date('2026-10-31T01:00:00Z'))).toBe('xero-bills-2026-10-31.csv')
   })

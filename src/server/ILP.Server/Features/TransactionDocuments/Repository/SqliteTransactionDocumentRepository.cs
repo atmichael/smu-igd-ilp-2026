@@ -1,7 +1,11 @@
 using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
+using ILP.Server.Features.AccountsPayable.Persistence.Entity;
+using ILP.Server.Features.AccountsPayable;
 using ILP.Server.Features.TransactionDocuments.Model;
+using ILP.Shared.AccountsPayable.Dto;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace ILP.Server.Features.TransactionDocuments.Repository;
 
@@ -21,7 +25,8 @@ public sealed class SqliteTransactionDocumentRepository(
         IQueryable<DocumentEntity> documents = context.Documents
             .Where(document => document.ActiveStatus)
             .Include(document => document.Company)
-            .Include(document => document.DocumentItems);
+            .Include(document => document.DocumentItems)
+            .Include(document => document.ApJournal);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -36,7 +41,15 @@ public sealed class SqliteTransactionDocumentRepository(
         if (confidenceThreshold.HasValue)
         {
             documents = documents.Where(document =>
-                document.Confidence <= confidenceThreshold && document.ManualOverrideFlag != true);
+                document.ManualOverrideFlag != true
+                && ((document.Confidence == null || document.Confidence <= confidenceThreshold)
+                    || ((document.TypeCode.ToLower() == "invoice"
+                         || document.TypeCode.ToLower() == "credit-note"
+                         || document.TypeCode.ToLower() == "credit note")
+                        && document.Confidence > confidenceThreshold
+                        && document.ApJournal != null
+                        && (document.ApJournal.Confidence == null
+                            || document.ApJournal.Confidence <= confidenceThreshold))));
         }
 
         var totalCount = await documents.CountAsync(cancellationToken);
@@ -58,7 +71,8 @@ public sealed class SqliteTransactionDocumentRepository(
         IQueryable<DocumentEntity> documents = context.Documents
             .Where(document => document.ActiveStatus)
             .Include(document => document.Company)
-            .Include(document => document.DocumentItems);
+            .Include(document => document.DocumentItems)
+            .Include(document => document.ApJournal);
 
         if (createdFrom.HasValue)
         {
@@ -83,6 +97,7 @@ public sealed class SqliteTransactionDocumentRepository(
             .Where(document => document.ActiveStatus && document.Id == id)
             .Include(document => document.Company)
             .Include(document => document.DocumentItems)
+            .Include(document => document.ApJournal)
             .Include(document => document.InboxMessageMapping)
                 .ThenInclude(mapping => mapping!.SourceAttachment)
             .SingleOrDefaultAsync(cancellationToken);
@@ -99,6 +114,7 @@ public sealed class SqliteTransactionDocumentRepository(
         var document = await context.Documents
             .Where(candidate => candidate.ActiveStatus && candidate.Id == id)
             .Include(candidate => candidate.DocumentItems)
+            .Include(candidate => candidate.ApJournal)
             .SingleOrDefaultAsync(cancellationToken);
         if (document is null)
         {
@@ -109,6 +125,17 @@ public sealed class SqliteTransactionDocumentRepository(
         var company = await FindOrCreateCompanyAsync(context, request, now, cancellationToken);
         document.Company = company;
         document.RefNumber = request.RefNumber!.Trim();
+        if (request.TypeCode is not null)
+        {
+            var wasInvoiceOrCreditNote = AccountsPayableDocumentType.IsInvoiceOrCreditNote(document.TypeCode);
+            document.TypeCode = request.TypeCode.Trim();
+            if (wasInvoiceOrCreditNote
+                && !AccountsPayableDocumentType.IsInvoiceOrCreditNote(document.TypeCode)
+                && document.ApJournal is { ActiveStatus: true } journalToDeactivate)
+            {
+                Deactivate(journalToDeactivate, now);
+            }
+        }
         document.SentDate = request.SentDate;
         document.DueDate = request.DueDate;
         document.Subtotal = request.Subtotal;
@@ -149,6 +176,47 @@ public sealed class SqliteTransactionDocumentRepository(
         foreach (var removed in existingItems.Values.Where(item => !keptItemIds.Contains(item.Id)))
         {
             Deactivate(removed, now);
+        }
+
+        var requestedApJournal = request.ApJournal;
+        if (requestedApJournal is not null
+            && AccountsPayableDocumentType.IsInvoiceOrCreditNote(document.TypeCode))
+        {
+            var apJournal = document.ApJournal;
+            if (apJournal is null)
+            {
+                apJournal = new DocumentAPJournalEntity
+                {
+                    Document = document,
+                    CreatedTime = now,
+                    ModifiedTime = now
+                };
+                context.DocumentAPJournals.Add(apJournal);
+            }
+            else
+            {
+                apJournal.Version++;
+                apJournal.ModifiedTime = now;
+                apJournal.ActiveStatus = true;
+            }
+
+            apJournal.GstCode = requestedApJournal.GstCode?.Trim() ?? "";
+            apJournal.CoaSuggestionsJson = JsonSerializer.Serialize(
+                (requestedApJournal.CoaSuggestions ?? [])
+                .Select(suggestion => new ILP.Shared.AccountsPayable.Dto.AccountsPayableLineSuggestion(
+                    suggestion.LineIndex,
+                    suggestion.AccountCode?.Trim() ?? "",
+                    suggestion.Reason?.Trim() ?? "",
+                    suggestion.RequiresReview)));
+            if (requestedApJournal.Confidence.HasValue)
+            {
+                apJournal.Confidence = requestedApJournal.Confidence;
+            }
+
+            if (requestedApJournal.VerificationNotes is not null)
+            {
+                apJournal.VerificationNotes = string.Join('|', requestedApJournal.VerificationNotes);
+            }
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -211,6 +279,7 @@ public sealed class SqliteTransactionDocumentRepository(
         var document = await context.Documents
             .Where(candidate => candidate.ActiveStatus && candidate.Id == id)
             .Include(candidate => candidate.DocumentItems)
+            .Include(candidate => candidate.ApJournal)
             .Include(candidate => candidate.InboxMessageMapping)
             .SingleOrDefaultAsync(cancellationToken);
         if (document is null)
@@ -228,6 +297,11 @@ public sealed class SqliteTransactionDocumentRepository(
         if (document.InboxMessageMapping is { ActiveStatus: true } mapping)
         {
             Deactivate(mapping, now);
+        }
+
+        if (document.ApJournal is { ActiveStatus: true } apJournal)
+        {
+            Deactivate(apJournal, now);
         }
 
         await context.SaveChangesAsync(cancellationToken);

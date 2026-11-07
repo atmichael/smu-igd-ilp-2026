@@ -1,3 +1,5 @@
+using ILP.Shared.AccountsPayable.Abstraction;
+using ILP.Shared.AccountsPayable.Dto;
 using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
 using ILP.Shared.InboxMonitoring.Dto;
@@ -78,6 +80,21 @@ public class InboxSyncServiceTest
         {
             Saves.Add(mappings);
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeAccountsPayableCodingProcessor : IAccountsPayableCodingProcessor
+    {
+        public List<DocumentDto> ProcessedDocuments { get; } = [];
+
+        public Task<DocumentAPJournalDto> ProcessAsync(DocumentDto document, CancellationToken cancellationToken)
+        {
+            ProcessedDocuments.Add(document);
+            return Task.FromResult(new DocumentAPJournalDto(
+                0.82m,
+                "SG_UNKNOWN",
+                [new AccountsPayableLineSuggestion(1, "6000", "Office supplies", true)],
+                ["Invoice totals do not reconcile", "GST treatment requires verification"]));
         }
     }
 
@@ -264,6 +281,38 @@ public class InboxSyncServiceTest
             Assert.Single(mapping.InboxMessage.GoogleDriveAttachments).WebViewLink);
         Assert.Equal("drive-file-id", mapping.SourceAttachment?.DriveFileId);
         Assert.False(File.Exists(file));
+    }
+
+    [Fact]
+    public async Task SyncAsync_Invoice_PersistsAccountsPayableCodingAndVerificationNotes()
+    {
+        var persistence = new FakePersistence();
+        var codingProcessor = new FakeAccountsPayableCodingProcessor();
+        var sut = new InboxSyncService(
+            new FakeSource(new InboxMessageDto { UniqueId = 32, Body = "b" }),
+            new FixedExtractor("""
+                [HEADER]
+                document-number| INV-32
+                document-type| Invoice
+                company-uen| UEN-32
+                [LINE_ITEMS]
+                1|Office supplies|1|10|10|0.09|0.90
+                [CONFIDENCE]
+                confidence|0.98
+                """),
+            Opts(),
+            persistence: persistence,
+            accountsPayableCodingProcessor: codingProcessor);
+
+        await sut.SyncAsync();
+
+        Assert.Equal("INV-32", Assert.Single(codingProcessor.ProcessedDocuments).RefNumber);
+        var mapping = Assert.Single(Assert.Single(persistence.Saves));
+        Assert.Equal(0.82m, mapping.ApJournal!.Confidence);
+        Assert.Equal("SG_UNKNOWN", mapping.ApJournal.GstCode);
+        Assert.Equal(
+            ["Invoice totals do not reconcile", "GST treatment requires verification"],
+            mapping.ApJournal.VerificationNotes);
     }
 
     private const string InvoiceContent = """

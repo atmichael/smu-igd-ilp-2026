@@ -2,6 +2,7 @@ using ILP.Server.Config;
 
 namespace ILP.Shared.Test.InfoExtraction.Config;
 
+[Collection("PromptConfigDependentTests")]
 public partial class PromptConfigTest
 {
     [Fact]

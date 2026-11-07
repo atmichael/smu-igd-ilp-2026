@@ -39,6 +39,31 @@ export interface DocumentRecord {
   originalFileUrl?: string | null
   originalFileBase64?: string | null
   originalFileContentType?: string | null
+  apJournal?: DocumentAPJournal | null
+}
+
+export interface DocumentAPSuggestion {
+  lineIndex: number
+  accountCode: string
+  reason: string
+  requiresReview?: boolean
+}
+
+export interface DocumentAPJournal {
+  confidence: number | null
+  gstCode: string
+  coaSuggestions: DocumentAPSuggestion[]
+  verificationNotes: string[]
+}
+
+export interface AccountsPayableReferenceData {
+  accounts: Array<{
+    code: string
+    name: string
+    apRole: string
+    enabled: boolean
+  }>
+  gstCodes: Array<{ code: string; description: string }>
 }
 
 export interface DocumentUpdateItem {
@@ -56,6 +81,7 @@ export interface DocumentUpdateItem {
 
 export interface DocumentUpdateRequest {
   refNumber: string
+  typeCode?: string
   sentDate: string
   dueDate?: string | null
   companyUen: string | null
@@ -66,6 +92,10 @@ export interface DocumentUpdateRequest {
   relatedDocumentNumbers: string | null
   documentItems: DocumentUpdateItem[]
   manualOverrideFlag?: boolean | null
+  apJournal?: {
+    gstCode: string
+    coaSuggestions: Array<{ lineIndex: number; accountCode: string; reason: string }>
+  } | null
 }
 
 export interface DocumentSearchResponse {
