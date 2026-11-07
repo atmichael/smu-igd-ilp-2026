@@ -30,6 +30,14 @@ interface DocumentDataGridProps {
   onView: (document: DocumentRecord) => void
   onEdit: (document: DocumentRecord) => void
   onDelete: (document: DocumentRecord) => void | Promise<void>
+  serverPaging?: {
+    totalCount: number
+    page: number
+    rowsPerPage: number
+    onPageChange: (page: number) => void
+    onRowsPerPageChange: (rowsPerPage: number) => void
+    onUenFilterChange: (uen: string) => void
+  }
 }
 
 function confidenceMatches(value: number | null | undefined, filter: ConfidenceFilter): boolean {
@@ -50,14 +58,24 @@ function displayAmount(value: number): string {
   return new Intl.NumberFormat('en-SG', { style: 'currency', currency: 'SGD' }).format(value)
 }
 
-export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDataGridProps) {
+export function DocumentDataGrid({ rows, onView, onEdit, onDelete, serverPaging }: DocumentDataGridProps) {
   const [uenFilter, setUenFilter] = useState('')
   const [dueDateFilter, setDueDateFilter] = useState('')
   const [confidenceFilter, setConfidenceFilter] = useState<ConfidenceFilter>('all')
   const [sortField, setSortField] = useState<SortField>('refNumber')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-  const [page, setPage] = useState(0)
-  const [rowsPerPage, setRowsPerPage] = useState(25)
+  const [localPage, setLocalPage] = useState(0)
+  const [localRowsPerPage, setLocalRowsPerPage] = useState(25)
+  const page = serverPaging ? serverPaging.page : localPage
+  const rowsPerPage = serverPaging ? serverPaging.rowsPerPage : localRowsPerPage
+  const setPage = (next: number) => {
+    if (serverPaging) serverPaging.onPageChange(next)
+    else setLocalPage(next)
+  }
+  const setRowsPerPage = (next: number) => {
+    if (serverPaging) serverPaging.onRowsPerPageChange(next)
+    else setLocalRowsPerPage(next)
+  }
   const [pendingDelete, setPendingDelete] = useState<DocumentRecord | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -86,7 +104,7 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
     const filtered = rows.filter((row) => {
       const uen = row.company?.uen ?? ''
       return (
-        uen.toLowerCase().includes(uenFilter.trim().toLowerCase()) &&
+        (serverPaging || uen.toLowerCase().includes(uenFilter.trim().toLowerCase())) &&
         (!dueDateFilter || row.dueDate?.slice(0, 10) === dueDateFilter) &&
         confidenceMatches(row.confidence, confidenceFilter)
       )
@@ -107,7 +125,7 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
       const compared = leftValue.localeCompare(rightValue, undefined, { numeric: true })
       return sortDirection === 'asc' ? compared : -compared
     })
-  }, [rows, uenFilter, dueDateFilter, confidenceFilter, sortField, sortDirection])
+  }, [rows, serverPaging, uenFilter, dueDateFilter, confidenceFilter, sortField, sortDirection])
 
   const selectSort = (field: SortField) => {
     if (sortField === field) {
@@ -138,6 +156,7 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
           value={uenFilter}
           onChange={(event) => {
             setUenFilter(event.target.value)
+            serverPaging?.onUenFilterChange(event.target.value)
             setPage(0)
           }}
         />
@@ -184,7 +203,7 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
             </TableRow>
           </TableHead>
           <TableBody>
-            {visibleRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => (
+            {(serverPaging ? visibleRows : visibleRows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)).map((row) => (
               <TableRow key={row.id} hover>
                 <TableCell data-label="Document Number">{row.refNumber}</TableCell>
                 <TableCell data-label="Company UEN & Name">
@@ -225,7 +244,7 @@ export function DocumentDataGrid({ rows, onView, onEdit, onDelete }: DocumentDat
       </TableContainer>
       <TablePagination
         component="div"
-        count={visibleRows.length}
+        count={serverPaging ? serverPaging.totalCount : visibleRows.length}
         page={page}
         onPageChange={(_event, nextPage) => setPage(nextPage)}
         rowsPerPage={rowsPerPage}
