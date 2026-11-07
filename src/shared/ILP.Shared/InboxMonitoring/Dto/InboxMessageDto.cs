@@ -9,6 +9,10 @@ public sealed class InboxMessageDto
 
     public string From { get; init; } = "";
 
+    public string ReplyTo { get; init; } = "";
+
+    public string? MessageId { get; init; }
+
     public string Body { get; init; } = "";
 
     public IReadOnlyDictionary<string, string> InlineImages { get; init; } =
@@ -16,6 +20,8 @@ public sealed class InboxMessageDto
 
     /// <summary>Temporary files holding attachments; deleted by the sync service once processed.</summary>
     public IReadOnlyList<string> AttachmentPaths { get; init; } = [];
+
+    public IReadOnlyDictionary<string, string> AttachmentNames { get; init; } = new Dictionary<string, string>();
 
     public IReadOnlyList<InboxMessageAttachmentDto> GoogleDriveAttachments { get; init; } = [];
 }

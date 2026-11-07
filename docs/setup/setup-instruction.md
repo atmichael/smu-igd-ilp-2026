@@ -102,6 +102,8 @@ Original files are in MySQL as above. Source-document records, including idempot
 
 For OpenRouter testing, put your API key on the first line of `deploy/secrets/openrouter-api.key`. The API and collector read this location from their `appsettings.json`; `ILP.Console` reads it from `App.config`. If you move the repository, update the configured key path. Keep the key local; files under `deploy/secrets/` are ignored by Git except `.gitkeep`.
 
+Configure `InboxMonitoring:AttachmentLimitInMB` in the server and collector settings to the same positive whole number. It defaults to 2 MB (2 × 1024 × 1024 bytes) per file, inclusive. The server exposes this value through `GET /api/config` for the upload UI. Emails with an oversized attachment are not ingested; a reply is sent and the message marked read, independently of `AutoMarkAsRead`. Camera pages sent to the inbox are subject to the same limit. If marking read fails after a reply, retries in the same process do not send another reply; a restart can resend it. Ensure any proxy and server request-body limits allow the configured file size plus multipart overhead.
+
 ## Test locally with Ollama
 
 This is a manual prompt experiment; the console prototype is not currently wired to Ollama. Install [Ollama for Windows](https://ollama.com/download/windows), then run:

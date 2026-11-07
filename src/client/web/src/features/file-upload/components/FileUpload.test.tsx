@@ -30,7 +30,7 @@ function makeFile(name: string, type = 'application/pdf', size?: number): File {
 function renderUpload(overrides: Partial<React.ComponentProps<typeof FileUpload>> = {}) {
   const onSubmit = vi.fn<SubmitFn>().mockResolvedValue(received)
   const onExit = vi.fn()
-  const view = render(<FileUpload onExit={onExit} onSubmit={onSubmit} {...overrides} />)
+  const view = render(<FileUpload onExit={onExit} onSubmit={onSubmit} limitInMB={20} {...overrides} />)
   const input = () => view.container.querySelector('input[type="file"]') as HTMLInputElement
   const choose = (file: File) => fireEvent.change(input(), { target: { files: [file] } })
   return { onSubmit, onExit, input, choose, ...view }

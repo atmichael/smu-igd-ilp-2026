@@ -10,6 +10,10 @@ public sealed class InboxMonitoringOptions
 
     public int PollIntervalSeconds { get; set; } = 86400;
 
+    public int AttachmentLimitInMB { get; set; } = 2;
+
+    public long AttachmentLimitInBytes => checked((long)AttachmentLimitInMB * 1024 * 1024);
+
     public string EmailAddress { get; set; } = "";
 
     public bool SendSourceDocumentsToEmail { get; set; }

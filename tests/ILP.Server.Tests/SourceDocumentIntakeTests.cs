@@ -428,10 +428,9 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
     {
         var client = AuthorizedClient(Guid.NewGuid().ToString());
 
-        var response = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(SourceDocumentLimits.FileUploadMaxBytes), "image/png", "exact.png"));
+        var response = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(2 * 1024 * 1024), "image/png", "exact.png"));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        Assert.Equal(20 * 1024 * 1024, SourceDocumentLimits.FileUploadMaxBytes);
     }
 
     [Fact]
@@ -440,12 +439,26 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         var store = new CountingContentStore();
         var client = ClientWith(store);
 
-        var response = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(SourceDocumentLimits.FileUploadMaxBytes + 1), "image/png", "big.png"));
+        var response = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(2 * 1024 * 1024 + 1), "image/png", "big.png"));
 
         Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-        Assert.Contains("20 MB", await response.Content.ReadAsStringAsync());
+        Assert.Contains("2 MB", await response.Content.ReadAsStringAsync());
         Assert.Equal(0, store.SaveCalls);
+    }
+
+    [Fact]
+    public async Task ConfigAndUpload_UseConfiguredAttachmentLimit()
+    {
+        var factory = _factory.WithWebHostBuilder(builder => builder.UseSetting("InboxMonitoring:AttachmentLimitInMB", "3"));
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", "camera-capture");
+        client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
+
+        var config = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/config");
+        Assert.Equal(3, config.GetProperty("attachmentLimitInMB").GetInt32());
+        var response = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(3 * 1024 * 1024), "image/png", "exact.png"));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]
@@ -469,12 +482,27 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
     public async Task PostSourceDocuments_CameraCaptureLargerThanTheUploadLimit_IsStillAccepted()
     {
         var client = AuthorizedClient(Guid.NewGuid().ToString());
-        var page = new byte[(int)SourceDocumentLimits.FileUploadMaxBytes + 1024];
+        var page = new byte[2 * 1024 * 1024 + 1024];
         JpegBytes.CopyTo(page, 0);
 
         var response = await client.PostAsync("/api/source-documents", CameraCapture(page));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostSourceDocuments_OversizedCameraPageRoutedToInbox_IsRejected()
+    {
+        var sender = new FakeInboxMessageSender();
+        var client = EmailEnabledClient(sender);
+        var page = new byte[2 * 1024 * 1024 + 1];
+        JpegBytes.CopyTo(page, 0);
+
+        var response = await client.PostAsync("/api/source-documents", CameraCapture(page));
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        Assert.Contains("2 MB", await response.Content.ReadAsStringAsync());
+        Assert.Empty(sender.SentEmails);
     }
 
     [Fact]
@@ -570,7 +598,7 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
         var unsupported = await client.PostAsync("/api/source-documents", FileUpload(System.Text.Encoding.UTF8.GetBytes(contentMarker), "text/plain", secretName));
         client.DefaultRequestHeaders.Remove("Idempotency-Key");
         client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
-        var oversize = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(SourceDocumentLimits.FileUploadMaxBytes + 1), "image/png", secretName));
+        var oversize = await client.PostAsync("/api/source-documents", FileUpload(PngOfSize(2 * 1024 * 1024 + 1), "image/png", secretName));
 
         Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
         Assert.Equal(HttpStatusCode.UnsupportedMediaType, unsupported.StatusCode);
@@ -828,6 +856,7 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
 
     private sealed class FakeInboxMessageSender : IInboxMessageSender
     {
+        public Task SendOversizeReplyAsync(InboxMessageDto message, IReadOnlyList<string> names, int limitInMB, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public List<SentEmail> SentEmails { get; } = [];
 
         public Task SendAttachmentsAsync(

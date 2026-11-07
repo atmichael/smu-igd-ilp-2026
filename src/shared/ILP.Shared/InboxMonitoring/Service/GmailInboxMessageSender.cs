@@ -28,7 +28,6 @@ public sealed class GmailInboxMessageSender : IInboxMessageSender
         IReadOnlyList<EmailAttachmentDto> attachments,
         CancellationToken cancellationToken = default)
     {
-        var credential = await AuthorizeAsync(cancellationToken);
         var message = new MimeMessage();
         message.From.Add(MailboxAddress.Parse(_options.EmailAddress));
         message.To.Add(MailboxAddress.Parse(recipient));
@@ -45,13 +44,50 @@ public sealed class GmailInboxMessageSender : IInboxMessageSender
 
         message.Body = bodyBuilder.ToMessageBody();
 
+        await SendAsync(message, cancellationToken);
+    }
+
+    public async Task SendOversizeReplyAsync(
+        InboxMessageDto original,
+        IReadOnlyList<string> names,
+        int limitInMB,
+        CancellationToken cancellationToken = default)
+    {
+        await SendAsync(CreateOversizeReply(original, names, limitInMB, _options.EmailAddress), cancellationToken);
+    }
+
+    internal static MimeMessage CreateOversizeReply(InboxMessageDto original, IReadOnlyList<string> names, int limitInMB, string emailAddress)
+    {
+        var message = new MimeMessage();
+        message.From.Add(MailboxAddress.Parse(emailAddress));
+        message.To.Add(MailboxAddress.Parse(original.ReplyTo));
+        message.Subject = original.Subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase)
+            ? original.Subject : $"Re: {original.Subject}";
+        if (!string.IsNullOrWhiteSpace(original.MessageId))
+        {
+            message.InReplyTo = original.MessageId;
+            message.References.Add(original.MessageId);
+        }
+
+        var safeNames = names.Select(name => new string(name.Where(c => !char.IsControl(c)).ToArray()));
+        message.Body = new TextPart("plain")
+        {
+            Text = $"Hello,\n\nThank you for your email. The following attachment(s) exceed our {limitInMB} MB per-file limit: "
+                + $"{string.Join(", ", safeNames)}.\n\nWe could not process this email. Please resend all attachments as separate files, each no larger than {limitInMB} MB.\n\nThank you."
+        };
+        message.Headers.Add("Auto-Submitted", "auto-replied");
+        return message;
+    }
+
+    private async Task SendAsync(MimeMessage message, CancellationToken cancellationToken)
+    {
+        var credential = await AuthorizeAsync(cancellationToken);
         using var client = new SmtpClient();
         await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls, cancellationToken);
         await client.AuthenticateAsync(
             new SaslMechanismOAuth2(_options.EmailAddress, credential.Token.AccessToken),
             cancellationToken);
         await client.SendAsync(message, cancellationToken);
-        await client.DisconnectAsync(true, cancellationToken);
     }
 
     private async Task<UserCredential> AuthorizeAsync(CancellationToken cancellationToken)
