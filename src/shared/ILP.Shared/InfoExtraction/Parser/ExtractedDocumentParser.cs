@@ -9,6 +9,12 @@ namespace ILP.Shared.InfoExtraction.Parser
     public static class ExtractedDocumentParser
     {
         private const string DocumentMarker = "[DOCUMENT]";
+        private static readonly string[] InvoiceAliases =
+        [
+            "Bill",
+            "Receipt",
+            "Debit Note"
+        ];
         private static readonly string[] DocumentTypes =
         [
             "Invoice",
@@ -183,6 +189,12 @@ namespace ILP.Shared.InfoExtraction.Parser
             }
 
             var normalizedValue = value.Replace('-', ' ').Replace('_', ' ');
+            if (InvoiceAliases.Any(alias =>
+                normalizedValue.Contains(alias, StringComparison.OrdinalIgnoreCase)))
+            {
+                return "Invoice";
+            }
+
             return DocumentTypes.FirstOrDefault(type =>
                 normalizedValue.Contains(type, StringComparison.OrdinalIgnoreCase)) ?? value;
         }
