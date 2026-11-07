@@ -73,7 +73,7 @@ public sealed class GmailInboxMessageSender : IInboxMessageSender
         message.Body = new TextPart("plain")
         {
             Text = $"Hello,\n\nThank you for your email. The following attachment(s) exceed our {limitInMB} MB per-file limit: "
-                + $"{string.Join(", ", safeNames)}.\n\nPlease resend them as separate files, each no larger than {limitInMB} MB.\n\nThank you."
+                + $"{string.Join(", ", safeNames)}.\n\nWe could not process this email. Please resend all attachments as separate files, each no larger than {limitInMB} MB.\n\nThank you."
         };
         message.Headers.Add("Auto-Submitted", "auto-replied");
         return message;

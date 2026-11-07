@@ -18,71 +18,98 @@ public class InboxSyncServiceTest
             Task.FromResult<IReadOnlyList<InboxMessageDto>>(messages);
 
         public List<uint> MarkedAsRead { get; } = [];
+        public bool FailMarkOnce { get; set; }
 
         public Task MarkAsReadAsync(IReadOnlyCollection<uint> uniqueIds, string traceId, CancellationToken cancellationToken)
         {
+            if (FailMarkOnce)
+            {
+                FailMarkOnce = false;
+                throw new IOException("Mark failed");
+            }
             MarkedAsRead.AddRange(uniqueIds);
             return Task.CompletedTask;
         }
     }
 
-        private sealed class FakeSender : IInboxMessageSender
+    private sealed class FakeSender : IInboxMessageSender
+    {
+        public List<(InboxMessageDto Message, IReadOnlyList<string> Names)> Replies { get; } = [];
+        public bool Fail { get; set; }
+
+        public Task SendAttachmentsAsync(string recipient, string subject, string body, IReadOnlyList<EmailAttachmentDto> attachments, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task SendOversizeReplyAsync(InboxMessageDto message, IReadOnlyList<string> names, int limitInMB, CancellationToken cancellationToken = default)
         {
-            public List<(InboxMessageDto Message, IReadOnlyList<string> Names)> Replies { get; } = [];
-            public bool Fail { get; set; }
-
-            public Task SendAttachmentsAsync(string recipient, string subject, string body, IReadOnlyList<EmailAttachmentDto> attachments, CancellationToken cancellationToken = default) => Task.CompletedTask;
-
-            public Task SendOversizeReplyAsync(InboxMessageDto message, IReadOnlyList<string> names, int limitInMB, CancellationToken cancellationToken = default)
-            {
-                if (Fail) throw new InvalidOperationException("Send failed");
-                Replies.Add((message, names));
-                return Task.CompletedTask;
-            }
+            if (Fail) throw new InvalidOperationException("Send failed");
+            Replies.Add((message, names));
+            return Task.CompletedTask;
         }
+    }
 
-        [Theory]
-        [InlineData(2097151, false)]
-        [InlineData(2097152, false)]
-        [InlineData(2097153, true)]
-        public async Task SyncAsync_AttachmentSize_EnforcesInclusiveLimit(int size, bool oversized)
+    [Theory]
+    [InlineData(2097151, false)]
+    [InlineData(2097152, false)]
+    [InlineData(2097153, true)]
+    public async Task SyncAsync_AttachmentSize_EnforcesInclusiveLimit(int size, bool oversized)
+    {
+        string file = Path.GetTempFileName();
+        using (var stream = File.OpenWrite(file)) stream.SetLength(size);
+        var source = new FakeSource(new InboxMessageDto
         {
-            string file = Path.GetTempFileName();
-            using (var stream = File.OpenWrite(file)) stream.SetLength(size);
-            var source = new FakeSource(new InboxMessageDto
-            {
-                UniqueId = 42, From = "supplier@example.com", AttachmentPaths = [file],
-                AttachmentNames = new Dictionary<string, string> { [file] = "invoice.pdf" }
-            });
-            var sender = new FakeSender();
-            var extractor = new FakeExtractor();
-            var sut = new InboxSyncService(source, extractor, Opts("N"), messageSender: sender);
+            UniqueId = 42,
+            From = "supplier@example.com",
+            AttachmentPaths = [file],
+            AttachmentNames = new Dictionary<string, string> { [file] = "invoice.pdf" }
+        });
+        var sender = new FakeSender();
+        var extractor = new FakeExtractor();
+        var sut = new InboxSyncService(source, extractor, Opts("N"), messageSender: sender);
 
-            await sut.SyncAsync();
+        await sut.SyncAsync();
 
-            Assert.Equal(oversized ? 1 : 0, sender.Replies.Count);
-            Assert.Equal(oversized ? 0 : 1, extractor.Calls.Count);
-            Assert.Equal(oversized ? new uint[] { 42 } : [], source.MarkedAsRead);
-            if (oversized) Assert.Equal("invoice.pdf", Assert.Single(sender.Replies[0].Names));
-            Assert.False(File.Exists(file));
-        }
+        Assert.Equal(oversized ? 1 : 0, sender.Replies.Count);
+        Assert.Equal(oversized ? 0 : 1, extractor.Calls.Count);
+        Assert.Equal(oversized ? new uint[] { 42 } : [], source.MarkedAsRead);
+        if (oversized) Assert.Equal("invoice.pdf", Assert.Single(sender.Replies[0].Names));
+        Assert.False(File.Exists(file));
+    }
 
-        [Fact]
-        public async Task SyncAsync_WhenOversizeReplyFails_DoesNotMarkReadOrExtract()
-        {
-            string file = Path.GetTempFileName();
-            using (var stream = File.OpenWrite(file)) stream.SetLength(2097153);
-            var source = new FakeSource(new InboxMessageDto { UniqueId = 42, AttachmentPaths = [file] });
-            var extractor = new FakeExtractor();
-            var sut = new InboxSyncService(source, extractor, Opts(), messageSender: new FakeSender { Fail = true });
+    [Fact]
+    public async Task SyncAsync_WhenOversizeReplyFails_DoesNotMarkReadOrExtract()
+    {
+        string file = Path.GetTempFileName();
+        using (var stream = File.OpenWrite(file)) stream.SetLength(2097153);
+        var source = new FakeSource(new InboxMessageDto { UniqueId = 42, AttachmentPaths = [file] });
+        var extractor = new FakeExtractor();
+        var sut = new InboxSyncService(source, extractor, Opts(), messageSender: new FakeSender { Fail = true });
 
-            var result = await sut.SyncAsync();
+        var result = await sut.SyncAsync();
 
-            Assert.Equal(1, result.MessagesFailed);
-            Assert.Empty(source.MarkedAsRead);
-            Assert.Empty(extractor.Calls);
-            Assert.False(File.Exists(file));
-        }
+        Assert.Equal(1, result.MessagesFailed);
+        Assert.Empty(source.MarkedAsRead);
+        Assert.Empty(extractor.Calls);
+        Assert.False(File.Exists(file));
+    }
+
+    [Fact]
+    public async Task SyncAsync_RetriesMarkWithoutSendingAnotherReply()
+    {
+        string file = Path.GetTempFileName();
+        using (var stream = File.OpenWrite(file)) stream.SetLength(2097153);
+        var source = new FakeSource(new InboxMessageDto { UniqueId = 42, AttachmentPaths = [file] }) { FailMarkOnce = true };
+        var sender = new FakeSender();
+        var sut = new InboxSyncService(source, new FakeExtractor(), Opts(), messageSender: sender);
+
+        var first = await sut.SyncAsync();
+        using (var stream = File.OpenWrite(file)) stream.SetLength(2097153);
+        var second = await sut.SyncAsync();
+
+        Assert.Equal(1, first.MessagesFailed);
+        Assert.Equal(0, second.MessagesFailed);
+        Assert.Single(sender.Replies);
+        Assert.Equal([42u], source.MarkedAsRead);
+    }
 
     [Fact]
     public async Task SyncAsync_OneOversizedAttachment_RejectsWholeMessageUsingConfiguredLimit()
@@ -119,6 +146,7 @@ public class InboxSyncServiceTest
         Assert.Equal("auto-replied", reply.Headers["Auto-Submitted"]);
         Assert.Contains("invoice.pdf", reply.TextBody);
         Assert.Contains("2 MB", reply.TextBody);
+        Assert.Contains("resend all attachments", reply.TextBody);
     }
     private sealed class FakeExtractor : IDocumentContentExtractor
     {

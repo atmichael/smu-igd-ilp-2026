@@ -17,6 +17,10 @@ vi.mock('./features/file-upload/components/FileUpload', () => ({
   FileUpload: () => <h2>File upload route</h2>,
 }))
 
+vi.mock('./features/file-upload/service/upload-config-service', () => ({
+  getUploadConfig: async () => ({ attachmentLimitInMB: 2 }),
+}))
+
 vi.mock('./features/document/components/DocumentDataGrid', () => ({
   DocumentDataGrid: () => <div>Manual rectification documents</div>,
 }))
@@ -85,13 +89,13 @@ describe('App authentication and navigation', () => {
     expect(screen.getByRole('link', { name: /invoice intake/i })).toHaveAttribute('href', '/home')
   })
 
-  it('navigates from the post-login page to file upload', () => {
+  it('navigates from the post-login page to file upload', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /sign in with google/i }))
     fireEvent.click(screen.getByRole('link', { name: /file upload/i }))
 
     expect(window.location.pathname).toBe('/file-upload')
-    expect(screen.getByRole('heading', { name: /file upload route/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /file upload route/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /invoice intake/i })).toHaveAttribute('href', '/home')
   })
 

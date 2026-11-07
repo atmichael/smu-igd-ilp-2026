@@ -491,6 +491,21 @@ public class SourceDocumentIntakeTests : IClassFixture<EvidenceApiFactory>
     }
 
     [Fact]
+    public async Task PostSourceDocuments_OversizedCameraPageRoutedToInbox_IsRejected()
+    {
+        var sender = new FakeInboxMessageSender();
+        var client = EmailEnabledClient(sender);
+        var page = new byte[2 * 1024 * 1024 + 1];
+        JpegBytes.CopyTo(page, 0);
+
+        var response = await client.PostAsync("/api/source-documents", CameraCapture(page));
+
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, response.StatusCode);
+        Assert.Contains("2 MB", await response.Content.ReadAsStringAsync());
+        Assert.Empty(sender.SentEmails);
+    }
+
+    [Fact]
     public async Task PostSourceDocuments_FileUploadRejections_StoreNothing()
     {
         var store = new CountingContentStore();

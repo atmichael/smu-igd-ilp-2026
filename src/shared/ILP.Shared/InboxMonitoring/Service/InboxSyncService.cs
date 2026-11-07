@@ -21,6 +21,7 @@ public sealed class InboxSyncService : IInboxSyncService
     private readonly IInboxMessageSender? _messageSender;
     private readonly InboxMonitoringOptions _options;
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly HashSet<uint> _repliedAwaitingRead = [];
 
     public InboxSyncService(
         IInboxMessageSource source,
@@ -70,8 +71,13 @@ public sealed class InboxSyncService : IInboxSyncService
                     if (oversized.Length > 0)
                     {
                         if (_messageSender is null) throw new InvalidOperationException("Inbox message sender is not configured.");
-                        await _messageSender.SendOversizeReplyAsync(message, oversized, _options.AttachmentLimitInMB, cancellationToken);
+                        if (!_repliedAwaitingRead.Contains(message.UniqueId))
+                        {
+                            await _messageSender.SendOversizeReplyAsync(message, oversized, _options.AttachmentLimitInMB, cancellationToken);
+                            _repliedAwaitingRead.Add(message.UniqueId);
+                        }
                         await _source.MarkAsReadAsync([message.UniqueId], traceId, cancellationToken);
+                        _repliedAwaitingRead.Remove(message.UniqueId);
                         processed++;
                         continue;
                     }

@@ -119,7 +119,7 @@ public static class SourceDocumentsEndpoints
             // mailbox is a planned channel (Feature 03) and is rejected until implemented.
             var (intake, problem) = channel switch
             {
-                SourceDocumentChannels.CameraCapture => await ReadCameraCaptureAsync(form),
+                SourceDocumentChannels.CameraCapture => await ReadCameraCaptureAsync(form, inboxOptions.Value),
                 SourceDocumentChannels.FileUpload => await ReadFileUploadAsync(form, inboxOptions.Value),
                 _ => (null, BadRequest("Invalid channel value.", "The channel must be camera-capture or file-upload.")),
             };
@@ -210,7 +210,7 @@ public static class SourceDocumentsEndpoints
         }).RequireAuthorization("SourceDocumentIntakePolicy");
     }
 
-    private static async Task<(IntakeContent?, IResult?)> ReadCameraCaptureAsync(IFormCollection form)
+    private static async Task<(IntakeContent?, IResult?)> ReadCameraCaptureAsync(IFormCollection form, InboxMonitoringOptions options)
     {
         var files = form.Files.GetFiles("pages");
         if (files.Count is < 1 or > 3)
@@ -221,6 +221,11 @@ public static class SourceDocumentsEndpoints
         var parts = new List<DocumentContentPart>(files.Count);
         foreach (var file in files)
         {
+            if (options.SendSourceDocumentsToEmail && file.Length > options.AttachmentLimitInBytes)
+            {
+                return (null, PayloadTooLarge($"A captured page is too large. Each page must be no larger than {options.AttachmentLimitInMB} MB."));
+            }
+
             if (!string.Equals(file.ContentType, JpegMediaType, StringComparison.OrdinalIgnoreCase))
             {
                 return (null, UnsupportedMediaType("Unsupported media type.", "Each page must be a JPEG image."));
