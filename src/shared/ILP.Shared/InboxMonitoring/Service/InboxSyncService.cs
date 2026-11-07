@@ -18,6 +18,7 @@ public sealed class InboxSyncService : IInboxSyncService
     private readonly IInboxExtractionPersistence? _persistence;
     private readonly IDocumentNotificationPublisher? _notificationPublisher;
     private readonly IAccountsPayableCodingProcessor? _accountsPayableCodingProcessor;
+    private readonly IInboxMessageSender? _messageSender;
     private readonly InboxMonitoringOptions _options;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -28,10 +29,12 @@ public sealed class InboxSyncService : IInboxSyncService
         IGoogleDriveFileProvider? driveFileProvider = null,
         IInboxExtractionPersistence? persistence = null,
         IDocumentNotificationPublisher? notificationPublisher = null,
-        IAccountsPayableCodingProcessor? accountsPayableCodingProcessor = null)
+        IAccountsPayableCodingProcessor? accountsPayableCodingProcessor = null,
+        IInboxMessageSender? messageSender = null)
     {
         _notificationPublisher = notificationPublisher;
         _accountsPayableCodingProcessor = accountsPayableCodingProcessor;
+        _messageSender = messageSender;
         _options = options.Value;
         _source = source;
         _extractor = extractor;
@@ -59,6 +62,19 @@ public sealed class InboxSyncService : IInboxSyncService
                 {
                     LogHelper.Info(traceId, $"Subject: {message.Subject}");
                     LogHelper.Info(traceId, $"From: {message.From}");
+
+                    var oversized = message.AttachmentPaths
+                        .Where(file => new FileInfo(file).Length > _options.AttachmentLimitInBytes)
+                        .Select(file => message.AttachmentNames.TryGetValue(file, out var name) ? name : "attachment")
+                        .ToArray();
+                    if (oversized.Length > 0)
+                    {
+                        if (_messageSender is null) throw new InvalidOperationException("Inbox message sender is not configured.");
+                        await _messageSender.SendOversizeReplyAsync(message, oversized, _options.AttachmentLimitInMB, cancellationToken);
+                        await _source.MarkAsReadAsync([message.UniqueId], traceId, cancellationToken);
+                        processed++;
+                        continue;
+                    }
 
                     var extractedDocuments = new List<(DocumentDto Document, InboxMessageAttachmentDto? Attachment)>();
                     var driveAttachments = new List<InboxMessageAttachmentDto>();

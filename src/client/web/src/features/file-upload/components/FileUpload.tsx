@@ -8,7 +8,6 @@ import type { SourceDocumentResponse } from '../../../common/model/source-docume
 import {
   ACCEPTED_TYPES_TEXT,
   FILE_INPUT_ACCEPT,
-  FILE_UPLOAD_MAX_LABEL,
   applySubmissionFailure,
   formatFileSize,
   initialUploadState,
@@ -18,6 +17,7 @@ import {
 
 interface FileUploadProps {
   onExit: () => void
+  limitInMB: number
   onSubmit?: (request: {
     channel: 'file-upload'
     file: File
@@ -41,6 +41,7 @@ const groupSx = { flexDirection: { xs: 'column', sm: 'row' }, gap: 1 }
 
 export function FileUpload({
   onExit,
+  limitInMB,
   onSubmit = async (request) => submitSourceDocument(request),
   onFetchOriginal = fetchOriginalFile,
 }: FileUploadProps) {
@@ -75,7 +76,7 @@ export function FileUpload({
     event.target.value = ''
     setDropMessage(null)
     if (file) {
-      setState(selectFile(file))
+      setState(selectFile(file, limitInMB))
     }
   }
 
@@ -117,7 +118,7 @@ export function FileUpload({
     }
 
     setDropMessage(null)
-    setState(selectFile(files[0]))
+    setState(selectFile(files[0], limitInMB))
   }
 
   const submit = async () => {
@@ -279,8 +280,8 @@ export function FileUpload({
     >
       <Typography>
         {canDrag
-          ? `Drag a ${ACCEPTED_TYPES_TEXT} file here, or choose one. Up to ${FILE_UPLOAD_MAX_LABEL}.`
-          : `Choose one ${ACCEPTED_TYPES_TEXT} file, up to ${FILE_UPLOAD_MAX_LABEL}.`}
+          ? `Drag a ${ACCEPTED_TYPES_TEXT} file here, or choose one. Up to ${limitInMB} MB.`
+          : `Choose one ${ACCEPTED_TYPES_TEXT} file, up to ${limitInMB} MB.`}
       </Typography>
       <Button variant="contained" sx={fullWidthOnPhone} onClick={chooseFile}>
         Choose file

@@ -1,8 +1,5 @@
 import { SourceDocumentRequestError, type SourceDocumentResponse } from '../../../common/model/source-document-model'
 
-/** Mirrors `SourceDocumentLimits.FileUploadMaxBytes` on the server (20 MB, file-upload only). */
-export const FILE_UPLOAD_MAX_BYTES = 20 * 1024 * 1024
-export const FILE_UPLOAD_MAX_LABEL = '20 MB'
 export const FILE_INPUT_ACCEPT = 'application/pdf,image/jpeg,image/png'
 export const ACCEPTED_TYPES_TEXT = 'PDF, JPEG, or PNG'
 
@@ -21,7 +18,7 @@ export function formatFileSize(bytes: number): string {
 }
 
 /** Advisory only: the server alone decides content type and PDF readability. */
-export function checkSelectedFile(file: Pick<File, 'name' | 'size'>): QuickCheck {
+export function checkSelectedFile(file: Pick<File, 'name' | 'size'>, limitInMB: number): QuickCheck {
   if (file.size === 0) {
     return { ok: false, message: 'The file is empty. Choose a file that is not empty.' }
   }
@@ -31,8 +28,8 @@ export function checkSelectedFile(file: Pick<File, 'name' | 'size'>): QuickCheck
     return { ok: false, message: `This file type is not supported. Choose a ${ACCEPTED_TYPES_TEXT} file.` }
   }
 
-  if (file.size > FILE_UPLOAD_MAX_BYTES) {
-    return { ok: false, message: `The file is too large. The limit is ${FILE_UPLOAD_MAX_LABEL}.` }
+  if (file.size > limitInMB * 1024 * 1024) {
+    return { ok: false, message: `The file is too large. The limit is ${limitInMB} MB. Choose a smaller file.` }
   }
 
   return { ok: true }
@@ -50,8 +47,8 @@ export type UploadState =
 export const initialUploadState: UploadState = { status: 'idle' }
 
 /** A new selection always gets a new idempotency key, so a different file can never reuse an earlier submission. */
-export function selectFile(file: File): UploadState {
-  const check = checkSelectedFile(file)
+export function selectFile(file: File, limitInMB: number): UploadState {
+  const check = checkSelectedFile(file, limitInMB)
   return check.ok
     ? { status: 'selected', file, idempotencyKey: crypto.randomUUID() }
     : { status: 'blocked', file, message: check.message }
@@ -81,7 +78,7 @@ export function describeSubmissionFailure(error: unknown): SubmissionFailure {
     case error.status === 413:
       return {
         outcome: 'rejected',
-        message: error.detail ?? `The file is too large. The limit is ${FILE_UPLOAD_MAX_LABEL}.`,
+        message: error.detail ?? 'The file is too large. Choose a smaller file.',
       }
     case error.status === 415:
       return {

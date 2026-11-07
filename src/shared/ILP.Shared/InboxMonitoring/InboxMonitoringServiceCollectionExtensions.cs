@@ -11,7 +11,10 @@ public static class InboxMonitoringServiceCollectionExtensions
 {
     public static IServiceCollection AddInboxSync(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<InboxMonitoringOptions>(configuration.GetSection(InboxMonitoringOptions.SectionName));
+        services.AddOptions<InboxMonitoringOptions>()
+            .Bind(configuration.GetSection(InboxMonitoringOptions.SectionName))
+            .Validate(options => options.AttachmentLimitInMB > 0, "AttachmentLimitInMB must be greater than zero.")
+            .ValidateOnStart();
         services.AddSingleton<IInboxMessageSource, ImapInboxMessageSource>();
         services.AddSingleton<IInboxMessageSender, GmailInboxMessageSender>();
         services.AddSingleton<IGoogleDriveFileProvider, GoogleDriveFileProvider>();

@@ -116,6 +116,7 @@ public sealed class ImapInboxMessageSource : IInboxMessageSource
         }
 
         var attachmentPaths = new List<string>();
+        var attachmentNames = new Dictionary<string, string>();
         foreach (var attachment in message.Attachments)
         {
             if (attachment is MimePart inlinePart
@@ -141,6 +142,11 @@ public sealed class ImapInboxMessageSource : IInboxMessageSource
                 await messagePart.Message.WriteToAsync(stream, cancellationToken);
                 attachmentPaths.Add(tempFilePath);
             }
+            if (attachmentPaths.Contains(tempFilePath))
+            {
+                attachmentNames[tempFilePath] = attachment.ContentDisposition?.FileName
+                    ?? (attachment as MimePart)?.FileName ?? "attachment";
+            }
         }
 
         return new InboxMessageDto
@@ -148,9 +154,12 @@ public sealed class ImapInboxMessageSource : IInboxMessageSource
             UniqueId = uniqueId,
             Subject = message.Subject ?? "",
             From = message.From.ToString(),
+            ReplyTo = (message.ReplyTo.Mailboxes.FirstOrDefault() ?? message.From.Mailboxes.FirstOrDefault())?.Address ?? "",
+            MessageId = message.MessageId,
             Body = body,
             InlineImages = inlineImages,
-            AttachmentPaths = attachmentPaths
+            AttachmentPaths = attachmentPaths,
+            AttachmentNames = attachmentNames
         };
     }
 }

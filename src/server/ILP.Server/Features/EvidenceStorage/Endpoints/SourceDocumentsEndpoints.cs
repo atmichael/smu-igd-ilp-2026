@@ -20,7 +20,6 @@ public static class SourceDocumentsEndpoints
     private const string JpegMediaType = "image/jpeg";
     private const string PngMediaType = "image/png";
     private const string PdfMediaType = "application/pdf";
-    private static readonly string FileUploadLimitText = $"{SourceDocumentLimits.FileUploadMaxBytes / (1024 * 1024)} MB";
 
     private static readonly Dictionary<string, string> FileExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -36,6 +35,10 @@ public static class SourceDocumentsEndpoints
 
     public static void MapEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/config", (IOptions<InboxMonitoringOptions> options) =>
+            Results.Ok(new { options.Value.AttachmentLimitInMB }))
+            .RequireAuthorization("SourceDocumentIntakePolicy");
+
         app.MapGet("/api/source-documents/{sourceDocumentId}", (string sourceDocumentId, ISourceDocumentRepository records) =>
             records.Get(sourceDocumentId) is { } record ? Results.Ok(record.Document) : Results.NotFound())
             .RequireAuthorization("SourceDocumentIntakePolicy");
@@ -102,7 +105,7 @@ public static class SourceDocumentsEndpoints
             catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
             {
                 // The channel is not known yet, so the message names the upload limit generally.
-                return PayloadTooLarge($"The submission is too large. A file upload is limited to {FileUploadLimitText}.");
+                return PayloadTooLarge($"The submission is too large. A file upload is limited to {inboxOptions.Value.AttachmentLimitInMB} MB.");
             }
 
             var channel = form["channel"].ToString();
@@ -117,7 +120,7 @@ public static class SourceDocumentsEndpoints
             var (intake, problem) = channel switch
             {
                 SourceDocumentChannels.CameraCapture => await ReadCameraCaptureAsync(form),
-                SourceDocumentChannels.FileUpload => await ReadFileUploadAsync(form),
+                SourceDocumentChannels.FileUpload => await ReadFileUploadAsync(form, inboxOptions.Value),
                 _ => (null, BadRequest("Invalid channel value.", "The channel must be camera-capture or file-upload.")),
             };
             if (problem is not null)
@@ -235,7 +238,7 @@ public static class SourceDocumentsEndpoints
         return (new IntakeContent(JpegMediaType, parts.Count, parts), null);
     }
 
-    private static async Task<(IntakeContent?, IResult?)> ReadFileUploadAsync(IFormCollection form)
+    private static async Task<(IntakeContent?, IResult?)> ReadFileUploadAsync(IFormCollection form, InboxMonitoringOptions options)
     {
         var files = form.Files.GetFiles("file");
         if (files.Count != 1)
@@ -249,9 +252,9 @@ public static class SourceDocumentsEndpoints
         }
 
         // Checked before the file is copied into memory; this limit applies to file-upload only.
-        if (files[0].Length > SourceDocumentLimits.FileUploadMaxBytes)
+        if (files[0].Length > options.AttachmentLimitInBytes)
         {
-            return (null, PayloadTooLarge($"The file is too large. The limit is {FileUploadLimitText}."));
+            return (null, PayloadTooLarge($"The file is too large. The limit is {options.AttachmentLimitInMB} MB."));
         }
 
         var declared = files[0].ContentType;
