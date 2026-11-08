@@ -5,6 +5,7 @@ using ILP.Shared.InboxMonitoring.Dto;
 using ILP.Shared.TransactionDocument.Dto;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Xunit;
 
 namespace ILP.Server.Tests;
@@ -17,6 +18,7 @@ public sealed class InboxExtractionPersistenceTests
         string databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var options = new DbContextOptionsBuilder<InboxExtractionDbContext>()
             .UseSqlite($"Data Source={databasePath}")
+            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
         var factory = new TestContextFactory(options);
         var persistence = new SqliteInboxExtractionRepo(factory);
