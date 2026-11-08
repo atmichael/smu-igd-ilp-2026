@@ -16,9 +16,17 @@ import { DocumentNotifications } from './features/notification/components/Docume
 import { PortalShell } from './features/layout/PortalShell'
 import './App.css'
 
+const bypassAuthentication =
+  import.meta.env.MODE !== 'test' && import.meta.env.VITE_BYPASS_AUTH === 'true'
+
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => getGoogleIdToken() !== null)
-  const [path, setPath] = useState(() => resolvePath(getGoogleIdToken() !== null, window.location.pathname))
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    bypassAuthentication || getGoogleIdToken() !== null,
+  )
+  const [path, setPath] = useState(() => resolvePath(
+    bypassAuthentication || getGoogleIdToken() !== null,
+    window.location.pathname,
+  ))
 
   const navigate = useCallback((nextPath: string) => {
     window.history.pushState({}, '', nextPath)
@@ -26,13 +34,13 @@ function App() {
   }, [])
 
   useEffect(() => {
-    const currentPath = resolvePath(getGoogleIdToken() !== null, window.location.pathname)
+    const currentPath = resolvePath(bypassAuthentication || getGoogleIdToken() !== null, window.location.pathname)
     if (currentPath !== window.location.pathname) {
       window.history.replaceState({}, '', currentPath)
     }
 
     const syncPath = () => {
-      const nextPath = resolvePath(getGoogleIdToken() !== null, window.location.pathname)
+      const nextPath = resolvePath(bypassAuthentication || getGoogleIdToken() !== null, window.location.pathname)
       if (nextPath !== window.location.pathname) {
         window.history.replaceState({}, '', nextPath)
       }
@@ -49,6 +57,10 @@ function App() {
   }
 
   const handleSignOut = () => {
+    if (bypassAuthentication) {
+      navigate('/home')
+      return
+    }
     clearGoogleIdToken()
     setIsAuthenticated(false)
     navigate('/')

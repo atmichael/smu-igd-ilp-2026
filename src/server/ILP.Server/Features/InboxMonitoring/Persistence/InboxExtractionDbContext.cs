@@ -1,5 +1,6 @@
 using ILP.Server.Features.InboxMonitoring.Persistence.Entity;
 using ILP.Server.Features.AccountsPayable.Persistence.Entity;
+using ILP.Server.Features.Verification.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace ILP.Server.Features.InboxMonitoring.Persistence;
@@ -23,6 +24,10 @@ public sealed class InboxExtractionDbContext(DbContextOptions<InboxExtractionDbC
     public DbSet<AccountsPayableGstTaxCodeEntity> AccountsPayableGstTaxCodes => Set<AccountsPayableGstTaxCodeEntity>();
 
     public DbSet<DocumentAPJournalEntity> DocumentAPJournals => Set<DocumentAPJournalEntity>();
+
+    public DbSet<VerificationRunEntity> VerificationRuns => Set<VerificationRunEntity>();
+
+    public DbSet<VerificationReviewResolutionEntity> VerificationReviewResolution => Set<VerificationReviewResolutionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -137,6 +142,29 @@ public sealed class InboxExtractionDbContext(DbContextOptions<InboxExtractionDbC
                 .HasForeignKey(mapping => mapping.SourceAttachmentId)
                 .OnDelete(DeleteBehavior.Restrict);
             ConfigureAuditFields(entity);
+        });
+
+        modelBuilder.Entity<VerificationRunEntity>(entity =>
+        {
+            entity.ToTable("VerificationRuns");
+            entity.HasKey(run => run.Id);
+            entity.HasIndex(run => run.VerificationRunId).IsUnique();
+            entity.Property(run => run.VerificationRunId).IsRequired();
+            entity.Property(run => run.DocumentId).IsRequired();
+            entity.Property(run => run.RunJson).IsRequired();
+            entity.Property(run => run.Status).IsRequired();
+            entity.Property(run => run.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<VerificationReviewResolutionEntity>(entity =>
+        {
+            entity.ToTable("VerificationReviewResolutions");
+            entity.HasKey(resolution => resolution.Id);
+            entity.HasIndex(resolution => resolution.ReviewItemId).IsUnique();
+            entity.Property(resolution => resolution.ReviewItemId).IsRequired();
+            entity.Property(resolution => resolution.UserId).IsRequired();
+            entity.Property(resolution => resolution.ResolutionReason).IsRequired();
+            entity.Property(resolution => resolution.ResolvedAt).IsRequired();
         });
     }
 

@@ -10,6 +10,10 @@ using ILP.Server.Features.InboxMonitoring.Persistence;
 using ILP.Server.Features.InboxMonitoring.Service;
 using ILP.Server.Features.TransactionDocuments.Configuration;
 using ILP.Server.Features.TransactionDocuments.Entrypoint;
+using ILP.Server.Features.ReferenceData;
+using ILP.Server.Features.ReferenceData.Endpoints;
+using ILP.Server.Features.Verification.Endpoints;
+using ILP.Server.Features.Verification.Service;
 using ILP.Shared.InboxMonitoring;
 using ILP.Shared.InboxMonitoring.Abstraction;
 using ILP.Shared.InboxMonitoring.Config;
@@ -74,6 +78,11 @@ builder.Services.AddAuthorization(options =>
     {
         policy.RequireAuthenticatedUser();
     });
+
+    options.AddPolicy(VerificationServiceCollectionExtensions.AuthorizationPolicy, policy =>
+    {
+        policy.RequireAuthenticatedUser();
+    });
 });
 
 builder.Services.AddEvidenceStorage(builder.Configuration);
@@ -86,6 +95,8 @@ builder.Services.AddSingleton<IDocumentNotificationPublisher>(sp => sp.GetRequir
 builder.Services.AddSingleton<InboxSyncSignal>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<InboxSyncSignal>());
 builder.Services.AddInboxMonitoring(builder.Configuration);
+builder.Services.AddReferenceData(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddVerification();
 
 builder.Services.AddCors(options =>
 {
@@ -150,6 +161,12 @@ app.MapInboxWatchEndpoints();
 app.MapTransactionDocumentEndpoints();
 app.MapCompanyEndpoints();
 app.MapAccountsPayableEndpoints();
+app.MapReferenceDataEndpoints();
+app.MapReferenceRuleEndpoints();
+app.MapPolicySourceEndpoints();
+app.MapReferenceSourceUpdateEndpoints();
+app.MapReferenceGovernanceEndpoints();
+app.MapVerificationEndpoints();
 
 app.Run();
 
@@ -169,15 +186,13 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        //if (!AuthenticationHeaderValue.TryParse(Request.Headers.Authorization, out var header)
-        //    || !string.Equals(header.Scheme, SchemeName, StringComparison.OrdinalIgnoreCase))
-        //{
-        //    return Task.FromResult(AuthenticateResult.NoResult());
-        //}
+        if (!AuthenticationHeaderValue.TryParse(Request.Headers.Authorization, out var header))
+            return Task.FromResult(AuthenticateResult.NoResult());
+        if (!string.Equals(header.Scheme, SchemeName, StringComparison.OrdinalIgnoreCase))
+            return Task.FromResult(AuthenticateResult.NoResult());
 
-        var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.Name, "camera-capture-test-user")],
-            Scheme.Name);
+        var userName = "camera-capture-test-user";
+        var identity = new ClaimsIdentity([new Claim(ClaimTypes.Name, userName)], Scheme.Name);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
